@@ -126,19 +126,23 @@ and wording, but it cannot fabricate.
 - **Immutable career facts.** The base résumé (`.docx`) is parsed once into
   `data/career_facts.yaml` (gitignored) — the source of truth. Company names,
   titles, and durations are fixed; the tailoring model is constrained to them.
-- **No invented metrics.** Only real numbers from the résumé are cited. Where a
-  number is unknown, the model inserts a JD-aware placeholder naming exactly which
-  real metric to supply (e.g. `[METRIC — latency: p95 before→after ms?]`), listed
-  in NOTES for you to fill in.
+- **No invented metrics.** Only real numbers from the career facts are cited,
+  woven into achievements. If a role has no real metric, a specific *qualitative*
+  achievement is written instead — the résumé face never carries a `[METRIC …]`
+  placeholder or bracket. Suggestions to add a real figure go in the NOTES block
+  only, phrased as questions you can answer with a true number.
 - **No invented certs/skills.** Only real certifications print; JD-valued certs you
   lack go to NOTES as "suggested to obtain". Gaps are flagged, never faked.
 - **No-drift gate (`verify.py`).** Before any PDF is written, the output is checked
   against the career facts: altered/added employers, uncredentialed certs, and
   metric numbers with no basis in the facts **fail the build loudly**.
-- **ATS-safe PDF.** Single column, standard font (Helvetica), the exact standard
-  section headings, real bullets, black-on-white — then the PDF's text is
-  **extracted back out** and asserted to be selectable with sections in order. A
-  PDF that fails extraction is a failed build.
+- **ATS-safe PDF.** Single column, `Name` / `email | phone` header, CAPS section
+  headings under a thin rule, real `•` bullets that **extract as text** (via a
+  bundled embedded font), `Category: value` skills (no tables/pipes), no
+  em-dashes or separator lines, black-on-white. A format gate rejects brackets,
+  pipes, em-dashes, or missing certs; then the PDF's text is **extracted back
+  out** and asserted selectable with sections in order. A matching `.docx` is
+  written alongside. A PDF that fails extraction is a failed build.
 
 Tailoring uses **`claude-sonnet-4-6`** for quality; scoring stays on Haiku.
 
