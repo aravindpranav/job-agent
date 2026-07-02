@@ -186,12 +186,16 @@ def _styles() -> dict[str, ParagraphStyle]:
     }
 
 
-def _skill_style(label: str) -> ParagraphStyle:
-    """A hanging-indent style for a skill line: the bold 'Label:' starts at the
-    margin and wrapped values align in a column under the first value."""
-    hang = pdfmetrics.stringWidth(f"{label}: ", FONT_BOLD, SKILL_FONT_SIZE)
-    return ParagraphStyle(f"skill_{label}", fontName=FONT, fontSize=SKILL_FONT_SIZE,
-                          leading=12, leftIndent=hang, firstLineIndent=-hang, spaceAfter=2.5)
+# A modest, fixed hanging indent: wrapped skill values align in a consistent
+# indented column instead of returning to the margin. Deliberately small — a
+# large (label-width) hang makes PDF text extractors read the wrapped lines out
+# of order, scrambling the skills for an ATS. This keeps the linear reading order.
+SKILL_HANG = 14
+
+
+def _skill_style() -> ParagraphStyle:
+    return ParagraphStyle("skill", fontName=FONT, fontSize=SKILL_FONT_SIZE, leading=12,
+                          leftIndent=SKILL_HANG, firstLineIndent=-SKILL_HANG, spaceAfter=2.5)
 
 
 def _parse_lines(resume_text: str):
@@ -249,7 +253,7 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
                 flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(rest)}", styles["body"]))
         elif kind == "category":
             label, values = payload
-            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", _skill_style(label)))
+            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", _skill_style()))
         else:
             flow.append(Paragraph(escape(payload), styles["body"]))
 
@@ -304,9 +308,9 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
         elif kind == "category":
             label, rest = payload
             p = doc.add_paragraph()
-            # hanging indent so wrapped values align in a column, not back at margin
-            p.paragraph_format.left_indent = Inches(1.15)
-            p.paragraph_format.first_line_indent = Inches(-1.15)
+            # modest hanging indent so wrapped values align in a column, not back at margin
+            p.paragraph_format.left_indent = Inches(0.2)
+            p.paragraph_format.first_line_indent = Inches(-0.2)
             p.paragraph_format.space_after = Pt(2.5)
             p.add_run(f"{label}: ").bold = True
             p.add_run(rest)

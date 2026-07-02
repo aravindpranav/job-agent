@@ -47,6 +47,20 @@ def test_trim_to_caps_limits_bullets_per_section():
     assert out.count("- s") == 4   # older role responsibilities capped at 4
 
 
+def test_skill_hanging_indent_preserves_extraction_order(tmp_path):
+    # A long skills line wraps; its continuation must extract IN ORDER (before the
+    # next category), not get reordered by the PDF text extractor.
+    txt = ("Aravind\ne | p\nTECHNICAL SKILLS\n"
+           "Languages: one, two, three, four, five, six, seven, eight, nine, ten, "
+           "eleven, twelve, thirteen, fourteen, fifteen, sixteen, seventeen\n"
+           "Frameworks: alpha, beta\n"
+           "PROFESSIONAL EXPERIENCE\nRole: r\nCompany: c\nDuration: d\n"
+           "EDUCATION\nx\nCERTIFICATIONS\nNone")
+    pdf = render_pdf(txt, tmp_path / "skills.pdf")
+    text = extract_pdf_text(pdf)
+    assert text.find("seventeen") < text.find("Frameworks")  # wrap stays before next category
+
+
 def test_drop_last_responsibility_only_touches_responsibilities():
     from job_agent.tailor.render_pdf import drop_last_responsibility
     txt = ("Role: A\nCompany: B\nDuration: d\nResponsibilities:\n- r0\n- r1\n- r2\n"
