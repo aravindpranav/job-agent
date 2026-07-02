@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from job_agent.models import Job
+from job_agent.config import LocationRule, SearchProfile, SourceRef
+from job_agent.models import Job, ScoredJob
+from job_agent.sources.base import JobSource
 
 
 def demo_jobs(now: datetime | None = None) -> list[Job]:
@@ -115,3 +117,58 @@ def demo_jobs(now: datetime | None = None) -> list[Job]:
             description="Matches keywords and location, but posted 40h ago.",
         ),
     ]
+
+
+class DemoSource(JobSource):
+    """A source that serves the bundled mock jobs, so `--demo` runs the *same*
+    pipeline as a real run — just with a different source behind it."""
+
+    ats = "demo"
+
+    def __init__(self, board: str = "demo", now: datetime | None = None) -> None:
+        super().__init__(board)
+        self._now = now
+
+    def fetch(self) -> list[Job]:
+        return demo_jobs(self._now)
+
+
+def demo_profile() -> SearchProfile:
+    """A self-contained profile for demo mode (no YAML file needed)."""
+    return SearchProfile(
+        keywords=["data engineer", "data scientist", "machine learning",
+                  "ml engineer", "ai engineer", "gen ai"],
+        location=LocationRule(remote_ok=True, allowed_countries=["US"]),
+        sources=[SourceRef(ats="demo", board="demo")],
+        candidate_summary=(
+            "Data / ML engineer targeting Data Engineer, Data Scientist, ML and "
+            "Gen AI Engineer roles. Python, SQL, cloud data platforms, LLM "
+            "pipelines. Open to remote (US) or onsite/hybrid in the USA."
+        ),
+    )
+
+
+def score_demo(jobs: list[Job], profile: SearchProfile) -> list[ScoredJob]:
+    """A deterministic, offline stand-in for the LLM scorer used in demo mode.
+
+    Uses simple keyword/location heuristics so `--demo` produces a ranked list
+    with plausible scores and no API call. The real scorer is scoring.py.
+    """
+    scored: list[ScoredJob] = []
+    for job in jobs:
+        text = f"{job.title} {job.description}".lower()
+        hits = sum(1 for kw in profile.keywords if kw.lower() in text)
+        title_hit = any(kw.lower() in job.title.lower() for kw in profile.keywords)
+        us = job.remote or (job.country or "").upper() in {"US", "USA"}
+        score = min(100, 40 + hits * 12 + (15 if title_hit else 0) + (10 if us else 0))
+        verdict = "strong" if score >= 75 else "possible" if score >= 55 else "skip"
+        reasons = []
+        if title_hit:
+            reasons.append("Title matches a target role")
+        if us:
+            reasons.append("Location fits (remote or US)")
+        reasons.append(f"{hits} keyword(s) matched in the posting")
+        missing = [] if job.description else ["No description available to assess depth"]
+        scored.append(ScoredJob(job=job, score=score, verdict=verdict,
+                                reasons=tuple(reasons), missing_requirements=tuple(missing)))
+    return scored
