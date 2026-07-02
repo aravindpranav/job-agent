@@ -146,25 +146,30 @@ def _megaprompt() -> str:
         return "(mega prompt unavailable; using stub)"
 
 
-def _finalize(console: Console, facts, result, out_dir: Path, filename: str) -> int:
-    """Force the header, run the no-drift + format gates, render, run the PDF gate,
-    print NOTES. Nothing is written if a gate fails. Returns an exit code."""
+# Appended to a retry when the first attempt overshoots the bullet caps.
+_CAP_CORRECTION = (
+    "Your previous draft exceeded the responsibility-bullet limits. Regenerate it and, under "
+    "each 'Responsibilities:' heading, count the bullets: the most-recent (first) role must have "
+    "at most 6, and every older role at most 4. Delete the least JD-relevant bullets to comply. "
+    "Keep everything else (metrics, certifications, format) the same."
+)
+
+
+def _gate(facts, result) -> TailorResult:
+    """Force the header and run the no-drift + format gates on the face.
+    Returns the checked (face) result, or raises DriftError / FormatError."""
     face = clean_resume_text(
         normalize_header(result.resume_text, facts.name, facts.email, facts.phone))
     checked = TailorResult(resume_text=face, notes=result.notes, raw=result.raw)
+    verify_no_drift(checked, facts)
+    verify_format(checked, facts)
+    return checked
 
-    try:
-        verify_no_drift(checked, facts)
-    except DriftError as exc:
-        console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
-        return 1
-    try:
-        verify_format(checked, facts)
-    except FormatError as exc:
-        console.print(f"[red]Format gate FAILED — refusing to write PDF:[/red]\n{exc}")
-        return 1
+
+def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str) -> int:
+    """Render the PDF + docx, run the PDF gate, print NOTES + page count."""
     console.print("[green]✓ No-drift + format gates passed[/green]")
-
+    face = checked.resume_text
     out_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = out_dir / f"{filename}.pdf"
     docx_path = out_dir / f"{filename}.docx"
@@ -179,7 +184,7 @@ def _finalize(console: Console, facts, result, out_dir: Path, filename: str) -> 
     console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)} "
                   f"([bold]{pages} page{'s' if pages != 1 else ''}[/bold])")
     console.print(f"[bold]PDF:[/bold] {pdf_path}\n[bold]DOCX:[/bold] {docx_path}")
-    console.print(Panel(result.notes or "(no notes returned)",
+    console.print(Panel(checked.notes or "(no notes returned)",
                         title="NOTES — review before applying", border_style="yellow"))
     return 0
 
@@ -193,8 +198,13 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         jd = (DEMO_DIR / "demo_jd.txt").read_text()
         stub = (DEMO_DIR / "demo_response.txt").read_text()
         result = tailor_resume(facts, jd, megaprompt=_megaprompt(), stub_response=stub)
+        try:
+            checked = _gate(facts, result)
+        except (DriftError, FormatError) as exc:
+            console.print(f"[red]Gate FAILED — refusing to write PDF:[/red]\n{exc}")
+            return 1
         filename = _resume_filename(facts.name.split()[0], facts.role, "Demo")
-        return _finalize(console, facts, result, out_dir, filename)
+        return _write(console, checked, out_dir, filename)
 
     # real run
     if not args.job:
@@ -226,10 +236,26 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
             console.print("[yellow]warning:[/yellow] could not fetch a JD; tailoring on title only.")
 
     console.print(f"[bold cyan]job-agent tailor[/bold cyan] — tailoring with {TAILOR_MODEL}\n")
-    # megaprompt=None so tailor_resume loads the base prompt + policy addendum.
-    result = tailor_resume(facts, jd, settings=settings)
     filename = _resume_filename(facts.name.split()[0], job.title, job.company)
-    return _finalize(console, facts, result, out_dir, filename)
+
+    # Tailor, then gate. On a format-cap overshoot, retry once with a correction.
+    # (megaprompt=None so tailor_resume loads the base prompt + policy addendum.)
+    checked = None
+    for attempt in (1, 2):
+        correction = None if attempt == 1 else _CAP_CORRECTION
+        result = tailor_resume(facts, jd, settings=settings, extra_instruction=correction)
+        try:
+            checked = _gate(facts, result)
+            break
+        except DriftError as exc:  # fabrication — never retry, fail loudly
+            console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
+            return 1
+        except FormatError as exc:
+            if attempt == 2:
+                console.print(f"[red]Format gate FAILED after retry — refusing to write PDF:[/red]\n{exc}")
+                return 1
+            console.print(f"[yellow]Format issue, retrying once:[/yellow] {exc}")
+    return _write(console, checked, out_dir, filename)
 
 
 # --------------------------------------------------------------------------- #

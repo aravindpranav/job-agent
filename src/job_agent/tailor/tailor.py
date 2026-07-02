@@ -39,7 +39,7 @@ FORMAT:
 
 LENGTH AND SELECTIVITY (tailor hard to THIS JD; target 2 pages):
 - Rank every responsibility by relevance to this specific JD and keep only the strongest. Include a bullet because the JD calls for it, not because it is true. Drop the rest.
-- Responsibilities per role: the current/most-recent role has 5-6 bullets; each older role has 3-4 bullets. Do not exceed these.
+- Responsibilities per role are a HARD LIMIT enforced by an automated check that REJECTS the resume if exceeded: the most-recent (first) role lists AT MOST 6 responsibility bullets; every older role lists AT MOST 4. Before you finish, count the bullets under each "Responsibilities:" heading and delete the least JD-relevant ones until each role is within its limit.
 - Professional Summary: 3-4 lines maximum, targeted to this JD.
 - Technical Skills: keep only the categories this JD actually cares about; drop irrelevant groups. Aim for about 5-7 skill lines, not more.
 - If the resume would run past 2 pages, cut the least JD-relevant bullets first. Never trim a real metric or a required-skill match to save space.
@@ -158,16 +158,21 @@ def tailor_resume(
     megaprompt: str | None = None,
     generate=None,
     stub_response: str | None = None,
+    extra_instruction: str | None = None,
 ) -> TailorResult:
     """Tailor the resume to ``jd_text``.
 
     * ``stub_response`` — use canned text instead of calling the model (demo/tests).
     * ``generate`` — inject a custom ``(system, user, settings) -> str`` (tests).
+    * ``extra_instruction`` — appended to the user turn (used to correct a failed
+      format check on a retry).
     * otherwise a real Sonnet call is made using ``settings``.
     """
     base = megaprompt if megaprompt is not None else load_megaprompt()
     system = f"{base}\n\n{POLICY_ADDENDUM}"
     user = build_user_message(facts, jd_text)
+    if extra_instruction:
+        user = f"{user}\n\n{extra_instruction}"
 
     if stub_response is not None:
         raw = stub_response
