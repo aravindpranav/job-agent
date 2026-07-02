@@ -19,6 +19,10 @@ dependencies = [
     "pyyaml>=6.0",
     "python-dotenv>=1.0",
     "rich>=13.7",
+    # Slice 2 (resume tailoring): docx parsing, ATS PDF, PDF text-extraction gate.
+    "python-docx>=1.1",
+    "reportlab>=4.0",
+    "pdfminer.six>=20240706",
 ]
 
 [project.optional-dependencies]
