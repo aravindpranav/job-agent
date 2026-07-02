@@ -18,6 +18,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
+from job_agent.tailor.textnorm import strip_markdown
+
 # The five standard headings, in the order ATS parsers expect them.
 CANONICAL_HEADINGS = [
     "Professional Summary",
@@ -72,7 +74,7 @@ def _parse_lines(resume_text: str):
     """Yield (kind, text) tuples describing each line for rendering."""
     meaningful = 0
     for raw in resume_text.splitlines():
-        line = raw.strip()
+        line = strip_markdown(raw)  # models add **bold**/## that must not leak into the PDF
         if not line:
             yield ("blank", "")
             continue

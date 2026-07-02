@@ -12,10 +12,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-
-def _norm(text: str) -> str:
-    """Case/whitespace-insensitive key for comparing fixed facts."""
-    return " ".join(text.split()).strip().lower()
+from job_agent.tailor.textnorm import norm as _norm
 
 
 class Certification(BaseModel):

@@ -19,6 +19,8 @@ from pydantic import BaseModel, ConfigDict
 from job_agent.tailor.career_facts import CareerFacts
 from job_agent.tailor.render_pdf import CANONICAL_HEADINGS
 from job_agent.tailor.tailor import TailorResult
+from job_agent.tailor.textnorm import norm as _norm
+from job_agent.tailor.textnorm import strip_markdown
 
 
 class DriftError(Exception):
@@ -27,10 +29,6 @@ class DriftError(Exception):
 
 class PdfVerifyError(Exception):
     """The generated PDF failed text-extraction verification."""
-
-
-def _norm(text: str) -> str:
-    return " ".join(text.split()).strip().lower()
 
 
 def _numbers(text: str) -> set[str]:
@@ -60,10 +58,13 @@ class VerifyReport(BaseModel):
 
 
 def _output_employer_triples(resume_text: str) -> list[tuple[str, str, str]]:
-    """Reconstruct (company, title, duration) blocks from the output resume."""
+    """Reconstruct (company, title, duration) blocks from the output resume.
+
+    Markdown-aware: models wrap labels as ``**Company:** …``, so strip decoration
+    before matching the label."""
     triples, role, company = [], None, None
     for raw in resume_text.splitlines():
-        line = raw.strip()
+        line = strip_markdown(raw)
         if m := re.match(r"(?i)^Role:\s*(.+)$", line):
             role = m.group(1)
         elif m := re.match(r"(?i)^Company:\s*(.+)$", line):
@@ -75,10 +76,26 @@ def _output_employer_triples(resume_text: str) -> list[tuple[str, str, str]]:
     return triples
 
 
+def _employer_problem(company: str, title: str, duration: str, facts: CareerFacts) -> str | None:
+    """Validate one output employer block against the fixed facts.
+
+    The company field may carry extra decoration the model appended (e.g. an
+    inline location), so a real employer name must be *contained* in it; the title
+    must match exactly and the duration must match exactly (dates are fixed)."""
+    c, t, d = _norm(company), _norm(title), _norm(duration)
+    candidates = [e for e in facts.employers if _norm(e.company) in c]
+    if not candidates:
+        return f"Unknown employer in output: {company!r}"
+    for e in candidates:
+        if _norm(e.title) == t and _norm(e.duration) == d:
+            return None
+    return f"Altered employer identity: {company} / {title} / {duration}"
+
+
 def _output_certifications(resume_text: str) -> list[str]:
     """Lines printed under the Certifications heading (the strict format's last
     section) — the contiguous block up to the first blank line or a NOTES marker."""
-    lines = resume_text.splitlines()
+    lines = [strip_markdown(ln) for ln in resume_text.splitlines()]
     try:
         start = next(i for i, ln in enumerate(lines)
                      if _norm(ln).rstrip(":") == "certifications")
@@ -100,18 +117,13 @@ def verify_no_drift(result: TailorResult, facts: CareerFacts) -> VerifyReport:
     problems: list[str] = []
 
     # 1. Employers: every output (company,title,duration) must exist unchanged.
-    allowed_ids = facts.employer_identities()
-    allowed_companies = facts.employer_companies()
     out_triples = _output_employer_triples(result.resume_text)
+    if not out_triples:
+        problems.append("Could not find any employer blocks in the output "
+                        "(Role/Company/Duration) — cannot verify against the base resume.")
     for company, title, duration in out_triples:
-        key = (_norm(company), _norm(title), _norm(duration))
-        if _norm(company) not in allowed_companies:
-            problems.append(f"Unknown employer in output: {company!r}")
-        elif key not in allowed_ids:
-            problems.append(
-                f"Altered employer identity: {company} / {title} / {duration} "
-                f"does not match the base resume."
-            )
+        if problem := _employer_problem(company, title, duration, facts):
+            problems.append(problem)
 
     # 2. Certifications: only real ones may be printed.
     allowed_certs = facts.certification_names()

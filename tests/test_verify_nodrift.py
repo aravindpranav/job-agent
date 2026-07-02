@@ -57,3 +57,59 @@ def test_invented_metric_is_rejected():
                                        "Reduced infrastructure cost by 73%")
     with pytest.raises(DriftError, match="Invented metric"):
         verify_no_drift(_mutated(mutated), FACTS)
+
+
+# The model may emit markdown (**Company:**), en-dash dates, and an inline
+# location on the company line. The gate must see through all of that — and must
+# NOT pass vacuously when it can't parse the employers.
+
+_MD_RESUME = """Jordan Rivers
+Data Engineer | jordan.rivers@example.com | +1 (555) 010-0100
+
+## Professional Summary
+Data engineer on AWS.
+
+## Technical Skills
+Python, SQL
+
+## Professional Experience
+**Role:** Data Engineer
+**Company:** Acme Analytics — Remote, US
+**Project Description:** Pipelines.
+**Duration:** Jan 2022 – Present
+**Responsibilities:**
+- Built Apache Airflow DAGs.
+**Achievements:**
+- Processed 5,000,000 records/day.
+
+**Role:** Data Analyst
+**Company:** Beacon Software — Austin, TX
+**Duration:** Jun 2019 – Dec 2021
+
+## Education
+B.S., Computer Science, State University
+
+## Certifications
+AWS Certified Data Engineer - Associate
+"""
+
+
+def test_markdown_wrapped_legit_output_passes():
+    report = verify_no_drift(_mutated(_MD_RESUME), FACTS)
+    assert report.ok
+    assert len(report.output_employers) == 2  # employers WERE parsed, not skipped
+
+
+def test_markdown_wrapped_fake_employer_is_rejected():
+    bad = _MD_RESUME.replace("**Company:** Beacon Software — Austin, TX",
+                             "**Company:** Shadow Corp — Remote")
+    with pytest.raises(DriftError, match="Shadow Corp"):
+        verify_no_drift(_mutated(bad), FACTS)
+
+
+def test_unparseable_employers_fail_loudly_not_vacuously():
+    text = ("Jordan Rivers\nData Engineer | e | p\nProfessional Summary\nx\n"
+            "Professional Experience\nWorked at various places.\nEducation\nx\n"
+            "Certifications\nNone")
+    with pytest.raises(DriftError, match="Could not find any employer"):
+        verify_no_drift(_mutated(text), FACTS)
