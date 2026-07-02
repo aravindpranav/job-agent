@@ -169,6 +169,9 @@ def verify_pdf(pdf_path: str | Path) -> list[str]:
     text = extract_pdf_text(pdf_path)
     if not text.strip():
         raise PdfVerifyError(f"{pdf_path}: no selectable text extracted (not ATS-parseable).")
+    if "(cid:" in text:
+        raise PdfVerifyError(f"{pdf_path}: contains glyphs with no Unicode mapping "
+                             f"(unextractable by ATS). Use standard-encoded characters.")
 
     low = text.lower()
     positions = []

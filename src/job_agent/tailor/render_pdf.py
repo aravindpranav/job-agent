@@ -108,7 +108,10 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
         elif kind == "heading":
             flow.append(Paragraph(escape(text), styles["heading"]))
         elif kind == "bullet":
-            flow.append(Paragraph("&bull;&nbsp;" + escape(text), styles["bullet"]))
+            # A hyphen bullet extracts as real text under the standard base-14
+            # font; the round "•" glyph does not (it comes out as (cid:127)), and
+            # embedding a custom font would break the standard-font rule.
+            flow.append(Paragraph("-&nbsp;" + escape(text), styles["bullet"]))
         elif kind == "label":
             label, _, rest = text.partition("\t")
             flow.append(Paragraph(f"<b>{escape(label)}</b> {escape(rest)}", styles["body"]))

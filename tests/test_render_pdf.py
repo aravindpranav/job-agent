@@ -33,6 +33,13 @@ def test_unicode_arrow_is_ascii_safe_in_pdf(tmp_path):
     assert "before->after" in text or "before" in text  # sanitized, still selectable
 
 
+def test_pdf_has_no_unmapped_glyphs(tmp_path):
+    pdf = render_pdf(RESULT.resume_text, tmp_path / "resume.pdf")
+    text = extract_pdf_text(pdf)
+    assert "(cid:" not in text            # every glyph maps to real Unicode
+    assert "Airflow" in text              # bullet-line words extract cleanly
+
+
 def test_pdf_missing_standard_section_is_rejected(tmp_path):
     incomplete = ("Jordan Rivers\nData Engineer | e | p\nProfessional Summary\nx\n"
                   "Technical Skills\nx\nProfessional Experience\nx\nEducation\nx\n")  # no Certifications
