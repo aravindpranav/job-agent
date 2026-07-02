@@ -40,7 +40,7 @@ FORMAT:
 LENGTH AND SELECTIVITY (tailor hard to THIS JD; target 2 pages):
 - Rank every responsibility by relevance to this specific JD and keep only the strongest. Include a bullet because the JD calls for it, not because it is true. Drop the rest.
 - Responsibilities per role are a HARD LIMIT enforced by an automated check that REJECTS the resume if exceeded: the most-recent (first) role lists AT MOST 6 responsibility bullets; every older role lists AT MOST 4. Before you finish, count the bullets under each "Responsibilities:" heading and delete the least JD-relevant ones until each role is within its limit.
-- Professional Summary: 3-4 lines maximum, targeted to this JD.
+- Professional Summary: 3-4 lines maximum — no more than about 55 words in a single short paragraph — targeted to this JD. Do not exceed 55 words.
 - Technical Skills: keep only the categories this JD actually cares about; drop irrelevant groups. Aim for about 5-7 skill lines, not more.
 - If the resume would run past 2 pages, cut the least JD-relevant bullets first. Never trim a real metric or a required-skill match to save space.
 - Keep bullets tight and factual. Remove filler and hedging.
