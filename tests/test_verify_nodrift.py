@@ -55,8 +55,24 @@ def test_uncredentialed_certification_is_rejected():
 def test_invented_metric_is_rejected():
     mutated = BASE.resume_text.replace("Reduced pipeline runtime by 30%",
                                        "Reduced infrastructure cost by 73%")
-    with pytest.raises(DriftError, match="Invented metric"):
+    with pytest.raises(DriftError, match="not among the banked real metrics"):
         verify_no_drift(_mutated(mutated), FACTS)
+
+
+def test_metric_value_not_in_banked_list_is_rejected():
+    # 40% is a real-looking figure but not in the demo's banked metrics (30, 5,000,000).
+    mutated = BASE.resume_text.replace("Reduced pipeline runtime by 30%",
+                                       "Improved model accuracy by 40%")
+    with pytest.raises(DriftError, match="banked"):
+        verify_no_drift(_mutated(mutated), FACTS)
+
+
+def test_to_value_handles_magnitudes_and_plus():
+    from job_agent.tailor.verify import _to_value
+    assert _to_value("1,000+") == 1000
+    assert _to_value("500K") == 500000
+    assert _to_value("2M") == 2000000
+    assert _to_value("99.9") == 99.9
 
 
 # The model may emit markdown (**Company:**), en-dash dates, and an inline

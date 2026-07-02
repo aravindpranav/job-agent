@@ -64,20 +64,42 @@ def verify_format(result: TailorResult, facts: CareerFacts) -> None:
         raise FormatError("Format gate failed:\n  - " + "\n  - ".join(problems))
 
 
-def _numbers(text: str) -> set[str]:
-    """All numeric tokens in a blob, comma-normalized (e.g. '1,000' -> '1000')."""
-    return {m.replace(",", "") for m in re.findall(r"\d[\d,]*(?:\.\d+)?", text)}
-
-
-# Metric-shaped numbers in output: a number followed by %, x, or a scale unit,
-# not glued to letters (so "GPT-4"/"LLaMA 3" are ignored, "45%"/"20 years" caught).
-_OUTPUT_METRIC = re.compile(
-    r"(?<![A-Za-z-])(\d[\d,]*(?:\.\d+)?)\s*"
-    r"(?:%|x\b|\+?\s*(?:users|customers|records|requests|rows|years|applications|"
-    r"daily users|ms|seconds|minutes))",
-    re.IGNORECASE,
-)
+# Metric numbers = a number (optionally with K/M/B magnitude and '+') that is
+# immediately followed by % or an IMPACT unit — not glued to letters (so "GPT-4"
+# / "LLaMA 3" are ignored). Tenure/scope units like "years" and "applications"
+# are deliberately NOT metrics, so "4+ years" / "20 years" are never flagged.
+_METRIC_UNIT = r"(?:%|x\b|\+?\s*(?:daily\s+)?(?:users|customers|records|queries|requests|rows|transactions))"
+_OUTPUT_METRIC = re.compile(rf"(?<![A-Za-z-])(\d[\d,]*(?:\.\d+)?\+?[KkMmBb]?)\s*(?={_METRIC_UNIT})",
+                            re.IGNORECASE)
+_ANY_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?\+?[KkMmBb]?")
+_MAGNITUDE = {"k": 1e3, "m": 1e6, "b": 1e9}
 _PLACEHOLDER = re.compile(r"\[(?:ADD REAL METRIC|METRIC\b[^\]]*)\]", re.IGNORECASE)
+
+
+def _to_value(token: str) -> float | None:
+    """'1,000+' -> 1000.0, '500K' -> 500000.0, '99.9' -> 99.9. None if unparseable."""
+    token = token.strip().replace(",", "").rstrip("+%").strip()
+    if not token:
+        return None
+    mult = 1.0
+    if token[-1].lower() in _MAGNITUDE:
+        mult = _MAGNITUDE[token[-1].lower()]
+        token = token[:-1]
+    try:
+        return round(float(token) * mult, 4)
+    except ValueError:
+        return None
+
+
+def _banked_metric_values(facts: CareerFacts) -> set[float]:
+    """Every numeric value appearing in the employers' banked real_metrics."""
+    values: set[float] = set()
+    for e in facts.employers:
+        for metric in e.real_metrics:
+            for tok in _ANY_NUMBER.findall(metric):
+                if (v := _to_value(tok)) is not None:
+                    values.add(v)
+    return values
 
 
 class VerifyReport(BaseModel):
@@ -171,21 +193,15 @@ def verify_no_drift(result: TailorResult, facts: CareerFacts) -> VerifyReport:
         if not any(a in _norm(cert) or _norm(cert) in a for a in allowed_certs):
             problems.append(f"Uncredentialed certification printed on resume: {cert!r}")
 
-    # 3. Metrics: every concrete metric number must be traceable to the facts.
-    facts_blob = " ".join([
-        facts.name, facts.role, " ".join(facts.education),
-        *[b for e in facts.employers for b in e.real_bullets],
-        *[m for e in facts.employers for m in e.real_metrics],
-        *[e.project_description for e in facts.employers],
-        *[s for g in facts.skills_inventory.values() for s in g],
-    ])
-    allowed_numbers = _numbers(facts_blob)
+    # 3. Metrics: every metric number on the face must be a BANKED real metric.
+    #    ("Anything not listed stays out" — only the confirmed real_metrics count;
+    #    a value present only in a source bullet is not a licence to cite it.)
+    allowed_values = _banked_metric_values(facts)
     for match in _OUTPUT_METRIC.finditer(result.resume_text):
-        number = match.group(1).replace(",", "")
-        if number not in allowed_numbers:
+        value = _to_value(match.group(1))
+        if value is not None and value not in allowed_values:
             problems.append(
-                f"Invented metric number {match.group(0).strip()!r} has no basis in the "
-                f"career facts."
+                f"Metric {match.group(0).strip()!r} is not among the banked real metrics."
             )
 
     if problems:
