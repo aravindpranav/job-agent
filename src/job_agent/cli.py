@@ -32,7 +32,13 @@ from job_agent.seen_cache import SeenCache
 from job_agent.store import load_job_record, save_search
 from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.jd_fetch import get_full_jd
-from job_agent.tailor.render_pdf import clean_resume_text, normalize_header, render_docx, render_pdf
+from job_agent.tailor.render_pdf import (
+    clean_resume_text,
+    normalize_header,
+    render_docx,
+    render_pdf,
+    trim_to_caps,
+)
 from job_agent.tailor.tailor import TAILOR_MODEL, TailorResult, load_megaprompt, tailor_resume
 from job_agent.tailor.verify import (
     DriftError,
@@ -158,8 +164,8 @@ _CAP_CORRECTION = (
 def _gate(facts, result) -> TailorResult:
     """Force the header and run the no-drift + format gates on the face.
     Returns the checked (face) result, or raises DriftError / FormatError."""
-    face = clean_resume_text(
-        normalize_header(result.resume_text, facts.name, facts.email, facts.phone))
+    face = trim_to_caps(clean_resume_text(
+        normalize_header(result.resume_text, facts.name, facts.email, facts.phone)))
     checked = TailorResult(resume_text=face, notes=result.notes, raw=result.raw)
     verify_no_drift(checked, facts)
     verify_format(checked, facts)

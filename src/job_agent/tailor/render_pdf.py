@@ -79,6 +79,39 @@ def clean_resume_text(text: str) -> str:
     return re.sub(r"[ \t]{2,}", " ", out)
 
 
+def trim_to_caps(resume_text: str) -> str:
+    """Enforce per-role bullet caps by keeping the first N bullets of each section.
+
+    The model is instructed to rank bullets strongest-first, so keeping the first N
+    keeps the most JD-relevant ones. Caps: most-recent role 6 responsibilities,
+    older roles 4; achievements 3 per role. Only drops bullets — never edits or
+    reorders — so it can't affect the no-drift or banked-metric checks beyond
+    removing surplus lines.
+    """
+    role_idx = -1
+    section: str | None = None
+    kept = 0
+    cap = 0
+    out: list[str] = []
+    for raw in resume_text.splitlines():
+        line = strip_markdown(raw)
+        if re.match(r"(?i)^Role:", line):
+            role_idx += 1
+            section = None
+        elif re.match(r"(?i)^Responsibilities:", line):
+            section, kept, cap = "resp", 0, (6 if role_idx == 0 else 4)
+        elif re.match(r"(?i)^Achievements:", line):
+            section, kept, cap = "ach", 0, 3
+        elif _canonical_heading(line):
+            section = None
+        elif section and raw.strip()[:1] in "-•*":
+            if kept >= cap:
+                continue  # drop surplus bullet
+            kept += 1
+        out.append(raw)
+    return "\n".join(out)
+
+
 def normalize_header(resume_text: str, name: str, email: str, phone: str) -> str:
     """Force the header to 'Name' / 'email | phone', dropping any model tagline."""
     lines = resume_text.splitlines()
