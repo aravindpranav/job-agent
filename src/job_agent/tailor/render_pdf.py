@@ -165,17 +165,33 @@ def normalize_header(resume_text: str, name: str, email: str, phone: str) -> str
     return f"{name}\n{email} | {phone}\n\n{body}"
 
 
+SKILL_FONT_SIZE = 9.5
+
+
 def _styles() -> dict[str, ParagraphStyle]:
-    base = ParagraphStyle("body", fontName=FONT, fontSize=9.5, leading=12)
+    base = ParagraphStyle("body", fontName=FONT, fontSize=9.5, leading=12,
+                          leftIndent=0, firstLineIndent=0, alignment=0)
     return {
-        "name": ParagraphStyle("name", parent=base, fontName=FONT_BOLD, fontSize=15, spaceAfter=1),
-        "contact": ParagraphStyle("contact", parent=base, fontSize=9.5, spaceAfter=3),
+        # Name and contact share identical geometry (leftIndent/firstLineIndent/
+        # alignment) so there is zero horizontal offset between them.
+        "name": ParagraphStyle("name", parent=base, fontName=FONT_BOLD, fontSize=15,
+                               leftIndent=0, firstLineIndent=0, alignment=0, spaceAfter=1),
+        "contact": ParagraphStyle("contact", parent=base, fontSize=9.5,
+                                  leftIndent=0, firstLineIndent=0, alignment=0, spaceAfter=4),
         "heading": ParagraphStyle("heading", parent=base, fontName=FONT_BOLD, fontSize=11,
                                   spaceBefore=6, spaceAfter=1),
         "body": base,
         "bullet": ParagraphStyle("bullet", parent=base, leftIndent=13, firstLineIndent=-9,
                                  spaceAfter=1),
     }
+
+
+def _skill_style(label: str) -> ParagraphStyle:
+    """A hanging-indent style for a skill line: the bold 'Label:' starts at the
+    margin and wrapped values align in a column under the first value."""
+    hang = pdfmetrics.stringWidth(f"{label}: ", FONT_BOLD, SKILL_FONT_SIZE)
+    return ParagraphStyle(f"skill_{label}", fontName=FONT, fontSize=SKILL_FONT_SIZE,
+                          leading=12, leftIndent=hang, firstLineIndent=-hang, spaceAfter=2.5)
 
 
 def _parse_lines(resume_text: str):
@@ -233,7 +249,7 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
                 flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(rest)}", styles["body"]))
         elif kind == "category":
             label, values = payload
-            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", styles["body"]))
+            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", _skill_style(label)))
         else:
             flow.append(Paragraph(escape(payload), styles["body"]))
 
@@ -250,7 +266,7 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
     from docx import Document
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
-    from docx.shared import Pt
+    from docx.shared import Inches, Pt
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -285,7 +301,16 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
             heading(payload)
         elif kind == "bullet":
             doc.add_paragraph(f"• {payload}")
-        elif kind in ("label", "category"):
+        elif kind == "category":
+            label, rest = payload
+            p = doc.add_paragraph()
+            # hanging indent so wrapped values align in a column, not back at margin
+            p.paragraph_format.left_indent = Inches(1.15)
+            p.paragraph_format.first_line_indent = Inches(-1.15)
+            p.paragraph_format.space_after = Pt(2.5)
+            p.add_run(f"{label}: ").bold = True
+            p.add_run(rest)
+        elif kind == "label":
             label, rest = payload
             p = doc.add_paragraph()
             p.add_run(f"{label}: ").bold = True

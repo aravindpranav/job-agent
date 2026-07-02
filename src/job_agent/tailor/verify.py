@@ -60,6 +60,12 @@ def verify_format(result: TailorResult, facts: CareerFacts) -> None:
     if facts.certifications and not _output_certifications(face):
         problems.append("Certifications section is empty/None but real certifications exist.")
 
+    # Project Description must describe the PROJECT, not restate the company.
+    for company, desc in _project_descriptions(face):
+        dn = _norm(desc)
+        if dn.startswith(_norm(company)) or re.search(r"\bis a leading\b|\bis a global\b", dn):
+            problems.append(f"Project Description restates the company (not the project): {desc[:60]!r}")
+
     # Per-role bullet caps: most-recent role <=6 responsibilities, older roles <=4;
     # achievements <=3 per role.
     for i, counts in enumerate(_role_bullet_counts(face)):
@@ -93,6 +99,18 @@ def _role_bullet_counts(resume_text: str) -> list[dict[str, int]]:
         elif line[:1] in "-•*" and current is not None and section:
             current[section] += 1
     return roles
+
+
+def _project_descriptions(resume_text: str) -> list[tuple[str, str]]:
+    """(company, project-description) pairs from the output resume."""
+    pairs, company = [], None
+    for raw in resume_text.splitlines():
+        line = strip_markdown(raw)
+        if m := re.match(r"(?i)^Company:\s*(.+)$", line):
+            company = m.group(1)
+        elif m := re.match(r"(?i)^Project Description:\s*(.+)$", line):
+            pairs.append((company or "", m.group(1)))
+    return pairs
 
 
 def pdf_page_count(pdf_path: str | Path) -> int:

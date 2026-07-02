@@ -159,6 +159,14 @@ def test_format_gate_requires_certifications_printed():
         verify_format(_mutated(bad), FACTS)
 
 
+def test_format_gate_rejects_company_blurb_project_description():
+    bad = BASE.resume_text.replace(
+        "Project Description: Batch and streaming data pipelines feeding the analytics warehouse.",
+        "Project Description: Acme Analytics is a leading analytics company serving enterprises.")
+    with pytest.raises(FormatError, match="restates the company"):
+        verify_format(_mutated(bad), FACTS)
+
+
 def test_format_gate_enforces_responsibility_cap():
     anchor = "- Developed Apache Spark jobs to process large event datasets into partitioned S3 datasets on AWS Glue."
     extra = "\n".join(f"- Extra responsibility number {i}." for i in range(6))

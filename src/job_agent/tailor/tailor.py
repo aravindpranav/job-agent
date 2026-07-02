@@ -33,6 +33,8 @@ FORMAT:
 - Section headings in ALL CAPS, exactly: PROFESSIONAL SUMMARY, TECHNICAL SKILLS, PROFESSIONAL EXPERIENCE, EDUCATION, CERTIFICATIONS. No other sections, no reordering.
 - TECHNICAL SKILLS: render as category lines "Category: value, value, value" (comma-separated). Do NOT use tables, pipe characters (|), or bullet lists for skills.
 - PROFESSIONAL EXPERIENCE: each role has Role:, Company:, Project Description:, Duration:, then Responsibilities: bullets and Achievements: bullets, each bullet starting with a real bullet character. Write each company name and title EXACTLY as given in my career facts.
+- Project Description describes the PROJECT, not the company. The Company: line already names the employer, so the Project Description must NOT restate or describe the company (never write "<Company> is a ..." or a company blurb). Write 1-2 sentences on the actual project/system: what was built, the domain/problem it solved, and the scale/environment — drawn only from my real responsibilities. Reweight it toward what THIS JD cares about. Do not invent a project or add scope I did not work on.
+- STRICT JD ADHERENCE: parse the JD's core responsibilities, required/preferred tools, domain signals, and outcomes, and reweight the Summary, Technical Skills, Responsibilities, and Achievements to foreground what THIS JD asks for. Mirror the JD's exact vocabulary ONLY where my real experience backs it. Never add a skill, tool, or claim just because the JD wants it — if it is not in my career facts it does not go on the resume; flag it in NOTES as a gap instead. Two different JDs must produce visibly different resumes from the same facts.
 - Do NOT use em-dashes or en-dashes anywhere. Use commas, periods, or parentheses. Dates use "Mon YYYY - Mon YYYY" or "Mon YYYY - Present".
 - Do NOT output separator lines (e.g. "- --", "----"). Separate sections with a blank line only.
 - Bullets are factual statements of what was built or done. Do NOT editorialize or add flattery: never write phrases like "directly applicable to <product>", "mirroring the <company> philosophy", "demonstrating the <X> required", or "matching the role's <Y>". State the work, not why it fits.
@@ -107,7 +109,9 @@ def build_facts_block(facts: CareerFacts) -> str:
     for e in facts.employers:
         lines.append(f"\n>>> {e.company} | {e.title} | {e.location} | {e.duration}")
         if e.project_description:
-            lines.append(f"Project: {e.project_description}")
+            lines.append(f"Company background (CONTEXT ONLY — do NOT restate the company on the "
+                         f"resume; write a PROJECT-focused Project Description from the "
+                         f"responsibilities below): {e.project_description}")
         lines.append("Real responsibilities (rewrite for the JD using only these facts):")
         lines += [f"  - {b}" for b in e.real_bullets]
         lines.append("Real metrics (the ONLY numbers you may cite for this role):")
