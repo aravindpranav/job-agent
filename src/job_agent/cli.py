@@ -207,6 +207,7 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
         face, dropped = trimmed, dropped + 1
         pdf_out = render(face)
         pages = pdf_page_count(pdf_out)
+    (out_dir / f"{filename}.face.txt").write_text(face)  # for offline re-rendering
     console.print(f"[dim]PDF engine: {engine}."
                   + (f" Trimmed {dropped} least-relevant bullet(s) to fit 2 pages." if dropped else ""))
 

@@ -289,18 +289,19 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
     doc = Document()
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
-    normal.font.size = Pt(10.5)
-    normal.paragraph_format.space_after = Pt(2)
+    normal.font.size = Pt(10)
+    normal.paragraph_format.space_after = Pt(1)
+    normal.paragraph_format.line_spacing = 1.0
 
     sec = doc.sections[0]
-    sec.left_margin = sec.right_margin = Inches(0.7)
-    sec.top_margin = sec.bottom_margin = Inches(0.55)
+    sec.left_margin = sec.right_margin = Inches(0.6)
+    sec.top_margin = sec.bottom_margin = Inches(0.5)
     right_edge = Emu(sec.page_width - sec.left_margin - sec.right_margin)
 
     def heading(text: str) -> None:
         p = doc.add_paragraph()
-        p.paragraph_format.space_before = Pt(9)
-        p.paragraph_format.space_after = Pt(3)
+        p.paragraph_format.space_before = Pt(6)
+        p.paragraph_format.space_after = Pt(2)
         run = p.add_run(text)
         run.bold = True
         run.font.size = Pt(11.5)
@@ -317,7 +318,7 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
     def flush_experience_header(duration: str) -> None:
         # Company (bold) + dates right-aligned on the same line
         p = doc.add_paragraph()
-        p.paragraph_format.space_before = Pt(6)
+        p.paragraph_format.space_before = Pt(5)
         p.paragraph_format.space_after = Pt(0)
         p.paragraph_format.tab_stops.add_tab_stop(right_edge, WD_TAB_ALIGNMENT.RIGHT)
         p.add_run(pending.get("company", "")).bold = True
@@ -389,16 +390,24 @@ def find_soffice() -> str | None:
 
 def docx_to_pdf(docx_path: str | Path, out_dir: str | Path) -> Path | None:
     """Convert a .docx to PDF with LibreOffice so the PDF matches the .docx
-    exactly. Returns the PDF path, or None if LibreOffice isn't available."""
+    exactly. Returns the PDF path, or None if LibreOffice isn't available.
+
+    Deletes the target first and confirms a fresh write — repeated soffice calls
+    otherwise delegate to a running instance and can leave a stale PDF behind.
+    """
     soffice = find_soffice()
     if not soffice:
         return None
     docx_path, out_dir = Path(docx_path), Path(out_dir)
-    profile = f"file://{tempfile.gettempdir()}/jobagent_libreoffice_profile"
-    subprocess.run(
-        [soffice, f"-env:UserInstallation={profile}", "--headless",
-         "--convert-to", "pdf", "--outdir", str(out_dir), str(docx_path)],
-        capture_output=True, timeout=180, check=False,
-    )
     pdf = out_dir / f"{docx_path.stem}.pdf"
+    pdf.unlink(missing_ok=True)
+    profile = f"file://{tempfile.gettempdir()}/jobagent_libreoffice_profile"
+    for _ in range(3):
+        subprocess.run(
+            [soffice, f"-env:UserInstallation={profile}", "--headless",
+             "--convert-to", "pdf", "--outdir", str(out_dir), str(docx_path)],
+            capture_output=True, timeout=180, check=False,
+        )
+        if pdf.exists() and pdf.stat().st_size > 0:
+            return pdf
     return pdf if pdf.exists() else None
