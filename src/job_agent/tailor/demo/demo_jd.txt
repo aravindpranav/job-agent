@@ -1,0 +1,23 @@
+Senior Data Engineer — Analytics Platform (Remote, US)
+
+About the role:
+We're building the next generation of our analytics platform and need a Data
+Engineer to own reliable, scalable data pipelines end to end.
+
+Responsibilities:
+- Design and operate batch and streaming pipelines that feed a cloud data warehouse.
+- Build and maintain workflow orchestration (Apache Airflow) for nightly and
+  intraday jobs with strong reliability and observability.
+- Model data with dbt to produce clean, well-tested analytics marts.
+- Process large event datasets with Apache Spark on AWS (S3, Glue, Redshift).
+- Improve pipeline throughput and latency; own SLAs for freshness and uptime.
+
+Requirements:
+- Strong Python and SQL.
+- Hands-on experience with Airflow, dbt, and Spark.
+- AWS data stack (S3, Glue, Redshift).
+- Comfort optimizing pipeline performance (throughput, latency, cost).
+
+Nice to have:
+- Streaming experience with Kafka.
+- AWS data engineering certification.

@@ -1,0 +1,57 @@
+# FAKE demo career facts — committed, no real PII. Used by `tailor --demo`.
+name: Jordan Rivers
+role: Data Engineer
+email: jordan.rivers@example.com
+phone: +1 (555) 010-0100
+location: Remote, US
+links: []
+education:
+  - B.S., Computer Science, State University
+certifications:
+  - name: AWS Certified Data Engineer - Associate
+    issuer: Amazon Web Services
+skills_inventory:
+  Languages:
+    - Python
+    - SQL
+  Data & Orchestration:
+    - Apache Airflow
+    - dbt
+    - Apache Spark
+  Cloud:
+    - AWS (S3, Glue, Redshift)
+employers:
+  - company: Acme Analytics
+    title: Data Engineer
+    location: Remote, US
+    duration: Jan 2022 - Present
+    project_description: Batch and streaming data pipelines feeding the analytics warehouse.
+    real_bullets:
+      - Built Apache Airflow DAGs orchestrating nightly ETL from source systems into Redshift.
+      - Implemented dbt models to produce curated analytics marts for reporting teams.
+      - Developed Spark jobs to process event data into partitioned S3 datasets.
+    real_metrics:
+      - processed 5,000,000 records/day across production pipelines
+      - reduced pipeline runtime by 30%
+    real_skills:
+      - Python
+      - SQL
+      - Apache Airflow
+      - dbt
+      - AWS Glue
+      - Redshift
+      - S3
+      - Apache Spark
+  - company: Beacon Software
+    title: Data Analyst
+    location: Austin, TX
+    duration: Jun 2019 - Dec 2021
+    project_description: Reporting and dashboards for business stakeholders.
+    real_bullets:
+      - Wrote SQL to power BI dashboards in Tableau for weekly business reviews.
+      - Automated recurring reports in Python to replace manual spreadsheet work.
+    real_metrics: []
+    real_skills:
+      - SQL
+      - Python
+      - Tableau
