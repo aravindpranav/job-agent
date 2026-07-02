@@ -1,0 +1,40 @@
+# Copy to search_profile.yaml and edit. The real file is gitignored.
+#
+# This drives a REAL (non-demo) run: which boards to fetch, which titles to keep,
+# and the location rule. Demo mode (`--demo`) ignores this file entirely.
+
+# Title keywords for the pre-LLM filter. A job survives if its title contains
+# ANY of these (case-insensitive, substring match). This runs BEFORE scoring so
+# we never spend an LLM call on the hundreds of unrelated roles a board carries.
+keywords:
+  - data engineer
+  - data scientist
+  - machine learning
+  - ml engineer
+  - "ai engineer"
+  - gen ai
+  - generative ai
+  - mlops
+
+# Location rule: keep a job if it is remote OR onsite/hybrid within an allowed
+# country. Jobs whose country is known and NOT allowed are dropped before scoring.
+# Jobs with an unknown country are kept and left for the scorer to judge.
+location:
+  remote_ok: true
+  allowed_countries: [US]           # ISO-ish; matched loosely (US / USA / United States)
+
+# Boards to fetch. Each entry is {ats, board}. All are public, no auth for GET.
+# Swap these for your own targets; discovery is per-company by design.
+sources:
+  - { ats: greenhouse,      board: databricks }
+  - { ats: greenhouse,      board: stripe }
+  - { ats: lever,           board: palantir }
+  - { ats: ashby,           board: openai }
+  - { ats: smartrecruiters, board: SmartRecruiters }
+
+# A short description of you, given to the scorer as context for fit.
+candidate_summary: >
+  Data / ML engineer targeting Data Engineer, Data Scientist, Machine Learning
+  Engineer, AI Engineer, and Gen AI Engineer roles across all seniorities.
+  Strong in Python, SQL, cloud data platforms (AWS / Azure / GCP), and building
+  ML/LLM pipelines. Open to remote (US) or onsite/hybrid within the USA.

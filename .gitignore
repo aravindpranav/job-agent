@@ -1,0 +1,26 @@
+# Secrets & personal data — never commit
+.env
+/data/
+resume/
+*.resume.pdf
+search_profile.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
