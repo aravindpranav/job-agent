@@ -60,8 +60,46 @@ def verify_format(result: TailorResult, facts: CareerFacts) -> None:
     if facts.certifications and not _output_certifications(face):
         problems.append("Certifications section is empty/None but real certifications exist.")
 
+    # Per-role bullet caps: most-recent role <=6 responsibilities, older roles <=4;
+    # achievements <=3 per role.
+    for i, counts in enumerate(_role_bullet_counts(face)):
+        cap = 6 if i == 0 else 4
+        if counts["resp"] > cap:
+            problems.append(f"Role #{i + 1} has {counts['resp']} responsibility bullets (cap {cap}).")
+        if counts["ach"] > 3:
+            problems.append(f"Role #{i + 1} has {counts['ach']} achievement bullets (cap 3).")
+
     if problems:
         raise FormatError("Format gate failed:\n  - " + "\n  - ".join(problems))
+
+
+def _role_bullet_counts(resume_text: str) -> list[dict[str, int]]:
+    """Count Responsibilities / Achievements bullets per role block, in order."""
+    roles: list[dict[str, int]] = []
+    current: dict[str, int] | None = None
+    section: str | None = None
+    for raw in resume_text.splitlines():
+        line = strip_markdown(raw)
+        if re.match(r"(?i)^Role:", line):
+            current = {"resp": 0, "ach": 0}
+            roles.append(current)
+            section = None
+        elif re.match(r"(?i)^Responsibilities:", line):
+            section = "resp"
+        elif re.match(r"(?i)^Achievements:", line):
+            section = "ach"
+        elif _canonical_heading(line):     # EDUCATION/CERTIFICATIONS ends experience
+            section = None
+        elif line[:1] in "-•*" and current is not None and section:
+            current[section] += 1
+    return roles
+
+
+def pdf_page_count(pdf_path: str | Path) -> int:
+    """Number of pages in the generated PDF."""
+    from pdfminer.pdfpage import PDFPage
+    with open(pdf_path, "rb") as fh:
+        return sum(1 for _ in PDFPage.get_pages(fh))
 
 
 # Metric numbers = a number (optionally with K/M/B magnitude and '+') that is

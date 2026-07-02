@@ -157,3 +157,11 @@ def test_format_gate_requires_certifications_printed():
     bad = BASE.resume_text.replace("AWS Certified Data Engineer - Associate", "None")
     with pytest.raises(FormatError, match="[Cc]ertification"):
         verify_format(_mutated(bad), FACTS)
+
+
+def test_format_gate_enforces_responsibility_cap():
+    anchor = "- Developed Apache Spark jobs to process large event datasets into partitioned S3 datasets on AWS Glue."
+    extra = "\n".join(f"- Extra responsibility number {i}." for i in range(6))
+    bad = BASE.resume_text.replace(anchor, anchor + "\n" + extra)  # Acme: 3 -> 9 (cap 6)
+    with pytest.raises(FormatError, match="responsibility bullets"):
+        verify_format(_mutated(bad), FACTS)

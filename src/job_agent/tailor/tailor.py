@@ -37,6 +37,14 @@ FORMAT:
 - Do NOT output separator lines (e.g. "- --", "----"). Separate sections with a blank line only.
 - Bullets are factual statements of what was built or done. Do NOT editorialize or add flattery: never write phrases like "directly applicable to <product>", "mirroring the <company> philosophy", "demonstrating the <X> required", or "matching the role's <Y>". State the work, not why it fits.
 
+LENGTH AND SELECTIVITY (tailor hard to THIS JD; target 2 pages):
+- Rank every responsibility by relevance to this specific JD and keep only the strongest. Include a bullet because the JD calls for it, not because it is true. Drop the rest.
+- Responsibilities per role: the current/most-recent role has 5-6 bullets; each older role has 3-4 bullets. Do not exceed these.
+- Professional Summary: 3-4 lines maximum, targeted to this JD.
+- Technical Skills: keep only the categories this JD actually cares about; drop irrelevant groups. Aim for about 5-7 skill lines, not more.
+- If the resume would run past 2 pages, cut the least JD-relevant bullets first. Never trim a real metric or a required-skill match to save space.
+- Keep bullets tight and factual. Remove filler and hedging.
+
 METRICS (STRICT):
 - The resume FACE must contain ZERO placeholders. Never print a bracket such as [METRIC ...] or [ADD REAL METRIC] on the resume.
 - Use ONLY the real metrics listed under each employer's "Real metrics". Weave them naturally into Achievements.

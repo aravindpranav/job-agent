@@ -38,6 +38,7 @@ from job_agent.tailor.verify import (
     DriftError,
     FormatError,
     PdfVerifyError,
+    pdf_page_count,
     verify_format,
     verify_no_drift,
     verify_pdf,
@@ -174,7 +175,9 @@ def _finalize(console: Console, facts, result, out_dir: Path, filename: str) -> 
     except PdfVerifyError as exc:
         console.print(f"[red]PDF verification failed:[/red] {exc}")
         return 1
-    console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)}")
+    pages = pdf_page_count(pdf_path)
+    console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)} "
+                  f"([bold]{pages} page{'s' if pages != 1 else ''}[/bold])")
     console.print(f"[bold]PDF:[/bold] {pdf_path}\n[bold]DOCX:[/bold] {docx_path}")
     console.print(Panel(result.notes or "(no notes returned)",
                         title="NOTES — review before applying", border_style="yellow"))

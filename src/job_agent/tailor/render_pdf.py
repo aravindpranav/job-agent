@@ -38,7 +38,15 @@ def _ensure_fonts() -> None:
     if not _FONTS_READY:
         pdfmetrics.registerFont(TTFont(FONT, str(_ASSETS / "DejaVuSans.ttf")))
         pdfmetrics.registerFont(TTFont(FONT_BOLD, str(_ASSETS / "DejaVuSans-Bold.ttf")))
+        # Register as a family so inline <b>…</b> maps to the embedded bold face
+        # (renders bold AND still extracts as text).
+        pdfmetrics.registerFontFamily(FONT, normal=FONT, bold=FONT_BOLD,
+                                      italic=FONT, boldItalic=FONT_BOLD)
         _FONTS_READY = True
+
+
+# Sub-labels whose VALUE should be bold (company name, role title).
+_BOLD_VALUE_LABELS = {"role", "company"}
 
 
 CANONICAL_HEADINGS = [
@@ -142,7 +150,10 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
             flow.append(Paragraph("• " + escape(payload), styles["bullet"]))
         elif kind == "label":
             label, rest = payload
-            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(rest)}", styles["body"]))
+            if label.lower() in _BOLD_VALUE_LABELS:  # bold company name / role title
+                flow.append(Paragraph(f"<b>{escape(label)}: {escape(rest)}</b>", styles["body"]))
+            else:
+                flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(rest)}", styles["body"]))
         elif kind == "category":
             label, values = payload
             flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", styles["body"]))
@@ -201,7 +212,8 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
             label, rest = payload
             p = doc.add_paragraph()
             p.add_run(f"{label}: ").bold = True
-            p.add_run(rest)
+            # bold the value too for company name / role title
+            p.add_run(rest).bold = label.lower() in _BOLD_VALUE_LABELS
         else:
             doc.add_paragraph(payload)
 
