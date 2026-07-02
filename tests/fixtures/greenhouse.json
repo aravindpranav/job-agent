@@ -1,0 +1,318 @@
+{
+  "jobs": [
+    {
+      "absolute_url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8298792002",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 6312034002,
+      "location": {
+        "name": "Sydney, Australia"
+      },
+      "metadata": [
+        {
+          "id": 9740521002,
+          "name": "Company Assignment",
+          "value": "Databricks Australia PTY LTD",
+          "value_type": "single_select"
+        },
+        {
+          "id": 24059030002,
+          "name": "Career Page Posting Category",
+          "value": [
+            "Professional Services"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8298792002,
+      "updated_at": "2026-07-01T18:31:27-04:00",
+      "requisition_id": "CSQ227R47",
+      "title": "AI Engineer - FDE (Forward Deployed Engineer)",
+      "company_name": "Databricks",
+      "first_published": "2025-12-09T11:05:37-05:00",
+      "language": "en",
+      "application_deadline": null,
+      "content": "&lt;p data-pm-slice=&quot;1 1 []&quot;&gt;CSQ227R47&lt;/p&gt;\n&lt;p&gt;The AI Forward Deployed Engineering (AI FDE) team is a highly specialized customer-facing AI team at Databricks. We deliver professional services engagements to help our customers build and productionize first-of-its-kind AI applications. We work cross-functionally to shape long-term strategic priorities and initiatives alongside engineering, product, and developer relations, as well as support internal subject matter expert (SME) teams. We view our team as an ensemble: we look for individuals with strong, unique specializations to improve the overall strength of the team. This team is the right fit for you if you love working with customers, teammates, and fueling your curiosity for the latest trends in GenAI, LLMOps, and ML more broadly. Open to remote locations.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;The impact you will have:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Develop cutting-edge GenAI solutions, incorporating the latest techniques from our &lt;a href=&quot;https://www.databricks.com/research/mosaic&quot;&gt;Mosaic AI Research&lt;/a&gt; to solve customer problems&lt;/li&gt;\n&lt;li&gt;Own production rollouts of consumer and internally facing GenAI applications&lt;/li&gt;\n&lt;li&gt;Serve as a trusted technical advisor to customers across a variety of domains&lt;/li&gt;\n&lt;li&gt;Present at conferences such as &lt;a href=&quot;https://www.databricks.com/dataaisummit&quot;&gt;Data + AI Summit&lt;/a&gt;, recognized as a thought leader internally and externally&lt;/li&gt;\n&lt;li&gt;Collaborate cross-functionally with the product and engineering teams to influence priorities and shape the product roadmap&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;What we look for:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Experience building GenAI applications, including RAG, multi-agent systems, Text2SQL, fine-tuning, etc., with tools such as HuggingFace, LangChain, and DSPy&lt;/li&gt;\n&lt;li&gt;Expertise in deploying production-grade GenAI applications, including evaluation and optimizations&amp;nbsp;&lt;/li&gt;\n&lt;li&gt;Extensive years of hands-on industry data science experience, leveraging common machine learning and data science tools, i.e. pandas, scikit-learn, PyTorch, etc.&lt;/li&gt;\n&lt;li&gt;Experience building production-grade machine learning deployments on AWS, Azure, or GCP&lt;/li&gt;\n&lt;li&gt;Graduate degree in a quantitative discipline (Computer Science, Engineering, Statistics, Operations Research, etc.) or equivalent practical experience&lt;/li&gt;\n&lt;li&gt;Experience communicating and/or teaching technical concepts to non-technical and technical audiences alike&lt;/li&gt;\n&lt;li&gt;Passion for collaboration, life-long learning, and driving business value through AI&lt;/li&gt;\n&lt;li&gt;[Preferred] Experience using the Databricks Intelligence Platform and Apache Spark\u2122 to process large-scale distributed datasets&lt;/li&gt;\n&lt;/ul&gt;&lt;div class=&quot;content-conclusion&quot;&gt;&lt;p&gt;&lt;strong&gt;About Databricks&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: arial, sans-serif;&quot;&gt;Databricks is the data and AI company. More than 10,000 organizations worldwide \u2014 including Comcast, Cond\u00e9 Nast, Grammarly, and over 50% of the Fortune 500 \u2014 rely on the Databricks Data Intelligence Platform to unify and democratize data, analytics and AI. Databricks is headquartered in San Francisco, with offices around the globe and was founded by the original creators of Lakehouse, Apache Spark\u2122, Delta Lake and MLflow. To learn more, follow Databricks on&amp;nbsp;&lt;span style=&quot;color: rgb(255, 54, 33);&quot;&gt;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://twitter.com/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://twitter.com/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw03FL8fJvOD97ytN02f5G2C&quot;&gt;Twitter&lt;/a&gt;,&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.linkedin.com/company/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.linkedin.com/company/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw15dLk3q8VxTfHEgCUg7NSt&quot;&gt;LinkedIn&lt;/a&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;and&lt;/span&gt;&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.facebook.com/databricksinc&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.facebook.com/databricksinc&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw39EcncitnlqV72EG2-RqXJ&quot;&gt;Facebook&lt;/a&gt;&lt;/span&gt;.&lt;br&gt;&lt;br&gt;&lt;strong&gt;Benefits&lt;br&gt;&lt;br&gt;&lt;/strong&gt;&lt;/span&gt;At Databricks, we strive to provide comprehensive benefits and perks that meet the needs of all of our employees. For specific details on the benefits offered in your region click &lt;a href=&quot;https://docs.google.com/document/d/154un3e8Xav4BceOSlcYFZRGEuQI54xMxVydRwQn54eQ/edit?usp=sharing&quot;&gt;here&lt;/a&gt;.&lt;br&gt;&lt;br&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Our Commitment to Diversity and Inclusion&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;At Databricks, we are committed to fostering a diverse and inclusive culture where everyone can excel. We take great care to ensure that our hiring practices are inclusive and meet equal employment opportunity standards. Individuals looking for employment at Databricks are considered without regard to age, color, disability, ethnicity, family or marital status, gender identity or expression, language, national origin, physical and mental ability, political affiliation, race, religion, sexual orientation, socio-economic status, veteran status, and other protected characteristics.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Compliance&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;If access to export-controlled technology or source code is required for performance of job duties, it is within Employer&#39;s discretion whether to apply for a U.S. government license for such positions, and Employer may decline to proceed with an applicant on this basis alone.&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;",
+      "departments": [
+        {
+          "id": 4070291002,
+          "name": "Professional Services Operations",
+          "child_ids": [],
+          "parent_id": 4001269002
+        }
+      ],
+      "offices": [
+        {
+          "id": 4033877002,
+          "name": "New South Wales, Australia",
+          "location": "New South Wales, Australia",
+          "child_ids": [
+            4002843002
+          ],
+          "parent_id": 4039465002
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": null
+    },
+    {
+      "absolute_url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8574655002",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 6424906002,
+      "location": {
+        "name": "Seoul, South Korea"
+      },
+      "metadata": [
+        {
+          "id": 9740521002,
+          "name": "Company Assignment",
+          "value": "Databricks Korea LLC",
+          "value_type": "single_select"
+        },
+        {
+          "id": 24059030002,
+          "name": "Career Page Posting Category",
+          "value": [
+            "Professional Services"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8574655002,
+      "updated_at": "2026-07-01T23:59:14-04:00",
+      "requisition_id": "CSQ427R171",
+      "title": "AI Engineer - FDE (Forward Deployed Engineer)",
+      "company_name": "Databricks",
+      "first_published": "2026-06-04T02:43:16-04:00",
+      "language": "en",
+      "application_deadline": null,
+      "content": "&lt;p data-pm-slice=&quot;1 1 []&quot;&gt;CSQ427R171&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Mission&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;The AI Forward Deployed Engineering (AI FDE) team is a highly specialized customer-facing AI team at Databricks. We deliver professional services engagements to help our customers build and productionize first-of-its-kind AI applications. We work cross-functionally to shape long-term strategic priorities and initiatives alongside engineering, product, and developer relations, as well as support internal subject matter expert (SME) teams. We view our team as an ensemble: we look for individuals with strong, unique specializations to improve the overall strength of the team. This team is the right fit for you if you love working with customers, teammates, and fueling your curiosity for the latest trends in GenAI, LLMOps, and ML more broadly.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;The impact you will have:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Develop cutting-edge GenAI solutions, incorporating the latest techniques from &lt;a href=&quot;https://www.databricks.com/blog/category/databricks-ai?categories=databricks-ai%2Cai-research%2Cai-engineering&quot;&gt;Databricks AI research&lt;/a&gt; to solve customer problems&lt;/li&gt;\n&lt;li&gt;Own production rollouts of consumer and internally facing GenAI applications&lt;/li&gt;\n&lt;li&gt;Serve as a trusted technical advisor to customers across a variety of domains&lt;/li&gt;\n&lt;li&gt;Present at conferences such as Data + AI Summit, recognized as a thought leader internally and externally&lt;/li&gt;\n&lt;li&gt;Collaborate cross-functionally with the product and engineering teams to influence priorities and shape the product roadmap&amp;nbsp;&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;What we look for:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Experience building GenAI applications, including RAG, multi-agent systems, Text2SQL, fine-tuning, etc., with tools such as HuggingFace, LangChain, and DSPy&lt;/li&gt;\n&lt;li&gt;Expertise in deploying production-grade GenAI applications, including evaluation and optimizations&amp;nbsp;&lt;/li&gt;\n&lt;li&gt;Extensive years of hands-on industry data science experience, leveraging common machine learning and data science tools, i.e. pandas, scikit-learn, PyTorch, etc.&lt;/li&gt;\n&lt;li&gt;Experience building production-grade machine learning deployments on AWS, Azure, or GCP&lt;/li&gt;\n&lt;li&gt;Graduate degree in a quantitative discipline (Computer Science, Engineering, Statistics, Operations Research, etc.) or equivalent practical experience&lt;/li&gt;\n&lt;li&gt;Experience communicating and/or teaching technical concepts to non-technical and technical audiences alike&lt;/li&gt;\n&lt;li&gt;Passion for collaboration, life-long learning, and driving business value through AI&lt;/li&gt;\n&lt;li&gt;[Preferred] Experience using the Databricks Intelligence Platform and Apache Spark\u2122 to process large-scale distributed datasets&lt;/li&gt;\n&lt;li&gt;Willing to travel once every 4-8 weeks to see customers (as needed)&lt;/li&gt;\n&lt;li&gt;Language Proficiency: Native-level fluency in Korean and professional working proficiency in English (both written and verbal).&lt;/li&gt;\n&lt;/ul&gt;&lt;div class=&quot;content-conclusion&quot;&gt;&lt;p&gt;&lt;strong&gt;About Databricks&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: arial, sans-serif;&quot;&gt;Databricks is the data and AI company. More than 10,000 organizations worldwide \u2014 including Comcast, Cond\u00e9 Nast, Grammarly, and over 50% of the Fortune 500 \u2014 rely on the Databricks Data Intelligence Platform to unify and democratize data, analytics and AI. Databricks is headquartered in San Francisco, with offices around the globe and was founded by the original creators of Lakehouse, Apache Spark\u2122, Delta Lake and MLflow. To learn more, follow Databricks on&amp;nbsp;&lt;span style=&quot;color: rgb(255, 54, 33);&quot;&gt;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://twitter.com/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://twitter.com/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw03FL8fJvOD97ytN02f5G2C&quot;&gt;Twitter&lt;/a&gt;,&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.linkedin.com/company/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.linkedin.com/company/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw15dLk3q8VxTfHEgCUg7NSt&quot;&gt;LinkedIn&lt;/a&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;and&lt;/span&gt;&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.facebook.com/databricksinc&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.facebook.com/databricksinc&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw39EcncitnlqV72EG2-RqXJ&quot;&gt;Facebook&lt;/a&gt;&lt;/span&gt;.&lt;br&gt;&lt;br&gt;&lt;strong&gt;Benefits&lt;br&gt;&lt;br&gt;&lt;/strong&gt;&lt;/span&gt;At Databricks, we strive to provide comprehensive benefits and perks that meet the needs of all of our employees. For specific details on the benefits offered in your region click &lt;a href=&quot;https://docs.google.com/document/d/154un3e8Xav4BceOSlcYFZRGEuQI54xMxVydRwQn54eQ/edit?usp=sharing&quot;&gt;here&lt;/a&gt;.&lt;br&gt;&lt;br&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Our Commitment to Diversity and Inclusion&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;At Databricks, we are committed to fostering a diverse and inclusive culture where everyone can excel. We take great care to ensure that our hiring practices are inclusive and meet equal employment opportunity standards. Individuals looking for employment at Databricks are considered without regard to age, color, disability, ethnicity, family or marital status, gender identity or expression, language, national origin, physical and mental ability, political affiliation, race, religion, sexual orientation, socio-economic status, veteran status, and other protected characteristics.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Compliance&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;If access to export-controlled technology or source code is required for performance of job duties, it is within Employer&#39;s discretion whether to apply for a U.S. government license for such positions, and Employer may decline to proceed with an applicant on this basis alone.&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;",
+      "departments": [
+        {
+          "id": 4070291002,
+          "name": "Professional Services Operations",
+          "child_ids": [],
+          "parent_id": 4001269002
+        }
+      ],
+      "offices": [
+        {
+          "id": 4056349002,
+          "name": "Seoul, South Korea",
+          "location": "Seoul, South Korea",
+          "child_ids": [],
+          "parent_id": 4033552002
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": null
+    },
+    {
+      "absolute_url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8330188002",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 6312034002,
+      "location": {
+        "name": "Melbourne, Australia"
+      },
+      "metadata": [
+        {
+          "id": 9740521002,
+          "name": "Company Assignment",
+          "value": "Databricks Australia PTY LTD",
+          "value_type": "single_select"
+        },
+        {
+          "id": 24059030002,
+          "name": "Career Page Posting Category",
+          "value": [
+            "Professional Services"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8330188002,
+      "updated_at": "2026-07-01T18:31:27-04:00",
+      "requisition_id": "CSQ227R47",
+      "title": "AI Engineer - FDE (Forward Deployed Engineer)",
+      "company_name": "Databricks",
+      "first_published": "2025-12-09T15:25:42-05:00",
+      "language": "en",
+      "application_deadline": null,
+      "content": "&lt;p data-pm-slice=&quot;1 1 []&quot;&gt;CSQ227R47&lt;/p&gt;\n&lt;p&gt;The AI Forward Deployed Engineering (AI FDE) team is a highly specialized customer-facing AI team at Databricks. We deliver professional services engagements to help our customers build and productionize first-of-its-kind AI applications. We work cross-functionally to shape long-term strategic priorities and initiatives alongside engineering, product, and developer relations, as well as support internal subject matter expert (SME) teams. We view our team as an ensemble: we look for individuals with strong, unique specializations to improve the overall strength of the team. This team is the right fit for you if you love working with customers, teammates, and fueling your curiosity for the latest trends in GenAI, LLMOps, and ML more broadly. Open to remote locations.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;The impact you will have:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Develop cutting-edge GenAI solutions, incorporating the latest techniques from our &lt;a href=&quot;https://www.databricks.com/research/mosaic&quot;&gt;Mosaic AI Research&lt;/a&gt; to solve customer problems&lt;/li&gt;\n&lt;li&gt;Own production rollouts of consumer and internally facing GenAI applications&lt;/li&gt;\n&lt;li&gt;Serve as a trusted technical advisor to customers across a variety of domains&lt;/li&gt;\n&lt;li&gt;Present at conferences such as &lt;a href=&quot;https://www.databricks.com/dataaisummit&quot;&gt;Data + AI Summit&lt;/a&gt;, recognized as a thought leader internally and externally&lt;/li&gt;\n&lt;li&gt;Collaborate cross-functionally with the product and engineering teams to influence priorities and shape the product roadmap&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;What we look for:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Experience building GenAI applications, including RAG, multi-agent systems, Text2SQL, fine-tuning, etc., with tools such as HuggingFace, LangChain, and DSPy&lt;/li&gt;\n&lt;li&gt;Expertise in deploying production-grade GenAI applications, including evaluation and optimizations&amp;nbsp;&lt;/li&gt;\n&lt;li&gt;Extensive years of hands-on industry data science experience, leveraging common machine learning and data science tools, i.e. pandas, scikit-learn, PyTorch, etc.&lt;/li&gt;\n&lt;li&gt;Experience building production-grade machine learning deployments on AWS, Azure, or GCP&lt;/li&gt;\n&lt;li&gt;Graduate degree in a quantitative discipline (Computer Science, Engineering, Statistics, Operations Research, etc.) or equivalent practical experience&lt;/li&gt;\n&lt;li&gt;Experience communicating and/or teaching technical concepts to non-technical and technical audiences alike&lt;/li&gt;\n&lt;li&gt;Passion for collaboration, life-long learning, and driving business value through AI&lt;/li&gt;\n&lt;li&gt;[Preferred] Experience using the Databricks Intelligence Platform and Apache Spark\u2122 to process large-scale distributed datasets&lt;/li&gt;\n&lt;/ul&gt;&lt;div class=&quot;content-conclusion&quot;&gt;&lt;p&gt;&lt;strong&gt;About Databricks&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: arial, sans-serif;&quot;&gt;Databricks is the data and AI company. More than 10,000 organizations worldwide \u2014 including Comcast, Cond\u00e9 Nast, Grammarly, and over 50% of the Fortune 500 \u2014 rely on the Databricks Data Intelligence Platform to unify and democratize data, analytics and AI. Databricks is headquartered in San Francisco, with offices around the globe and was founded by the original creators of Lakehouse, Apache Spark\u2122, Delta Lake and MLflow. To learn more, follow Databricks on&amp;nbsp;&lt;span style=&quot;color: rgb(255, 54, 33);&quot;&gt;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://twitter.com/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://twitter.com/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw03FL8fJvOD97ytN02f5G2C&quot;&gt;Twitter&lt;/a&gt;,&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.linkedin.com/company/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.linkedin.com/company/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw15dLk3q8VxTfHEgCUg7NSt&quot;&gt;LinkedIn&lt;/a&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;and&lt;/span&gt;&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.facebook.com/databricksinc&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.facebook.com/databricksinc&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw39EcncitnlqV72EG2-RqXJ&quot;&gt;Facebook&lt;/a&gt;&lt;/span&gt;.&lt;br&gt;&lt;br&gt;&lt;strong&gt;Benefits&lt;br&gt;&lt;br&gt;&lt;/strong&gt;&lt;/span&gt;At Databricks, we strive to provide comprehensive benefits and perks that meet the needs of all of our employees. For specific details on the benefits offered in your region click &lt;a href=&quot;https://docs.google.com/document/d/154un3e8Xav4BceOSlcYFZRGEuQI54xMxVydRwQn54eQ/edit?usp=sharing&quot;&gt;here&lt;/a&gt;.&lt;br&gt;&lt;br&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Our Commitment to Diversity and Inclusion&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;At Databricks, we are committed to fostering a diverse and inclusive culture where everyone can excel. We take great care to ensure that our hiring practices are inclusive and meet equal employment opportunity standards. Individuals looking for employment at Databricks are considered without regard to age, color, disability, ethnicity, family or marital status, gender identity or expression, language, national origin, physical and mental ability, political affiliation, race, religion, sexual orientation, socio-economic status, veteran status, and other protected characteristics.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Compliance&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;If access to export-controlled technology or source code is required for performance of job duties, it is within Employer&#39;s discretion whether to apply for a U.S. government license for such positions, and Employer may decline to proceed with an applicant on this basis alone.&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;",
+      "departments": [
+        {
+          "id": 4070291002,
+          "name": "Professional Services Operations",
+          "child_ids": [],
+          "parent_id": 4001269002
+        }
+      ],
+      "offices": [
+        {
+          "id": 4033877002,
+          "name": "New South Wales, Australia",
+          "location": "New South Wales, Australia",
+          "child_ids": [
+            4002843002
+          ],
+          "parent_id": 4039465002
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": null
+    },
+    {
+      "absolute_url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8437000002",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 6370189002,
+      "location": {
+        "name": "Japan"
+      },
+      "metadata": [
+        {
+          "id": 9740521002,
+          "name": "Company Assignment",
+          "value": "Databricks Japan K.K.",
+          "value_type": "single_select"
+        },
+        {
+          "id": 24059030002,
+          "name": "Career Page Posting Category",
+          "value": [
+            "Field Engineering"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8437000002,
+      "updated_at": "2026-07-01T18:31:32-04:00",
+      "requisition_id": "FEQ227R42",
+      "title": "\u30bd\u30ea\u30e5\u30fc\u30b7\u30e7\u30f3\u30a2\u30fc\u30ad\u30c6\u30af\u30c8 (\u30d7\u30ea\u30bb\u30fc\u30eb\u30b9)",
+      "company_name": "Databricks",
+      "first_published": "2026-03-05T09:32:12-05:00",
+      "language": "en",
+      "application_deadline": null,
+      "content": "&lt;p data-renderer-start-pos=&quot;1648&quot;&gt;FEQ227R42&lt;/p&gt;\n&lt;p data-renderer-start-pos=&quot;1648&quot;&gt;Databricks\u306f\u30c7\u30fc\u30bf\u3068AI\u306e\u4f01\u696d\u3067\u3042\u308a\u3001\u5168\u4e16\u754c\u306710,000\u4ee5\u4e0a\u306e\u7d44\u7e54\u304c\u3001Comcast\u3001Cond\u00e9 Nast\u3001Grammarly\u3001Fortune 500\u306e50%\u4ee5\u4e0a\u3092\u542b\u3080\u3001Databricks Data Intelligence Platform\u3092\u5229\u7528\u3057\u3066\u30c7\u30fc\u30bf\u3001\u5206\u6790\u3001AI\u3092\u7d71\u5408\u3057\u6c11\u4e3b\u5316\u3057\u3066\u3044\u307e\u3059\u3002Databricks\u306f\u30b5\u30f3\u30d5\u30e9\u30f3\u30b7\u30b9\u30b3\u306b\u672c\u793e\u3092\u7f6e\u304d\u3001\u4e16\u754c\u4e2d\u306b\u30aa\u30d5\u30a3\u30b9\u3092\u5c55\u958b\u3057\u3066\u304a\u308a\u3001Lakehouse\u3001Apache Spark\u2122\u3001Delta Lake\u3001MLflow\u306e\u30aa\u30ea\u30b8\u30ca\u30eb\u30af\u30ea\u30a8\u30a4\u30bf\u30fc\u306b\u3088\u3063\u3066\u8a2d\u7acb\u3055\u308c\u307e\u3057\u305f\u3002\u8a73\u7d30\u306b\u3064\u3044\u3066\u306f\u3001&lt;a href=&quot;https://x.com/databricks&quot;&gt;X&lt;/a&gt;\u3001&lt;a href=&quot;https://www.linkedin.com/company/databricks&quot;&gt;LinkedIn&lt;/a&gt;\u3001&lt;a href=&quot;https://www.facebook.com/databricksinc&quot;&gt;Facebook&lt;/a&gt;\u3067Databricks\u3092\u30d5\u30a9\u30ed\u30fc\u3057\u3066\u304f\u3060\u3055\u3044\u3002&lt;/p&gt;\n&lt;h4&gt;&lt;strong&gt;\u4ed5\u4e8b\u306e\u5185\u5bb9&lt;/strong&gt;&lt;/h4&gt;\n&lt;h4&gt;\u30d7\u30ea\u30bb\u30fc\u30eb\u30b9\u30bd\u30ea\u30e5\u30fc\u30b7\u30e7\u30f3\u30a2\u30fc\u30ad\u30c6\u30af\u30c8\uff08\u5206\u6790\u3001AI\u3001\u30d3\u30c3\u30b0\u30c7\u30fc\u30bf\u3001\u30d1\u30d6\u30ea\u30c3\u30af\u30af\u30e9\u30a6\u30c9\uff09\u3068\u3057\u3066\u3001\u3042\u306a\u305f\u306f\u55b6\u696d\u30d7\u30ed\u30bb\u30b9\u5168\u4f53\u306b\u308f\u305f\u3063\u3066\u30cf\u30f3\u30ba\u30aa\u30f3\u74b0\u5883\u3067\u6280\u8853\u8a55\u4fa1\u30d5\u30a7\u30fc\u30ba\u3092\u6307\u5c0e\u3057\u307e\u3059\u3002\u3042\u306a\u305f\u306f\u55b6\u696d\u30c1\u30fc\u30e0\u306e\u6280\u8853\u30a2\u30c9\u30d0\u30a4\u30b6\u30fc\u3068\u306a\u308a\u3001\u73fe\u5834\u3067\u9867\u5ba2\u8981\u4ef6\u3092\u5b9f\u73fe\u3059\u308b\u305f\u3081\u306b\u88fd\u54c1\u30c1\u30fc\u30e0\u3068\u9023\u643a\u3057\u307e\u3059\u3002Databricks \u30c7\u30fc\u30bf\u30a4\u30f3\u30c6\u30ea\u30b8\u30a7\u30f3\u30b9\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u3092\u4f7f\u7528\u3057\u3066\u9867\u5ba2\u304c\u5177\u4f53\u7684\u306a\u30c7\u30fc\u30bf\u99c6\u52d5\u306e\u6210\u679c\u3092\u9054\u6210\u3059\u308b\u624b\u52a9\u3051\u3092\u3057\u3001\u30c7\u30fc\u30bf\u30c1\u30fc\u30e0\u304c\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u3092\u5b8c\u4e86\u3057\u3001\u5f53\u793e\u306e\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u3092\u4f01\u696d\u30a8\u30b3\u30b7\u30b9\u30c6\u30e0\u306b\u7d71\u5408\u3067\u304d\u308b\u3088\u3046\u652f\u63f4\u3057\u307e\u3059\u3002\u30d3\u30c3\u30b0\u30c7\u30fc\u30bf\u3001\u5206\u6790\u3001\u30c7\u30fc\u30bf\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u3001\u30c7\u30fc\u30bf\u30b5\u30a4\u30a8\u30f3\u30b9\u306e\u554f\u984c\u306b\u5bfe\u3059\u308b\u9867\u5ba2\u306e\u6700\u5927\u306e\u8ab2\u984c\u306b\u5bfe\u3059\u308b\u89e3\u6c7a\u7b56\u3092\u898b\u3064\u3051\u306a\u304c\u3089\u3001\u3042\u306a\u305f\u306f\u55b6\u696d\u30c1\u30fc\u30e0\u3068\u4e00\u7dd2\u306b\u304a\u5ba2\u69d8\u306b\u89e3\u6c7a\u7b56\u3092\u63d0\u6848\u3057\u307e\u3059\u3002\u3042\u306a\u305f\u306f\u30d5\u30a3\u30fc\u30eb\u30c9\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u306e\u30de\u30cd\u30fc\u30b8\u30e3\u30fc\u306b\u5831\u544a\u3057\u307e\u3059\u3002&lt;/h4&gt;\n&lt;p&gt;\u3042\u306a\u305f\u304c\u3082\u305f\u3089\u3059\u5f71\u97ff\uff1a&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\u3042\u306a\u305f\u306f\u30a2\u30fc\u30ad\u30c6\u30af\u30c1\u30e3\u3068\u8a2d\u8a08\u306e\u5074\u9762\u306b\u304a\u3051\u308b\u30d3\u30c3\u30b0\u30c7\u30fc\u30bf\u5206\u6790\u306e\u5c02\u9580\u5bb6\u3068\u306a\u308a\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u898b\u8fbc\u307f\u5ba2\u3092Databricks\u306e\u8a55\u4fa1\u3068\u63a1\u7528\u3078\u5c0e\u304d\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u30ea\u30d5\u30a1\u30ec\u30f3\u30b9\u30a2\u30fc\u30ad\u30c6\u30af\u30c1\u30e3\u3001\u30cf\u30a4\u30ec\u30d9\u30eb\u306e\u5c0e\u5165\u30fb\u79fb\u884c\u30d7\u30e9\u30f3\u3001\u304a\u3088\u3073\u30c7\u30e2\u30a2\u30d7\u30ea\u30b1\u30fc\u30b7\u30e7\u30f3\u3092\u4f5c\u6210\u3059\u308b\u3053\u3068\u3067\u9867\u5ba2\u3092\u652f\u63f4\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u9867\u5ba2\u30a2\u30fc\u30ad\u30c6\u30af\u30c1\u30e3\u3092\u30b5\u30dd\u30fc\u30c8\u3059\u308b\u305f\u3081\u306bDatabricks\u3068\u30b5\u30fc\u30c9\u30d1\u30fc\u30c6\u30a3\u30a2\u30d7\u30ea\u30b1\u30fc\u30b7\u30e7\u30f3\u3092\u7d71\u5408\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u30ef\u30fc\u30af\u30b7\u30e7\u30c3\u30d7\u3001\u30bb\u30df\u30ca\u30fc\u3001\u304a\u3088\u3073\u30df\u30fc\u30c8\u30a2\u30c3\u30d7\u3092\u4e3b\u5c0e\u3059\u308b\u3053\u3068\u3067\u6280\u8853\u30b3\u30df\u30e5\u30cb\u30c6\u30a3\u3068\u95a2\u308f\u308a\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u55b6\u696d\u3068\u5171\u306b\u3001\u62c5\u5f53\u3059\u308b\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u30af\u30e9\u30a4\u30a2\u30f3\u30c8\u3068\u306e\u6210\u529f\u3057\u305f\u95a2\u4fc2\u3092\u7bc9\u304d\u3001\u6280\u8853\u7684\u304a\u3088\u3073\u30d3\u30b8\u30cd\u30b9\u4fa1\u5024\u3092\u63d0\u4f9b\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u9867\u5ba2\u306e\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u306e\u30c7\u30a3\u30b9\u30ab\u30d0\u30ea\u30fc&lt;/li&gt;\n&lt;li&gt;\u65e2\u5b58\u9867\u5ba2\u306eDatabricks\u74b0\u5883\u306e\u6700\u9069\u5316&lt;/li&gt;\n&lt;li&gt;Databricks\u88fd\u54c1\u6539\u5584\u306e\u305f\u3081\u306e\u6d3b\u52d5&lt;/li&gt;\n&lt;/ul&gt;\n&lt;h4&gt;&lt;strong&gt;\u5fc5\u8981\u306a\u6761\u4ef6/\u7d4c\u9a13:&lt;/strong&gt;&lt;/h4&gt;\n&lt;ul&gt;\n&lt;li&gt;\u69d8\u3005\u306a\u696d\u754c\u30fb\u7523\u696d\u3067\u5916\u90e8\u30af\u30e9\u30a4\u30a2\u30f3\u30c8\u3068\u95a2\u308f\u308b\u30d7\u30ea\u30bb\u30fc\u30eb\u30b9\u307e\u305f\u306f\u30dd\u30b9\u30c8\u30bb\u30fc\u30eb\u30b9\u306e\u7d4c\u9a13&lt;/li&gt;\n&lt;li&gt;\u6280\u8853\u6982\u5ff5\u3092\u793a\u3059\u7d4c\u9a13\u3001\u30d7\u30ec\u30bc\u30f3\u30c6\u30fc\u30b7\u30e7\u30f3\u3084\u30db\u30ef\u30a4\u30c8\u30dc\u30fc\u30c9\u3092\u4f7f\u7528\u3057\u305f\u7d4c\u9a13&lt;/li&gt;\n&lt;li&gt;\u30d1\u30d6\u30ea\u30c3\u30af\u30af\u30e9\u30a6\u30c9\uff08AWS\u3001Azure\u3001GCP\uff09\u5185\u3067\u306e\u30a2\u30fc\u30ad\u30c6\u30af\u30c1\u30e3\u8a2d\u8a08\u3068\u5b9f\u88c5\u306e\u7d4c\u9a13&lt;/li&gt;\n&lt;li&gt;\u30a8\u30f3\u30bf\u30fc\u30d7\u30e9\u30a4\u30ba\u30a2\u30ab\u30a6\u30f3\u30c8\u3068\u306e\u696d\u52d9\u7d4c\u9a13&lt;/li&gt;\n&lt;li&gt;&amp;nbsp;\u65e5\u672c\u8a9e\u3067\u306e\u6d41\u66a2\u306a\u30b3\u30df\u30e5\u30cb\u30b1\u30fc\u30b7\u30e7\u30f3\u3001\u304a\u3088\u3073\u82f1\u8a9e\u3067\u306e\u30d3\u30b8\u30cd\u30b9\u4e0a\u306e\u8aad\u307f\u66f8\u304d\u304c\u3067\u304d\u308b\u3053\u3068&lt;/li&gt;\n&lt;li&gt;\u30c7\u30fc\u30bf\u9818\u57df\u3001\u3082\u3057\u304f\u306f\u3001\u6a5f\u68b0\u5b66\u7fd2\u30fbAI\u9818\u57df\u306e\u57fa\u672c\u7684\u306a\u6280\u8853\u7406\u89e3\u3002\u304a\u3088\u3073\u3001SQL\u306e\u30b3\u30fc\u30c7\u30a3\u30f3\u30b0\u30b9\u30ad\u30eb\u3002&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;\u671b\u307e\u3057\u3044\u7d4c\u9a13/\u30b9\u30ad\u30eb:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\u30c7\u30fc\u30bf\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u307e\u305f\u306f\u30c7\u30fc\u30bf\u30b5\u30a4\u30a8\u30f3\u30b9\u306e\u3044\u305a\u308c\u304b\u306b\u304a\u3044\u3066\u30b3\u30a2\u306a\u5f37\u307f\u3092\u6301\u3064\u9867\u5ba2\u5411\u3051\u30d7\u30ea\u30bb\u30fc\u30eb\u30b9\u307e\u305f\u306f\u30b3\u30f3\u30b5\u30eb\u30c6\u30a3\u30f3\u30b0\u306e\u5f79\u5272\u306b\u5bfe\u3059\u308b\u7406\u89e3\u304c\u3042\u308b\u3053\u3068\u304c\u671b\u307e\u3057\u3044&lt;/li&gt;\n&lt;li&gt;Apache Spark\u2122\u3001AI\u3001\u30c7\u30fc\u30bf\u30b5\u30a4\u30a8\u30f3\u30b9\u3001\u30c7\u30fc\u30bf\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u3001Hadoop\u3001Cassandra\u306a\u3069\u306e\u30d3\u30c3\u30b0\u30c7\u30fc\u30bf\u6280\u8853\u306b\u95a2\u3059\u308b\u7d4c\u9a13&lt;/li&gt;\n&lt;li&gt;Python, Scala, Java\u3001\u3082\u3057\u304f\u306fR\u3092\u4f7f\u7528\u3057\u305fApache Spark\u306e\u6d41\u66a2\u306a\u30b3\u30fc\u30c7\u30a3\u30f3\u30b0\u7d4c\u9a13&lt;/li&gt;\n&lt;li&gt;\u30c7\u30fc\u30bf\u9818\u57df\u3001\u3082\u3057\u304f\u306f\u3001\u6a5f\u68b0\u5b66\u7fd2\u30fbAI\u9818\u57df\u3067\u306e\u958b\u767a\u7d4c\u9a13\u3002\u7279\u306b\u3001Python(Pandas, NumPy\u7b49)\u306e\u30b3\u30fc\u30c7\u30a3\u30f3\u30b0\u7d4c\u9a13&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p data-renderer-start-pos=&quot;1648&quot;&gt;&amp;nbsp;&lt;/p&gt;&lt;div class=&quot;content-conclusion&quot;&gt;&lt;p&gt;&lt;strong&gt;About Databricks&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: arial, sans-serif;&quot;&gt;Databricks is the data and AI company. More than 10,000 organizations worldwide \u2014 including Comcast, Cond\u00e9 Nast, Grammarly, and over 50% of the Fortune 500 \u2014 rely on the Databricks Data Intelligence Platform to unify and democratize data, analytics and AI. Databricks is headquartered in San Francisco, with offices around the globe and was founded by the original creators of Lakehouse, Apache Spark\u2122, Delta Lake and MLflow. To learn more, follow Databricks on&amp;nbsp;&lt;span style=&quot;color: rgb(255, 54, 33);&quot;&gt;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://twitter.com/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://twitter.com/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw03FL8fJvOD97ytN02f5G2C&quot;&gt;Twitter&lt;/a&gt;,&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.linkedin.com/company/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.linkedin.com/company/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw15dLk3q8VxTfHEgCUg7NSt&quot;&gt;LinkedIn&lt;/a&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;and&lt;/span&gt;&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.facebook.com/databricksinc&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.facebook.com/databricksinc&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw39EcncitnlqV72EG2-RqXJ&quot;&gt;Facebook&lt;/a&gt;&lt;/span&gt;.&lt;br&gt;&lt;br&gt;&lt;strong&gt;Benefits&lt;br&gt;&lt;br&gt;&lt;/strong&gt;&lt;/span&gt;At Databricks, we strive to provide comprehensive benefits and perks that meet the needs of all of our employees. For specific details on the benefits offered in your region click &lt;a href=&quot;https://docs.google.com/document/d/154un3e8Xav4BceOSlcYFZRGEuQI54xMxVydRwQn54eQ/edit?usp=sharing&quot;&gt;here&lt;/a&gt;.&lt;br&gt;&lt;br&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Our Commitment to Diversity and Inclusion&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;At Databricks, we are committed to fostering a diverse and inclusive culture where everyone can excel. We take great care to ensure that our hiring practices are inclusive and meet equal employment opportunity standards. Individuals looking for employment at Databricks are considered without regard to age, color, disability, ethnicity, family or marital status, gender identity or expression, language, national origin, physical and mental ability, political affiliation, race, religion, sexual orientation, socio-economic status, veteran status, and other protected characteristics.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Compliance&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;If access to export-controlled technology or source code is required for performance of job duties, it is within Employer&#39;s discretion whether to apply for a U.S. government license for such positions, and Employer may decline to proceed with an applicant on this basis alone.&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;",
+      "departments": [
+        {
+          "id": 4105217002,
+          "name": "Field Engineering - Other",
+          "child_ids": [],
+          "parent_id": 4069106002
+        }
+      ],
+      "offices": [
+        {
+          "id": 4029277002,
+          "name": "Tokyo, Japan",
+          "location": "Tokyo, Japan",
+          "child_ids": [],
+          "parent_id": 4033856002
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": null
+    },
+    {
+      "absolute_url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8428882002",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 6366831002,
+      "location": {
+        "name": "Tokyo, Japan"
+      },
+      "metadata": [
+        {
+          "id": 9740521002,
+          "name": "Company Assignment",
+          "value": "Databricks Japan K.K.",
+          "value_type": "single_select"
+        },
+        {
+          "id": 24059030002,
+          "name": "Career Page Posting Category",
+          "value": [
+            "Field Engineering"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8428882002,
+      "updated_at": "2026-07-01T18:31:31-04:00",
+      "requisition_id": "CSQ327R31",
+      "title": "\u30c7\u30ea\u30d0\u30ea\u30fc\u30bd\u30ea\u30e5\u30fc\u30b7\u30e7\u30f3\u30a2\u30fc\u30ad\u30c6\u30af\u30c8",
+      "company_name": "Databricks",
+      "first_published": "2026-03-05T06:43:29-05:00",
+      "language": "ja",
+      "application_deadline": null,
+      "content": "&lt;p&gt;CSQ327R31&lt;/p&gt;\n&lt;p&gt;Databricks\u306f\u3001\u304a\u5ba2\u69d8\u304cAI\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u3092\u6d3b\u7528\u3057\u3066\u3001\u4e16\u754c\u3067\u6700\u3082\u96e3\u3057\u3044\u306a\u30c7\u30fc\u30bf\u306b\u95a2\u3059\u308b\u8ab2\u984c\u3092\u89e3\u6c7a\u3067\u304d\u308b\u3088\u3046\u652f\u63f4\u3059\u308b\u3053\u3068\u3092\u30df\u30c3\u30b7\u30e7\u30f3\u3068\u3057\u3066\u3044\u307e\u3059\u3002\u30c7\u30ea\u30d0\u30ea\u30fc\u30bd\u30ea\u30e5\u30fc\u30b7\u30e7\u30f3\u30a2\u30fc\u30ad\u30c6\u30af\u30c8\uff08DSA\uff09\u306f\u3001\u3053\u306e\u91cd\u8981\u306a\u30df\u30c3\u30b7\u30e7\u30f3\u306b\u304a\u3044\u3066\u3001\u30bb\u30fc\u30eb\u30b9\u304a\u3088\u3073\u30d5\u30a3\u30fc\u30eb\u30c9\u30fb\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u30c1\u30fc\u30e0\u3068\u5354\u529b\u3057\u3001\u304a\u5ba2\u69d8\u306eDatabricks\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u306e\u5c0e\u5165\u3068\u5229\u7528\u62e1\u5927\u3092\u52a0\u901f\u3055\u305b\u308b\u91cd\u8981\u306a\u5f79\u5272\u3092\u62c5\u3044\u307e\u3059\u3002DSA\u3068\u3057\u3066\u3001\u304a\u5ba2\u69d8\u304c\u3059\u3067\u306b\u5c0e\u5165\u3092\u6c7a\u5b9a\u3057\u305fDatabricks\u306e\u30ef\u30fc\u30af\u30ed\u30fc\u30c9\u306b\u3064\u3044\u3066\u3001\u304a\u5ba2\u69d8\u304c\u30d7\u30e9\u30c3\u30c8\u30d5\u30a9\u30fc\u30e0\u304b\u3089\u6700\u5927\u9650\u306e\u4fa1\u5024\u3068\u6295\u8cc7\u5bfe\u52b9\u679c\u3092\u5f97\u3089\u308c\u308b\u3088\u3046\u3001\u6280\u8853\u7684\u306a\u6307\u5c0e\u3068\u30b5\u30dd\u30fc\u30c8\u3092\u63d0\u4f9b\u3057\u3001\u304a\u5ba2\u69d8\u306e\u6210\u529f\u3092\u78ba\u5b9f\u306b\u3057\u307e\u3059\u3002\u7279\u306b\u3001\u8907\u96d1\u306a\u8ab2\u984c\u3092\u62b1\u3048\u308b\u304a\u5ba2\u69d8\u306b\u5bfe\u3057\u3066\u3001\u3088\u308a\u91cd\u70b9\u7684\u304b\u3064\u6280\u8853\u7684\u306a\u8cac\u4efb\u3092\u6301\u3063\u3066\u652f\u63f4\u3092\u884c\u3044\u307e\u3059\u3002&lt;br&gt;\u3053\u306e\u30dd\u30b8\u30b7\u30e7\u30f3\u306f\u3001\u6280\u8853\u3068\u30d3\u30b8\u30cd\u30b9\u306e\u4e21\u9762\u3092\u517c\u306d\u5099\u3048\u305f\u30cf\u30a4\u30d6\u30ea\u30c3\u30c9\u306a\u5f79\u5272\u3067\u3059\u3002\u62c5\u5f53\u3059\u308b\u304a\u5ba2\u69d8\u3068\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u306b\u304a\u3044\u3066\u3001\u6210\u9577\u3092\u63a8\u9032\u3057\u307e\u3059\u3002\u30d3\u30b8\u30cd\u30b9\u9762\u3067\u306f\u3001\u304a\u5ba2\u69d8\u306e\u610f\u601d\u6c7a\u5b9a\u8005\u3068\u95a2\u4fc2\u3092\u69cb\u7bc9\u3057\u3001\u4ed6\u306e\u5c02\u9580\u30c1\u30fc\u30e0\u3068\u9023\u643a\u3057\u306a\u304c\u3089\u3001Databricks\u304c\u5b9f\u884c\u3067\u304d\u308b\u8a08\u753b\u3084\u6226\u7565\u3092\u7b56\u5b9a\u30fb\u63a8\u9032\u3057\u307e\u3059\u3002\u6280\u8853\u9762\u3067\u306fDatabricks\u306e\u5168\u88fd\u54c1\u306b\u304a\u3051\u308b\u3001\u304a\u5ba2\u69d8\u5c0e\u5165\u5f8c\u306e\u6280\u8853\u7684\u306a\u30ea\u30fc\u30c0\u30fc\u3068\u306a\u308a\u307e\u3059\u3002\u7d44\u7e54\u5185\u306e\u3042\u3089\u3086\u308b\u30ec\u30d9\u30eb\u306e\u4eba\u3005\u3068\u3001\u6280\u8853\u7684\u306a\u5c02\u9580\u77e5\u8b58\u3092\u6d3b\u304b\u3057\u3066\u30b3\u30df\u30e5\u30cb\u30b1\u30fc\u30b7\u30e7\u30f3\u3092\u3068\u308b\u80fd\u529b\u304c\u6c42\u3081\u3089\u308c\u307e\u3059\u3002\u672c\u30dd\u30b8\u30b7\u30e7\u30f3\u306f\u3001\u65e5\u672c\u306e\u30d5\u30a3\u30fc\u30eb\u30c9\u30fb\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u30fb\u30c7\u30a3\u30ec\u30af\u30bf\u30fc/Technical GM \u306e\u76f4\u5c5e\u3068\u306a\u308a\u307e\u3059\u3002&lt;/p&gt;\n&lt;p&gt;\u3042\u306a\u305f\u304c\u3082\u305f\u3089\u3059\u5f71\u97ff :&amp;nbsp;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\u30bd\u30ea\u30e5\u30fc\u30b7\u30e7\u30f3\u30fb\u30a2\u30fc\u30ad\u30c6\u30af\u30c8\u3068\u9023\u643a\u3057\u3001\u91cd\u8981\u9867\u5ba2\u306b\u304a\u3051\u308b\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u306e\u5168\u4f53\u7684\u306a\u9700\u8981\u8a08\u753b\u3092\u628a\u63e1\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;Databricks\u306e\u4e3b\u8981\u306a\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u306b\u304a\u3044\u3066\u3001Technical Win\u5f8c\u306e\u30a2\u30ab\u30a6\u30f3\u30c8\u6226\u7565\u3068\u5b9f\u884c\u8a08\u753b\u3092\u4e3b\u5c0e\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u8907\u6570\u306e\u55b6\u696d\u30c1\u30fc\u30e0\u3084\u793e\u5185\u95a2\u4fc2\u8005\u3068\u9023\u643a\u3057\u3001\u7279\u5b9a\u306e\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u3084\u9867\u5ba2\u306b\u5bfe\u3059\u308b\u6280\u8853\u7684\u306a\u8cac\u4efb\u8005\u3068\u306a\u308a\u307e\u3059\u3002\u304a\u5ba2\u69d8\u304cDatabricks\u306e\u5c0e\u5165\u3092\u6c7a\u5b9a\u3057\u305f\u30ef\u30fc\u30af\u30ed\u30fc\u30c9\u306b\u3064\u3044\u3066\u3001\u4e0d\u78ba\u5b9f\u6027\u3092\u53d6\u308a\u9664\u304d\u3001\u30aa\u30f3\u30dc\u30fc\u30c7\u30a3\u30f3\u30b0\u3001\u6709\u52b9\u5316\u3001\u6210\u529f\u3001\u672c\u7a3c\u50cd\u3001\u305d\u3057\u3066\u5065\u5168\u306a\u5229\u7528\u3092\u63a8\u9032\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u304a\u5ba2\u69d8\u304c\u5408\u610f\u3057\u305f\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u306e\u672c\u756a\u7a3c\u50cd\u3084\u904b\u7528\u306b\u95a2\u3059\u308b\u6280\u8853\u7684\u306a\u554f\u984c\u3084\u8cea\u554f\u306b\u5bfe\u3057\u3001\u6700\u521d\u306e\u7a93\u53e3\u3068\u3057\u3066\u5bfe\u5fdc\u3057\u307e\u3059\u3002\u7279\u306b\u3001\u5927\u898f\u6a21\u3067\u8907\u96d1\u306a\u7d44\u7e54\u306b\u304a\u3044\u3066\u306f\u3001\u8907\u6570\u306e\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u3092\u62c5\u5f53\u3059\u308b\u3053\u3068\u304c\u591a\u304f\u3042\u308a\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u793e\u5185\u306e\u5c02\u9580\u5bb6\uff08\u5171\u6709\u30b5\u30fc\u30d3\u30b9\u3001\u30e6\u30fc\u30b6\u30fc\u6559\u80b2\u3001\u30aa\u30f3\u30dc\u30fc\u30c7\u30a3\u30f3\u30b0\uff0f\u6280\u8853\u30b5\u30fc\u30d3\u30b9\u3001\u30b5\u30dd\u30fc\u30c8\u306a\u3069\uff09\u3068\u9023\u643a\u3057\u3001\u81ea\u8eab\u306e\u696d\u52d9\u7bc4\u56f2\u3084\u5c02\u9580\u77e5\u8b58\u3092\u8d85\u3048\u308b\u30bf\u30b9\u30af\u3092\u9069\u5207\u306b\u5272\u308a\u632f\u308a\u307e\u3059\u3002\u5fc5\u8981\u306b\u5fdc\u3058\u3066\u3001\u3088\u308a\u5c02\u9580\u7684\u306a\u6280\u8853\u30a8\u30ad\u30b9\u30d1\u30fc\u30c8\u306b\u3082\u30a8\u30b9\u30ab\u30ec\u30fc\u30b7\u30e7\u30f3\u3092\u884c\u3044\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u4e3b\u8981\u306a\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u3092\u672c\u756a\u74b0\u5883\u3078\u8fc5\u901f\u306b\u79fb\u884c\u3055\u305b\u308b\u305f\u3081\u306e\u8996\u70b9\u3092\u69cb\u7bc9\u3057\u3001\u30d7\u30ed\u30d5\u30a7\u30c3\u30b7\u30e7\u30ca\u30eb\u30b5\u30fc\u30d3\u30b9\u3068\u9023\u643a\u3057\u3066\u63d0\u6848\u66f8\u306e\u4f5c\u6210\u3092\u9032\u3081\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;Databricks\u306e\u88fd\u54c1\u30fb\u30a8\u30f3\u30b8\u30cb\u30a2\u30ea\u30f3\u30b0\u30c1\u30fc\u30e0\u3068\u9023\u643a\u3057\u3001\u65b0\u88fd\u54c1\u306e\u30a4\u30ce\u30d9\u30fc\u30b7\u30e7\u30f3\u3001\u30d7\u30e9\u30a4\u30d9\u30fc\u30c8\u30d7\u30ec\u30d3\u30e5\u30fc\u3001\u30a2\u30c3\u30d7\u30b0\u30ec\u30fc\u30c9\u306e\u30cb\u30fc\u30ba\u306b\u5bfe\u5fdc\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;li&gt;\u4ee5\u4e0b\u306e\u30ef\u30fc\u30af\u30b9\u30c8\u30ea\u30fc\u30e0\u3092\u30ab\u30d0\u30fc\u3059\u308b\u305f\u3081\u3001\u9867\u5ba2\u306b\u63a5\u3059\u308b\u3059\u3079\u3066\u306e\u6280\u8853\u8077\u304a\u3088\u3073\u30c1\u30fc\u30e0\u306e\u6d3b\u52d5\u3092\u7db2\u7f85\u3059\u308b\u5b9f\u884c\u8a08\u753b\u3092\u7b56\u5b9a\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;ul&gt;\n&lt;li&gt;\u672c\u756a\u74b0\u5883\u3078\u79fb\u884c\u3059\u308b\u4e3b\u8981\u306a\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9&lt;/li&gt;\n&lt;li&gt;\u6709\u52b9\u5316\uff0f\u30e6\u30fc\u30b6\u30fc\u6210\u9577\u8a08\u753b&lt;/li&gt;\n&lt;li&gt;\u88fd\u54c1\u5c0e\u5165\uff08Databricks\u306e\u30ec\u30a4\u30af\u30cf\u30a6\u30b9\u30fb\u30d3\u30b8\u30e7\u30f3\u3092\u5c0e\u5165\u3059\u308b\u305f\u3081\u306e\u6226\u7565\u3068\u6d3b\u52d5\uff09&lt;/li&gt;\n&lt;li&gt;\u73fe\u5728\u306e\u6295\u8cc7\u306b\u5bfe\u3059\u308b\u30aa\u30fc\u30ac\u30cb\u30c3\u30af\u306a\u30cb\u30fc\u30ba\uff08\u4f8b\uff1a\u30af\u30e9\u30a6\u30c9\u30b3\u30b9\u30c8\u7ba1\u7406\u3001\u30c1\u30e5\u30fc\u30cb\u30f3\u30b0\uff06\u6700\u9069\u5316\uff09&lt;/li&gt;\n&lt;li&gt;\u30a8\u30b0\u30bc\u30af\u30c6\u30a3\u30d6\u304a\u3088\u3073\u904b\u7528\u30ac\u30d0\u30ca\u30f3\u30b9&lt;/li&gt;\n&lt;/ul&gt;\n&lt;li&gt;\u5229\u7528\u72b6\u6cc1\u3084\u9867\u5ba2\u306e\u72b6\u614b\u306b\u95a2\u3059\u308bKPI\u30ec\u30dd\u30fc\u30c8\uff08\u6295\u8cc7\u72b6\u6cc1\u3001\u91cd\u8981\u306a\u30ea\u30b9\u30af\u3001\u88fd\u54c1\u5c0e\u5165\u3001\u30e6\u30fc\u30b9\u30b1\u30fc\u30b9\u306e\u9032\u6357\u72b6\u6cc1\u306a\u3069\uff09\u3092\u3001Technical GM\u306b\u5b9a\u671f\u7684\u306b\u5831\u544a\u3057\u307e\u3059\u3002&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;\u5fc5\u8981\u306a\u6761\u4ef6/\u7d4c\u9a13:&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\u30c7\u30fc\u30bf\u304a\u3088\u3073AI\u9818\u57df\u306b\u304a\u3051\u308b\u6280\u8853\u7684\u306a\u30d7\u30ed\u30b8\u30a7\u30af\u30c8/\u30d7\u30ed\u30b0\u30e9\u30e0\u306e\u30c7\u30ea\u30d0\u30ea\u30fc\u306b\u8cac\u4efb\u3092\u6301\u3061\u3001\u9867\u5ba2\u3068\u306e\u6280\u8853\u7684\u306a\u8b70\u8ad6\u3084\u8a2d\u8a08\u306e\u9078\u629e\u306b\u8ca2\u732e\u3057\u305f8\u5e74\u4ee5\u4e0a\u306e\u7d4c\u9a13\u3002&lt;/li&gt;\n&lt;li&gt;Python\u3001SQL\u3001\u307e\u305f\u306fScala\u3067\u306e\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u7d4c\u9a13\u3002&lt;/li&gt;\n&lt;li&gt;\u9867\u5ba2\u3068\u76f4\u63a5\u5bfe\u9762\u3059\u308b\u30d7\u30ea\u30bb\u30fc\u30eb\u30b9\u3001\u6280\u8853\u30a2\u30fc\u30ad\u30c6\u30af\u30c8\u3001\u30ab\u30b9\u30bf\u30de\u30fc\u30b5\u30af\u30bb\u30b9\u3001\u307e\u305f\u306f\u30b3\u30f3\u30b5\u30eb\u30c6\u30a3\u30f3\u30b0\u306e\u7d4c\u9a13\u3002&lt;/li&gt;\n&lt;li&gt;\u5206\u6563\u30c7\u30fc\u30bf\u30b7\u30b9\u30c6\u30e0\u306b\u95a2\u9023\u3059\u308b\u30bd\u30ea\u30e5\u30fc\u30b7\u30e7\u30f3\u30fb\u30a2\u30fc\u30ad\u30c6\u30af\u30c1\u30e3\u306e\u7406\u89e3\u3002&lt;/li&gt;\n&lt;li&gt;\u7279\u5b9a\u306e\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u6210\u679c\u7269\u306b\u5bfe\u3057\u3001\u30d3\u30b8\u30cd\u30b9\u4fa1\u5024\u3068\u6210\u679c\u3092\u7d50\u3073\u3064\u3051\u308b\u65b9\u6cd5\u306e\u7406\u89e3\u3002&lt;/li&gt;\n&lt;li&gt;\u30a2\u30ab\u30a6\u30f3\u30c8\u3001\u30b9\u30c6\u30fc\u30af\u30db\u30eb\u30c0\u30fc\u3001\u30ea\u30bd\u30fc\u30b9\u7ba1\u7406\u306e\u8cac\u4efb\u3092\u542b\u3080\u6280\u8853\u7684\u306a\u30d7\u30ed\u30b0\u30e9\u30e0\u307e\u305f\u306f\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u7ba1\u7406\u306e\u7d4c\u9a13\u3002&lt;/li&gt;\n&lt;li&gt;\u9867\u5ba2\u4f01\u696d\u306e\u30b7\u30cb\u30a2\u30fb\u30a8\u30b0\u30bc\u30af\u30c6\u30a3\u30d6\u3068\u306e\u9593\u3067\u3001\u8907\u96d1\u304b\u3064\u91cd\u8981\u306a\u30a8\u30b9\u30ab\u30ec\u30fc\u30b7\u30e7\u30f3\u3092\u89e3\u6c7a\u3057\u305f\u7d4c\u9a13\u3002&lt;/li&gt;\n&lt;li&gt;\u81ea\u7531\u5f62\u5f0f\u306e\u30c7\u30a3\u30b9\u30ab\u30d0\u30ea\u30fc\u30fb\u30ef\u30fc\u30af\u30b7\u30e7\u30c3\u30d7\u306e\u5b9f\u65bd\u3001\u6226\u7565\u7684\u30ed\u30fc\u30c9\u30de\u30c3\u30d7\u306e\u4f5c\u6210\u3001\u30d3\u30b8\u30cd\u30b9\u5206\u6790\u3001\u8907\u96d1\u306a\u30d7\u30ed\u30b0\u30e9\u30e0/\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u306e\u30c7\u30ea\u30d0\u30ea\u30fc\u7ba1\u7406\u306e\u7d4c\u9a13\u3002&lt;/li&gt;\n&lt;li&gt;\u76ee\u6a19\uff08Quota\u3001Goals\u306a\u3069\uff09\u306b\u5bfe\u3059\u308b\u9054\u6210\u5b9f\u7e3e\u3002&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;Databricks\u306b\u3064\u3044\u3066&lt;/p&gt;\n&lt;p&gt;Databricks\u306f\u30c7\u30fc\u30bf\u3068AI\u306e\u4f01\u696d\u3067\u3042\u308a\u3001\u5168\u4e16\u754c\u306710,000\u4ee5\u4e0a\u306e\u7d44\u7e54\u304c\u3001Comcast\u3001Cond\u00e9 Nast\u3001Grammarly\u3001Fortune 500\u306e50%\u4ee5\u4e0a\u3092\u542b\u3080\u3001Databricks Data Intelligence Platform\u3092\u5229\u7528\u3057\u3066\u30c7\u30fc\u30bf\u3001\u5206\u6790\u3001AI\u3092\u7d71\u5408\u3057\u6c11\u4e3b\u5316\u3057\u3066\u3044\u307e\u3059\u3002Databricks\u306f\u30b5\u30f3\u30d5\u30e9\u30f3\u30b7\u30b9\u30b3\u306b\u672c\u793e\u3092\u7f6e\u304d\u3001\u4e16\u754c\u4e2d\u306b\u30aa\u30d5\u30a3\u30b9\u3092\u5c55\u958b\u3057\u3066\u304a\u308a\u3001Lakehouse\u3001Apache Spark\u2122\u3001Delta Lake\u3001MLflow\u306e\u30aa\u30ea\u30b8\u30ca\u30eb\u30af\u30ea\u30a8\u30a4\u30bf\u30fc\u306b\u3088\u3063\u3066\u8a2d\u7acb\u3055\u308c\u307e\u3057\u305f\u3002\u8a73\u7d30\u306b\u3064\u3044\u3066\u306f\u3001&lt;a href=&quot;https://x.com/databricks&quot;&gt;X&lt;/a&gt;\u3001&lt;a href=&quot;https://www.linkedin.com/company/databricks&quot;&gt;LinkedIn&lt;/a&gt;\u3001&lt;a href=&quot;https://www.facebook.com/databricksinc&quot;&gt;Facebook&lt;/a&gt;\u3067Databricks\u3092\u30d5\u30a9\u30ed\u30fc\u3057\u3066\u304f\u3060\u3055\u3044\u3002&lt;/p&gt;&lt;div class=&quot;content-conclusion&quot;&gt;&lt;p&gt;&lt;strong&gt;About Databricks&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: arial, sans-serif;&quot;&gt;Databricks is the data and AI company. More than 10,000 organizations worldwide \u2014 including Comcast, Cond\u00e9 Nast, Grammarly, and over 50% of the Fortune 500 \u2014 rely on the Databricks Data Intelligence Platform to unify and democratize data, analytics and AI. Databricks is headquartered in San Francisco, with offices around the globe and was founded by the original creators of Lakehouse, Apache Spark\u2122, Delta Lake and MLflow. To learn more, follow Databricks on&amp;nbsp;&lt;span style=&quot;color: rgb(255, 54, 33);&quot;&gt;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://twitter.com/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://twitter.com/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw03FL8fJvOD97ytN02f5G2C&quot;&gt;Twitter&lt;/a&gt;,&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.linkedin.com/company/databricks&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.linkedin.com/company/databricks&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw15dLk3q8VxTfHEgCUg7NSt&quot;&gt;LinkedIn&lt;/a&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;and&lt;/span&gt;&amp;nbsp;&lt;a style=&quot;color: rgb(255, 54, 33);&quot; href=&quot;https://www.facebook.com/databricksinc&quot; target=&quot;_blank&quot; data-saferedirecturl=&quot;https://www.google.com/url?q=https://www.facebook.com/databricksinc&amp;amp;source=gmail&amp;amp;ust=1700237575733000&amp;amp;usg=AOvVaw39EcncitnlqV72EG2-RqXJ&quot;&gt;Facebook&lt;/a&gt;&lt;/span&gt;.&lt;br&gt;&lt;br&gt;&lt;strong&gt;Benefits&lt;br&gt;&lt;br&gt;&lt;/strong&gt;&lt;/span&gt;At Databricks, we strive to provide comprehensive benefits and perks that meet the needs of all of our employees. For specific details on the benefits offered in your region click &lt;a href=&quot;https://docs.google.com/document/d/154un3e8Xav4BceOSlcYFZRGEuQI54xMxVydRwQn54eQ/edit?usp=sharing&quot;&gt;here&lt;/a&gt;.&lt;br&gt;&lt;br&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Our Commitment to Diversity and Inclusion&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;At Databricks, we are committed to fostering a diverse and inclusive culture where everyone can excel. We take great care to ensure that our hiring practices are inclusive and meet equal employment opportunity standards. Individuals looking for employment at Databricks are considered without regard to age, color, disability, ethnicity, family or marital status, gender identity or expression, language, national origin, physical and mental ability, political affiliation, race, religion, sexual orientation, socio-economic status, veteran status, and other protected characteristics.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Compliance&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;If access to export-controlled technology or source code is required for performance of job duties, it is within Employer&#39;s discretion whether to apply for a U.S. government license for such positions, and Employer may decline to proceed with an applicant on this basis alone.&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;",
+      "departments": [
+        {
+          "id": 4001270002,
+          "name": "Delivery Solutions Architects",
+          "child_ids": [],
+          "parent_id": 4069106002
+        }
+      ],
+      "offices": [
+        {
+          "id": 4029277002,
+          "name": "Tokyo, Japan",
+          "location": "Tokyo, Japan",
+          "child_ids": [],
+          "parent_id": 4033856002
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": null
+    }
+  ]
+}

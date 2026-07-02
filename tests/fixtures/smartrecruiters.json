@@ -1,0 +1,425 @@
+{
+  "content": [
+    {
+      "id": "744000132911099",
+      "name": "Senior AI Engineer",
+      "uuid": "e80cdb77-be80-43b9-87f7-41d5f91cb6c3",
+      "jobAdId": "28701fe8-9e63-4131-9dd3-85af3a4cbde2",
+      "defaultJobAd": false,
+      "refNumber": "REF1915U",
+      "company": {
+        "identifier": "smartrecruiters",
+        "name": "SmartRecruiters Inc"
+      },
+      "releasedDate": "2026-06-18T16:11:52.116Z",
+      "location": {
+        "city": "United Kingdom",
+        "region": "REMOTE",
+        "country": "gb",
+        "remote": true,
+        "hybrid": false,
+        "fullLocation": "United Kingdom, REMOTE, United Kingdom"
+      },
+      "industry": {
+        "id": "computer_software",
+        "label": "Computer Software"
+      },
+      "department": {
+        "id": "5408693",
+        "label": "Engineering"
+      },
+      "function": {
+        "id": "engineering",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "permanent",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "mid_senior_level",
+        "label": "Mid-Senior Level"
+      },
+      "customField": [
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98ee",
+          "fieldLabel": "Department",
+          "valueId": "5408693",
+          "valueLabel": "Engineering"
+        },
+        {
+          "fieldId": "68f89f37181dbd53b2d51cc1",
+          "fieldLabel": "SAP Cost Center",
+          "valueId": "d2acbef5-f31a-44a7-b0a9-428a575ee04e",
+          "valueLabel": "545000402"
+        },
+        {
+          "fieldId": "COUNTRY",
+          "fieldLabel": "Country/Region",
+          "valueId": "pl",
+          "valueLabel": "Poland"
+        },
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98eb",
+          "fieldLabel": "Brands",
+          "valueId": "default",
+          "valueLabel": "SmartRecruiters Inc"
+        },
+        {
+          "fieldId": "617043f52193e5503b7715c3",
+          "fieldLabel": "SR Cost Center",
+          "valueId": "77294d81-1838-4947-ba83-5f810b1ca28a",
+          "valueLabel": "4.02 R&D Engineering"
+        },
+        {
+          "fieldId": "627035b6330a2b4d25aa0882",
+          "fieldLabel": "Career Site Department Labels",
+          "valueId": "ff7b8056-0f7d-4647-aee0-6207b0c564e5",
+          "valueLabel": "Engineering"
+        }
+      ],
+      "visibility": "PUBLIC",
+      "ref": "https://api.smartrecruiters.com/v1/companies/SmartRecruiters/postings/744000132911099",
+      "language": {
+        "code": "en",
+        "label": "English",
+        "labelNative": "English (US)"
+      }
+    },
+    {
+      "id": "744000132911009",
+      "name": "Senior AI Engineer",
+      "uuid": "bef04a74-48b3-4708-9a07-c7b41f7b55a7",
+      "jobAdId": "2144e46c-fc70-4768-8255-9e49350caaea",
+      "defaultJobAd": false,
+      "refNumber": "REF1915U",
+      "company": {
+        "identifier": "smartrecruiters",
+        "name": "SmartRecruiters Inc"
+      },
+      "releasedDate": "2026-06-18T16:11:24.591Z",
+      "location": {
+        "city": "Germany",
+        "region": "REMOTE",
+        "country": "de",
+        "remote": true,
+        "hybrid": false,
+        "fullLocation": "Germany, REMOTE, Germany"
+      },
+      "industry": {
+        "id": "computer_software",
+        "label": "Computer Software"
+      },
+      "department": {
+        "id": "5408693",
+        "label": "Engineering"
+      },
+      "function": {
+        "id": "engineering",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "permanent",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "mid_senior_level",
+        "label": "Mid-Senior Level"
+      },
+      "customField": [
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98ee",
+          "fieldLabel": "Department",
+          "valueId": "5408693",
+          "valueLabel": "Engineering"
+        },
+        {
+          "fieldId": "68f89f37181dbd53b2d51cc1",
+          "fieldLabel": "SAP Cost Center",
+          "valueId": "d2acbef5-f31a-44a7-b0a9-428a575ee04e",
+          "valueLabel": "545000402"
+        },
+        {
+          "fieldId": "COUNTRY",
+          "fieldLabel": "Country/Region",
+          "valueId": "pl",
+          "valueLabel": "Poland"
+        },
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98eb",
+          "fieldLabel": "Brands",
+          "valueId": "default",
+          "valueLabel": "SmartRecruiters Inc"
+        },
+        {
+          "fieldId": "617043f52193e5503b7715c3",
+          "fieldLabel": "SR Cost Center",
+          "valueId": "77294d81-1838-4947-ba83-5f810b1ca28a",
+          "valueLabel": "4.02 R&D Engineering"
+        },
+        {
+          "fieldId": "627035b6330a2b4d25aa0882",
+          "fieldLabel": "Career Site Department Labels",
+          "valueId": "ff7b8056-0f7d-4647-aee0-6207b0c564e5",
+          "valueLabel": "Engineering"
+        }
+      ],
+      "visibility": "PUBLIC",
+      "ref": "https://api.smartrecruiters.com/v1/companies/SmartRecruiters/postings/744000132911009",
+      "language": {
+        "code": "en",
+        "label": "English",
+        "labelNative": "English (US)"
+      }
+    },
+    {
+      "id": "744000132897492",
+      "name": "Senior AI Engineer",
+      "uuid": "9074a409-9854-4658-b358-ddfba43a8a4d",
+      "jobAdId": "3b750849-67b9-4cb8-a7d1-10a88bf24d9e",
+      "defaultJobAd": true,
+      "refNumber": "REF1915U",
+      "company": {
+        "identifier": "smartrecruiters",
+        "name": "SmartRecruiters Inc"
+      },
+      "releasedDate": "2026-06-18T15:17:41.480Z",
+      "location": {
+        "city": "Poland",
+        "region": "REMOTE",
+        "country": "pl",
+        "remote": true,
+        "hybrid": false,
+        "fullLocation": "Poland, REMOTE, Poland"
+      },
+      "industry": {
+        "id": "computer_software",
+        "label": "Computer Software"
+      },
+      "department": {
+        "id": "5408693",
+        "label": "Engineering"
+      },
+      "function": {
+        "id": "engineering",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "permanent",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "mid_senior_level",
+        "label": "Mid-Senior Level"
+      },
+      "customField": [
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98ee",
+          "fieldLabel": "Department",
+          "valueId": "5408693",
+          "valueLabel": "Engineering"
+        },
+        {
+          "fieldId": "68f89f37181dbd53b2d51cc1",
+          "fieldLabel": "SAP Cost Center",
+          "valueId": "d2acbef5-f31a-44a7-b0a9-428a575ee04e",
+          "valueLabel": "545000402"
+        },
+        {
+          "fieldId": "COUNTRY",
+          "fieldLabel": "Country/Region",
+          "valueId": "pl",
+          "valueLabel": "Poland"
+        },
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98eb",
+          "fieldLabel": "Brands",
+          "valueId": "default",
+          "valueLabel": "SmartRecruiters Inc"
+        },
+        {
+          "fieldId": "617043f52193e5503b7715c3",
+          "fieldLabel": "SR Cost Center",
+          "valueId": "77294d81-1838-4947-ba83-5f810b1ca28a",
+          "valueLabel": "4.02 R&D Engineering"
+        },
+        {
+          "fieldId": "627035b6330a2b4d25aa0882",
+          "fieldLabel": "Career Site Department Labels",
+          "valueId": "ff7b8056-0f7d-4647-aee0-6207b0c564e5",
+          "valueLabel": "Engineering"
+        }
+      ],
+      "visibility": "PUBLIC",
+      "ref": "https://api.smartrecruiters.com/v1/companies/SmartRecruiters/postings/744000132897492",
+      "language": {
+        "code": "en",
+        "label": "English",
+        "labelNative": "English (US)"
+      }
+    },
+    {
+      "id": "744000134902606",
+      "name": "Senior Product Manager (Career Sites)",
+      "uuid": "8a4f0d0c-523b-4862-ae4a-4610b634bab0",
+      "jobAdId": "ebb72319-63f8-4301-a562-5ce8a83156f5",
+      "defaultJobAd": true,
+      "refNumber": "REF1964N",
+      "company": {
+        "identifier": "smartrecruiters",
+        "name": "SmartRecruiters Inc"
+      },
+      "releasedDate": "2026-06-30T01:06:01.967Z",
+      "location": {
+        "city": "United States",
+        "region": "REMOTE",
+        "country": "us",
+        "remote": true,
+        "hybrid": false,
+        "fullLocation": "United States, REMOTE, United States"
+      },
+      "industry": {
+        "id": "computer_software",
+        "label": "Computer Software"
+      },
+      "department": {
+        "id": "18588",
+        "label": "Product"
+      },
+      "function": {
+        "id": "product_management",
+        "label": "Product Management"
+      },
+      "typeOfEmployment": {
+        "id": "permanent",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "mid_senior_level",
+        "label": "Mid-Senior Level"
+      },
+      "customField": [
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98ee",
+          "fieldLabel": "Department",
+          "valueId": "18588",
+          "valueLabel": "Product"
+        },
+        {
+          "fieldId": "68f89f37181dbd53b2d51cc1",
+          "fieldLabel": "SAP Cost Center",
+          "valueId": "ba157432-e80f-4d30-a804-9b0165cad286",
+          "valueLabel": "541000401"
+        },
+        {
+          "fieldId": "COUNTRY",
+          "fieldLabel": "Country/Region",
+          "valueId": "us",
+          "valueLabel": "United States"
+        },
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98eb",
+          "fieldLabel": "Brands",
+          "valueId": "default",
+          "valueLabel": "SmartRecruiters Inc"
+        },
+        {
+          "fieldId": "617043f52193e5503b7715c3",
+          "fieldLabel": "SR Cost Center",
+          "valueId": "28762632-62b0-4a82-98b9-431e7115bf3a",
+          "valueLabel": "4.01 R&D Product"
+        }
+      ],
+      "visibility": "PUBLIC",
+      "ref": "https://api.smartrecruiters.com/v1/companies/SmartRecruiters/postings/744000134902606",
+      "language": {
+        "code": "en",
+        "label": "English",
+        "labelNative": "English (US)"
+      }
+    },
+    {
+      "id": "744000134903039",
+      "name": "Senior Product Manager (Career Sites)",
+      "uuid": "955ca410-7af9-4c15-8926-4f04ce8d11ee",
+      "jobAdId": "cd7c21d5-1a85-46a0-b71b-0ced4879d4ba",
+      "defaultJobAd": false,
+      "refNumber": "REF1964N",
+      "company": {
+        "identifier": "smartrecruiters",
+        "name": "SmartRecruiters Inc"
+      },
+      "releasedDate": "2026-06-30T01:04:42.299Z",
+      "location": {
+        "city": "United Kingdom",
+        "region": "REMOTE",
+        "country": "gb",
+        "remote": true,
+        "hybrid": false,
+        "fullLocation": "United Kingdom, REMOTE, United Kingdom"
+      },
+      "industry": {
+        "id": "computer_software",
+        "label": "Computer Software"
+      },
+      "department": {
+        "id": "18588",
+        "label": "Product"
+      },
+      "function": {
+        "id": "product_management",
+        "label": "Product Management"
+      },
+      "typeOfEmployment": {
+        "id": "permanent",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "mid_senior_level",
+        "label": "Mid-Senior Level"
+      },
+      "customField": [
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98ee",
+          "fieldLabel": "Department",
+          "valueId": "18588",
+          "valueLabel": "Product"
+        },
+        {
+          "fieldId": "68f89f37181dbd53b2d51cc1",
+          "fieldLabel": "SAP Cost Center",
+          "valueId": "ba157432-e80f-4d30-a804-9b0165cad286",
+          "valueLabel": "541000401"
+        },
+        {
+          "fieldId": "COUNTRY",
+          "fieldLabel": "Country/Region",
+          "valueId": "us",
+          "valueLabel": "United States"
+        },
+        {
+          "fieldId": "58b7e4d6e4b0885c92cd98eb",
+          "fieldLabel": "Brands",
+          "valueId": "default",
+          "valueLabel": "SmartRecruiters Inc"
+        },
+        {
+          "fieldId": "617043f52193e5503b7715c3",
+          "fieldLabel": "SR Cost Center",
+          "valueId": "28762632-62b0-4a82-98b9-431e7115bf3a",
+          "valueLabel": "4.01 R&D Product"
+        }
+      ],
+      "visibility": "PUBLIC",
+      "ref": "https://api.smartrecruiters.com/v1/companies/SmartRecruiters/postings/744000134903039",
+      "language": {
+        "code": "en",
+        "label": "English",
+        "labelNative": "English (US)"
+      }
+    }
+  ],
+  "totalFound": 5,
+  "limit": 100,
+  "offset": 0
+}

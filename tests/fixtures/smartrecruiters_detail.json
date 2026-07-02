@@ -1,0 +1,114 @@
+{
+  "id": "744000132911099",
+  "name": "Senior AI Engineer",
+  "uuid": "e80cdb77-be80-43b9-87f7-41d5f91cb6c3",
+  "jobId": "a7af90e2-3680-486a-9b2b-a69d28fa2f9b",
+  "jobAdId": "28701fe8-9e63-4131-9dd3-85af3a4cbde2",
+  "defaultJobAd": false,
+  "refNumber": "REF1915U",
+  "company": {
+    "name": "SmartRecruiters Inc",
+    "identifier": "smartrecruiters"
+  },
+  "location": {
+    "city": "United Kingdom",
+    "region": "REMOTE",
+    "country": "gb",
+    "remote": true,
+    "hybrid": false,
+    "fullLocation": "United Kingdom, REMOTE, United Kingdom"
+  },
+  "customField": [
+    {
+      "fieldId": "58b7e4d6e4b0885c92cd98ee",
+      "fieldLabel": "Department",
+      "valueId": "5408693",
+      "valueLabel": "Engineering"
+    },
+    {
+      "fieldId": "68f89f37181dbd53b2d51cc1",
+      "fieldLabel": "SAP Cost Center",
+      "valueId": "d2acbef5-f31a-44a7-b0a9-428a575ee04e",
+      "valueLabel": "545000402"
+    },
+    {
+      "fieldId": "COUNTRY",
+      "fieldLabel": "Country/Region",
+      "valueId": "pl",
+      "valueLabel": "Poland"
+    },
+    {
+      "fieldId": "58b7e4d6e4b0885c92cd98eb",
+      "fieldLabel": "Brands",
+      "valueId": "default",
+      "valueLabel": "SmartRecruiters Inc"
+    },
+    {
+      "fieldId": "617043f52193e5503b7715c3",
+      "fieldLabel": "SR Cost Center",
+      "valueId": "77294d81-1838-4947-ba83-5f810b1ca28a",
+      "valueLabel": "4.02 R&D Engineering"
+    },
+    {
+      "fieldId": "627035b6330a2b4d25aa0882",
+      "fieldLabel": "Career Site Department Labels",
+      "valueId": "ff7b8056-0f7d-4647-aee0-6207b0c564e5",
+      "valueLabel": "Engineering"
+    }
+  ],
+  "releasedDate": "2026-06-18T16:11:52.116Z",
+  "creator": {
+    "name": "",
+    "avatarUrl": ""
+  },
+  "postingUrl": "https://jobs.smartrecruiters.com/smartrecruiters/744000132911099-senior-ai-engineer",
+  "applyUrl": "https://jobs.smartrecruiters.com/smartrecruiters/744000132911099-senior-ai-engineer?oga=true",
+  "referralUrl": "https://jobs.smartrecruiters.com/external-referrals/company/smartrecruiters/publication/e80cdb77-be80-43b9-87f7-41d5f91cb6c3?dcr_ci=smartrecruiters",
+  "jobAd": {
+    "sections": {
+      "companyDescription": {
+        "title": "Company Description",
+        "text": "<p>SmartRecruiters is the Recruiting AI Company that transforms hiring for the world\u2019s leading enterprises. Built for global scale, SmartRecruiters, an SAP company, delivers an AI-powered hiring platform that automates and optimizes the entire talent acquisition process, ensuring faster and smarter hiring decisions. More than 4,000 companies, including Amazon, Visa, and McDonald's, rely on SmartRecruiters to build winning teams. In 2025, SmartRecruiters joined SAP, the global leader in enterprise applications. Together, SmartRecruiters and SAP are accelerating the reinvention of hiring by combining cutting-edge AI innovation with the scale, reach, and resources of SAP\u2019s ecosystem.<br>\n<br>\nAt SmartRecruiters, we are a values-driven, globally focused tech company with strong financial backing and a bold vision for the future of work. We commit and dig deep, embracing challenges with grit, curiosity, and a drive for excellence. We foster a collaborative and inclusive work environment, where trust and determination bring us together. Because together, we will win.<br>\n<br>\nRecognized by Fosway Industry Analysts as a strategic leader in recruitment technology for three consecutive years, and awarded by Comparably as a top company for Women, Perks and Benefits, Work-Life Balance, Happiness, Compensation, Diversity, and Culture - we take pride in creating a place where everyone can thrive. Our remote-friendly culture, competitive salaries, and strong internal mobility ensure that high performers have meaningful growth opportunities in an environment built on respect and empowerment.</p>"
+      },
+      "jobDescription": {
+        "title": "Job Description",
+        "text": "<p>We are looking for a <strong>Senior AI Engineer </strong>to join our Chat Group, where we\u2019re building the next generation of intelligent conversational systems for the recruiting industry.</p><p>Our mission is bold yet simple: boost the efficiency of recruiting and hiring teams and deliver the most personalized experience ever - powered by cutting-edge ML, NLP, and agentic AI.</p><p>You\u2019ll play a central role in designing and developing agentic workflows, where autonomous AI agents collaborate, reason, and act to deliver intelligent and context-aware recruiting experiences at scale<strong>.</strong></p><p>At SmartRecruiters, you\u2019ll be part of a global, high-impact team shaping how people connect with jobs.<br>\nYou\u2019ll work with passionate peers across Germany, Poland, the UK, and the US - in a culture that values autonomy, innovation, and measurable outcomes.</p><p><strong>Want to know what it's really like to work in this team?</strong>&#xa0;Read our interview with Matteo Sumberaz, Senior Engineering Manager. He shares what a typical week looks like, what strong candidates do differently, and what you'd be working on in your first 90 days -&gt;&#xa0;<a href=\"https://www.smartrecruiterscareers.com/blog/2026-5/inside-the-team-hiring-senior-ai-engineers\" rel=\"noopener noreferrer\">LINK</a>.</p><p><strong>We\u2019re not just building chat systems - we\u2019re building the AI recruiting assistants of the future.</strong></p><p><strong>What You\u2019ll Do</strong></p><ul><li>Architect and build agentic workflows that combine large language models, reasoning components, and data pipelines to create adaptive, goal-driven conversational systems</li><li>Lead the design and development of advanced ML/NLP products, from ideation to production -&#xa0;including model training, evaluation, optimization, and deployment</li><li>Drive experimentation with new approaches for agentic reasoning, coordination, and autonomous system design</li><li>Collaborate closely with product and engineering teams to integrate intelligent agents into real-world recruiting workflows</li><li>Guide technical decisions, mentor other engineers, and help define best practices for scalable, maintainable ML systems</li><li>Contribute to the evolution of our NLP and conversational intelligence stack, focusing on reliability, personalization, and user impact</li><li>Proactively identify opportunities to automate, improve, and innovate within our chat-based ecosystem</li></ul>"
+      },
+      "qualifications": {
+        "title": "Qualifications",
+        "text": "<ul><li>BSc or MSc in Computer Science, Machine Learning, AI, NLP, or a related technical field -&#xa0;or equivalent practical experience</li><li>5+ years of experience developing and deploying machine learning systems in production</li><li>Proven expertise in NLP techniques, LLM fine-tuning, and model evaluation</li><li>Strong proficiency with deep learning frameworks (e.g., PyTorch, TensorFlow) and ML tools (e.g., scikit-learn, Hugging Face)</li><li>Advanced Python programming skills and solid software engineering fundamentals</li><li>Experience designing and maintaining end-to-end ML pipelines, from data ingestion to deployment</li><li>Hands-on experience with agentic workflows or building autonomous AI systems is a major plus</li><li>Familiarity with chatbots, conversational AI, or multi-agent systems is strongly preferred</li><li>Experience with data quality management, evaluation metrics, or observability in ML systems is a plus</li><li>Strong analytical thinking, creativity, and an ownership mindset</li><li>Excellent communication and collaboration skills in a cross-functional, international environment</li><li>Fluency in English, both written and spoken</li></ul>"
+      },
+      "additionalInformation": {
+        "title": "Additional Information",
+        "text": "<p>SmartRecruiters is proud to be an Equal Employment Opportunity employer. We do not discriminate based upon race, religion, color, national origin, gender (including pregnancy, childbirth, or related medical conditions), sexual orientation, gender identity, gender expression, age, status as a protected veteran, status as an individual with a disability, or other applicable legally protected characteristics.</p>"
+      }
+    }
+  },
+  "active": true,
+  "visibility": "PUBLIC",
+  "industry": {
+    "id": "computer_software",
+    "label": "Computer Software"
+  },
+  "function": {
+    "id": "engineering",
+    "label": "Engineering"
+  },
+  "department": {
+    "id": 5408693,
+    "label": "Engineering"
+  },
+  "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+  },
+  "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+  },
+  "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+  }
+}
