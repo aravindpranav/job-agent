@@ -59,8 +59,9 @@ python -m job_agent
 Fetches live jobs from the boards in `search_profile.yaml`, filters to the last
 24 hours, scores each survivor with the LLM, and prints them ranked.
 
-Useful flags: `--profile PATH`, `--limit N`, and `--method {structured,tool}`
-(how the model is asked to return JSON — see *Scoring* below).
+Useful flags: `--profile PATH`, `--limit N`, `--max-age-hours N` (freshness
+window, default 24), and `--method {structured,tool}` (how the model is asked to
+return JSON — see *Scoring* below).
 
 ## How it works
 

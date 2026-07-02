@@ -81,13 +81,14 @@ def passes_location(job: Job, profile: SearchProfile) -> bool:
     return True
 
 
-def is_fresh(job: Job, now: datetime, cache: SeenCache) -> bool:
+def is_fresh(job: Job, now: datetime, cache: SeenCache,
+             window: timedelta = FRESH_WINDOW) -> bool:
     """Posted within the freshness window. Jobs without a post date fall back to
     'first observed within the window' via the seen-ids cache."""
     reference = job.posted_at or cache.observe(job.source, job.id, now)
     if reference.tzinfo is None:
         reference = reference.replace(tzinfo=timezone.utc)
-    return (now - reference) <= FRESH_WINDOW
+    return (now - reference) <= window
 
 
 def run(
@@ -95,6 +96,7 @@ def run(
     *,
     seen_cache: SeenCache,
     now: datetime | None = None,
+    fresh_window: timedelta = FRESH_WINDOW,
     source_factory=build_source,
 ) -> SearchOutcome:
     """Execute the pipeline for a profile and return survivors + stage counts."""
@@ -126,8 +128,8 @@ def run(
     kept = [(j, lbl) for (j, lbl) in all_jobs if matches_keywords(j.title, profile.keywords)]
     after_keyword = len(kept)
 
-    # Stage 2: 24h freshness.
-    kept = [(j, lbl) for (j, lbl) in kept if is_fresh(j, now, seen_cache)]
+    # Stage 2: freshness (default 24h).
+    kept = [(j, lbl) for (j, lbl) in kept if is_fresh(j, now, seen_cache, fresh_window)]
     after_fresh = len(kept)
     seen_cache.save()
 

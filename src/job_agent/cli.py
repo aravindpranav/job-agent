@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from rich.console import Console
@@ -40,6 +40,8 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Run against bundled mock jobs (no API key, no network).")
     parser.add_argument("--profile", default="search_profile.yaml",
                         help="Path to the search profile YAML (real runs only).")
+    parser.add_argument("--max-age-hours", type=int, default=24,
+                        help="Freshness window in hours (default: 24).")
     parser.add_argument("--method", choices=["structured", "tool"], default="structured",
                         help="LLM output method for scoring (default: structured).")
     parser.add_argument("--limit", type=int, default=None,
@@ -47,11 +49,11 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _print_pipeline_summary(console: Console, outcome: SearchOutcome) -> None:
+def _print_pipeline_summary(console: Console, outcome: SearchOutcome, age_hours: int) -> None:
     c = outcome.counts
     console.print(
         f"[bold]Pipeline:[/bold] fetched {c.fetched} → keyword {c.after_keyword} "
-        f"→ 24h {c.after_fresh} → location {c.after_location} → dedup {c.after_dedup}"
+        f"→ {age_hours}h {c.after_fresh} → location {c.after_location} → dedup {c.after_dedup}"
     )
     if outcome.per_source:
         per = ", ".join(f"{k}: {v}" for k, v in outcome.per_source.items())
@@ -104,9 +106,10 @@ def run_demo(console: Console, args: argparse.Namespace) -> int:
         profile,
         seen_cache=cache,
         now=now,
+        fresh_window=timedelta(hours=args.max_age_hours),
         source_factory=lambda ats, board: DemoSource(board, now),
     )
-    _print_pipeline_summary(console, outcome)
+    _print_pipeline_summary(console, outcome, args.max_age_hours)
     scored = score_demo(outcome.jobs, profile)
     _print_ranked_table(console, scored, args.limit)
     return 0
@@ -126,8 +129,9 @@ def run_real(console: Console, args: argparse.Namespace) -> int:
 
     console.print(f"[bold cyan]job-agent[/bold cyan] — scoring with {settings.model}\n")
     cache = SeenCache(settings.data_dir / "seen.json")
-    outcome = search.run(profile, seen_cache=cache)
-    _print_pipeline_summary(console, outcome)
+    outcome = search.run(profile, seen_cache=cache,
+                         fresh_window=timedelta(hours=args.max_age_hours))
+    _print_pipeline_summary(console, outcome, args.max_age_hours)
     if not outcome.jobs:
         _print_ranked_table(console, [], args.limit)
         return 0
