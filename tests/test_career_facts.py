@@ -37,3 +37,10 @@ def test_invalid_facts_raise(tmp_path):
 def test_missing_file_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         load_career_facts(tmp_path / "nope.yaml")
+
+
+def test_norm_treats_ampersand_and_punctuation_as_same_identity():
+    from job_agent.tailor.textnorm import norm
+    # '&' vs 'and', trailing period, en-dash — all cosmetic, same identity.
+    assert norm("JPMorgan Chase & Co.") == norm("JPMorgan Chase and Co")
+    assert norm("Jul 2024 – Present") == norm("Jul 2024 - Present")

@@ -18,8 +18,13 @@ _QUOTE_MD = re.compile(r"^\s*>\s?")
 
 
 def norm(text: str) -> str:
-    """Case-, whitespace-, and dash-insensitive key for comparing fixed facts."""
-    return " ".join(text.translate(_DASHES).split()).strip().lower()
+    """Comparison key for fixed facts: case-, whitespace-, and dash-insensitive,
+    with '&'≡'and' and periods/commas dropped (cosmetic differences a model may
+    introduce without changing the employer's identity, e.g. 'Chase & Co.' vs
+    'Chase and Co')."""
+    text = text.translate(_DASHES).replace("&", " and ")
+    text = re.sub(r"[.,]", " ", text)
+    return " ".join(text.split()).strip().lower()
 
 
 def strip_markdown(line: str) -> str:

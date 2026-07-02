@@ -32,7 +32,7 @@ FORMAT:
 - Header: line 1 is my Name only; line 2 is exactly "email | phone". No title line, no tagline, no marketing subtitle.
 - Section headings in ALL CAPS, exactly: PROFESSIONAL SUMMARY, TECHNICAL SKILLS, PROFESSIONAL EXPERIENCE, EDUCATION, CERTIFICATIONS. No other sections, no reordering.
 - TECHNICAL SKILLS: render as category lines "Category: value, value, value" (comma-separated). Do NOT use tables, pipe characters (|), or bullet lists for skills.
-- PROFESSIONAL EXPERIENCE: each role has Role:, Company:, Project Description:, Duration:, then Responsibilities: bullets and Achievements: bullets, each bullet starting with a real bullet character.
+- PROFESSIONAL EXPERIENCE: each role has Role:, Company:, Project Description:, Duration:, then Responsibilities: bullets and Achievements: bullets, each bullet starting with a real bullet character. Write each company name and title EXACTLY as given in my career facts.
 - Do NOT use em-dashes or en-dashes anywhere. Use commas, periods, or parentheses. Dates use "Mon YYYY - Mon YYYY" or "Mon YYYY - Present".
 - Do NOT output separator lines (e.g. "- --", "----"). Separate sections with a blank line only.
 - Bullets are factual statements of what was built or done. Do NOT editorialize or add flattery: never write phrases like "directly applicable to <product>", "mirroring the <company> philosophy", "demonstrating the <X> required", or "matching the role's <Y>". State the work, not why it fits.
