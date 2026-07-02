@@ -47,6 +47,15 @@ def test_trim_to_caps_limits_bullets_per_section():
     assert out.count("- s") == 4   # older role responsibilities capped at 4
 
 
+def test_drop_last_responsibility_only_touches_responsibilities():
+    from job_agent.tailor.render_pdf import drop_last_responsibility
+    txt = ("Role: A\nCompany: B\nDuration: d\nResponsibilities:\n- r0\n- r1\n- r2\n"
+           "Achievements:\n- a0\n- a1\nEDUCATION\nx")
+    out = drop_last_responsibility(txt)
+    assert out.count("- r") == 2      # one responsibility dropped (3 -> 2)
+    assert out.count("- a") == 2      # achievements untouched
+
+
 def test_pdf_missing_standard_section_is_rejected(tmp_path):
     incomplete = ("Jordan Rivers\ne | p\nPROFESSIONAL SUMMARY\nx\n"
                   "TECHNICAL SKILLS\nx\nPROFESSIONAL EXPERIENCE\nx\nEDUCATION\nx\n")  # no Certifications

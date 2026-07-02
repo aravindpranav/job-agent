@@ -70,13 +70,57 @@ def _canonical_heading(line: str) -> str | None:
 
 
 def clean_resume_text(text: str) -> str:
-    """Remove em-dashes and separator lines the model may emit (safety net)."""
+    """Remove em-dashes and separator lines, and tighten blank-line padding the
+    model adds between bullets (so the résumé doesn't run long)."""
     text = text.replace(" — ", ", ").replace("—", ", ").replace("−", "-")
     text = re.sub(r"\s–\s", " - ", text).replace("–", "-")
-    kept = [ln for ln in text.splitlines() if not _SEPARATOR.fullmatch(ln.strip())]
-    out = "\n".join(kept)
+    lines = [ln for ln in text.splitlines() if not _SEPARATOR.fullmatch(ln.strip())]
+
+    tight: list[str] = []
+    for i, ln in enumerate(lines):
+        if not ln.strip():
+            prev = tight[-1].strip() if tight else ""
+            nxt = next((s.strip() for s in lines[i + 1:] if s.strip()), "")
+            if not prev:
+                continue                                   # collapse consecutive/leading blanks
+            if prev[:1] in "-•*" or nxt[:1] in "-•*":
+                continue                                   # no blank line around bullets
+        tight.append(ln)
+
+    out = "\n".join(tight)
     out = re.sub(r",\s*,", ",", out)
     return re.sub(r"[ \t]{2,}", " ", out)
+
+
+_RESP_FLOOR = 2  # never trim a role below this many responsibility bullets when fitting pages
+
+
+def drop_last_responsibility(resume_text: str) -> str:
+    """Drop one responsibility bullet — the last (least JD-relevant) one of the
+    role that currently has the most — without touching achievements. Used to fit
+    the résumé to two pages. Returns the text unchanged if nothing is droppable."""
+    lines = resume_text.splitlines()
+    roles: list[list[int]] = []
+    role_idx, section = -1, None
+    for i, raw in enumerate(lines):
+        line = strip_markdown(raw)
+        if re.match(r"(?i)^Role:", line):
+            role_idx += 1
+            roles.append([])
+            section = None
+        elif re.match(r"(?i)^Responsibilities:", line):
+            section = "resp"
+        elif re.match(r"(?i)^Achievements:", line) or _canonical_heading(line):
+            section = None
+        elif section == "resp" and raw.strip()[:1] in "-•*":
+            roles[role_idx].append(i)
+
+    candidates = [(len(idx), ri) for ri, idx in enumerate(roles) if len(idx) > _RESP_FLOOR]
+    if not candidates:
+        return resume_text
+    _, ri = max(candidates)
+    drop = roles[ri][-1]
+    return "\n".join(ln for j, ln in enumerate(lines) if j != drop)
 
 
 def trim_to_caps(resume_text: str) -> str:
@@ -122,15 +166,15 @@ def normalize_header(resume_text: str, name: str, email: str, phone: str) -> str
 
 
 def _styles() -> dict[str, ParagraphStyle]:
-    base = ParagraphStyle("body", fontName=FONT, fontSize=10, leading=13.5)
+    base = ParagraphStyle("body", fontName=FONT, fontSize=9.5, leading=12)
     return {
-        "name": ParagraphStyle("name", parent=base, fontName=FONT_BOLD, fontSize=17, spaceAfter=1),
-        "contact": ParagraphStyle("contact", parent=base, fontSize=10, spaceAfter=4),
-        "heading": ParagraphStyle("heading", parent=base, fontName=FONT_BOLD, fontSize=11.5,
-                                  spaceBefore=9, spaceAfter=1),
+        "name": ParagraphStyle("name", parent=base, fontName=FONT_BOLD, fontSize=15, spaceAfter=1),
+        "contact": ParagraphStyle("contact", parent=base, fontSize=9.5, spaceAfter=3),
+        "heading": ParagraphStyle("heading", parent=base, fontName=FONT_BOLD, fontSize=11,
+                                  spaceBefore=6, spaceAfter=1),
         "body": base,
-        "bullet": ParagraphStyle("bullet", parent=base, leftIndent=14, firstLineIndent=-9,
-                                 spaceAfter=1.5),
+        "bullet": ParagraphStyle("bullet", parent=base, leftIndent=13, firstLineIndent=-9,
+                                 spaceAfter=1),
     }
 
 
@@ -195,8 +239,8 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
 
     SimpleDocTemplate(
         str(out_path), pagesize=letter,
-        leftMargin=0.7 * inch, rightMargin=0.7 * inch,
-        topMargin=0.6 * inch, bottomMargin=0.6 * inch, title="Resume",
+        leftMargin=0.6 * inch, rightMargin=0.6 * inch,
+        topMargin=0.5 * inch, bottomMargin=0.5 * inch, title="Resume",
     ).build(flow)
     return out_path
 

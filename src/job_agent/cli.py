@@ -34,6 +34,7 @@ from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.jd_fetch import get_full_jd
 from job_agent.tailor.render_pdf import (
     clean_resume_text,
+    drop_last_responsibility,
     normalize_header,
     render_docx,
     render_pdf,
@@ -179,14 +180,30 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
     out_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = out_dir / f"{filename}.pdf"
     docx_path = out_dir / f"{filename}.docx"
+
+    # Fit to 2 pages: render, and while it runs long drop the least-relevant
+    # responsibility bullet (never an achievement/metric) and re-render.
     render_pdf(face, pdf_path)
+    pages = pdf_page_count(pdf_path)
+    dropped = 0
+    for _ in range(30):
+        if pages <= 2:
+            break
+        trimmed = drop_last_responsibility(face)
+        if trimmed == face:
+            break  # at the floor; can't trim further
+        face, dropped = trimmed, dropped + 1
+        render_pdf(face, pdf_path)
+        pages = pdf_page_count(pdf_path)
+    if dropped:
+        console.print(f"[dim]Trimmed {dropped} least-relevant bullet(s) to fit 2 pages.[/dim]")
+
     render_docx(face, docx_path)
     try:
         sections = verify_pdf(pdf_path)
     except PdfVerifyError as exc:
         console.print(f"[red]PDF verification failed:[/red] {exc}")
         return 1
-    pages = pdf_page_count(pdf_path)
     console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)} "
                   f"([bold]{pages} page{'s' if pages != 1 else ''}[/bold])")
     console.print(f"[bold]PDF:[/bold] {pdf_path}\n[bold]DOCX:[/bold] {docx_path}")
