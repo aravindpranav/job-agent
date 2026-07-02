@@ -41,6 +41,7 @@ class SearchOutcome(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     jobs: list[Job]
+    boards: list[str]                    # board token per job (parallel to jobs)
     counts: StageCounts
     per_source: dict[str, int]           # board label -> jobs fetched
     warnings: list[str] = []             # source failures, etc. (never fatal)
@@ -149,7 +150,9 @@ def run(
 
     # Enrich only the final survivors (e.g. SmartRecruiters detail fetch).
     enriched: list[Job] = []
+    boards: list[str] = []
     for job, lbl in deduped:
+        boards.append(lbl.split("/", 1)[1] if "/" in lbl else lbl)
         try:
             enriched.append(sources[lbl].enrich(job))
         except Exception as exc:  # enrichment is best-effort
@@ -158,6 +161,7 @@ def run(
 
     return SearchOutcome(
         jobs=enriched,
+        boards=boards,
         counts=StageCounts(
             fetched=len(all_jobs),
             after_keyword=after_keyword,
