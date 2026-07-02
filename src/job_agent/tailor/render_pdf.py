@@ -1,10 +1,15 @@
-"""Render tailored resume text into an ATS-safe PDF (and an editable .docx).
+"""Render tailored resume text into a clean, ATS-safe PDF and matching .docx.
 
-ATS constraints enforced here: single column (one text frame, no tables / text
-boxes / images / icons), a standard built-in font (Helvetica) with real
-selectable text, the exact standard section headings, real bullet characters,
-sane margins, black text on white. The output is verified by re-extracting its
-text in verify.py — a PDF that fails extraction is a failed build.
+Format (mirrors a clean single-column reference resume):
+- Header: Name on line 1; "email | phone" on line 2. No tagline.
+- CAPS section headings (PROFESSIONAL SUMMARY, …) each under a thin rule.
+- Technical Skills as "Category: value, value" lines (no tables/pipes).
+- Experience blocks: Role/Company/Project Description/Duration, then bullets.
+- Real "•" bullets that EXTRACT as text — achieved with an embedded Unicode font
+  (DejaVu Sans, bundled) since reportlab's base-14 Helvetica can't map "•" for
+  extraction. No em-dashes, no separator lines, black text on white.
+
+The PDF's text is verified (verify.py) to be selectable with sections in order.
 """
 
 from __future__ import annotations
@@ -13,14 +18,29 @@ import re
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
 
 from job_agent.tailor.textnorm import strip_markdown
 
-# The five standard headings, in the order ATS parsers expect them.
+_ASSETS = Path(__file__).resolve().parent / "assets"
+FONT, FONT_BOLD = "DejaVuSans", "DejaVuSans-Bold"
+_FONTS_READY = False
+
+
+def _ensure_fonts() -> None:
+    global _FONTS_READY
+    if not _FONTS_READY:
+        pdfmetrics.registerFont(TTFont(FONT, str(_ASSETS / "DejaVuSans.ttf")))
+        pdfmetrics.registerFont(TTFont(FONT_BOLD, str(_ASSETS / "DejaVuSans-Bold.ttf")))
+        _FONTS_READY = True
+
+
 CANONICAL_HEADINGS = [
     "Professional Summary",
     "Technical Skills",
@@ -33,48 +53,52 @@ _SUBLABELS = re.compile(
     r"^(Role|Company|Project Description|Duration|Responsibilities|Achievements):\s*(.*)$",
     re.IGNORECASE,
 )
-
-
-# Built-in Helvetica can't render some Unicode punctuation; map it to ASCII so the
-# PDF keeps standard-font, selectable text. Only affects the rendered file, never
-# the resume_text the no-drift gate inspects.
-_ASCII_MAP = {
-    "→": "->", "⟶": "->", "⇒": "=>", "←": "<-", "↔": "<->",
-    "✓": "[x]", "✗": "[ ]", "★": "*", "☆": "*",
-    "…": "...", " ": " ", "‘": "'", "’": "'",
-    "“": '"', "”": '"',
-}
-
-
-def _sanitize(text: str) -> str:
-    for uni, ascii_ in _ASCII_MAP.items():
-        text = text.replace(uni, ascii_)
-    return text
+_CATEGORY = re.compile(r"^([A-Za-z][A-Za-z0-9 &/+\-]{1,44}):\s+(\S.*)$")
+_SEPARATOR = re.compile(r"^[\-_.=|*·•\s]+$")  # a line that is only rule/separator chars
 
 
 def _canonical_heading(line: str) -> str | None:
     return _HEADING_LOOKUP.get(line.strip().rstrip(":").strip().lower())
 
 
+def clean_resume_text(text: str) -> str:
+    """Remove em-dashes and separator lines the model may emit (safety net)."""
+    text = text.replace(" — ", ", ").replace("—", ", ").replace("−", "-")
+    text = re.sub(r"\s–\s", " - ", text).replace("–", "-")
+    kept = [ln for ln in text.splitlines() if not _SEPARATOR.fullmatch(ln.strip())]
+    out = "\n".join(kept)
+    out = re.sub(r",\s*,", ",", out)
+    return re.sub(r"[ \t]{2,}", " ", out)
+
+
+def normalize_header(resume_text: str, name: str, email: str, phone: str) -> str:
+    """Force the header to 'Name' / 'email | phone', dropping any model tagline."""
+    lines = resume_text.splitlines()
+    idx = next((i for i, ln in enumerate(lines)
+                if _canonical_heading(strip_markdown(ln))), 0)
+    body = "\n".join(lines[idx:]).lstrip("\n")
+    return f"{name}\n{email} | {phone}\n\n{body}"
+
+
 def _styles() -> dict[str, ParagraphStyle]:
-    base = ParagraphStyle("body", fontName="Helvetica", fontSize=10, leading=13.5)
+    base = ParagraphStyle("body", fontName=FONT, fontSize=10, leading=13.5)
     return {
-        "name": ParagraphStyle("name", parent=base, fontName="Helvetica-Bold",
-                               fontSize=16, spaceAfter=2),
-        "contact": ParagraphStyle("contact", parent=base, fontSize=10, spaceAfter=6),
-        "heading": ParagraphStyle("heading", parent=base, fontName="Helvetica-Bold",
-                                  fontSize=12, spaceBefore=10, spaceAfter=3),
+        "name": ParagraphStyle("name", parent=base, fontName=FONT_BOLD, fontSize=17, spaceAfter=1),
+        "contact": ParagraphStyle("contact", parent=base, fontSize=10, spaceAfter=4),
+        "heading": ParagraphStyle("heading", parent=base, fontName=FONT_BOLD, fontSize=11.5,
+                                  spaceBefore=9, spaceAfter=1),
         "body": base,
-        "bullet": ParagraphStyle("bullet", parent=base, leftIndent=14,
-                                 firstLineIndent=-8, spaceAfter=1),
+        "bullet": ParagraphStyle("bullet", parent=base, leftIndent=14, firstLineIndent=-9,
+                                 spaceAfter=1.5),
     }
 
 
 def _parse_lines(resume_text: str):
-    """Yield (kind, text) tuples describing each line for rendering."""
+    """Yield (kind, payload) describing each line, tracking the current section."""
     meaningful = 0
+    section = None
     for raw in resume_text.splitlines():
-        line = strip_markdown(raw)  # models add **bold**/## that must not leak into the PDF
+        line = strip_markdown(raw)
         if not line:
             yield ("blank", "")
             continue
@@ -84,55 +108,60 @@ def _parse_lines(resume_text: str):
         elif meaningful == 2:
             yield ("contact", line)
         elif (heading := _canonical_heading(line)):
-            yield ("heading", heading)
+            section = heading
+            yield ("heading", heading.upper())
         elif line[0] in "-•*":
             yield ("bullet", line[1:].strip())
         elif (m := _SUBLABELS.match(line)):
-            yield ("label", f"{m.group(1)}:\t{m.group(2)}")
+            yield ("label", (m.group(1), m.group(2)))
+        elif section == "Technical Skills" and (m := _CATEGORY.match(line)):
+            yield ("category", (m.group(1), m.group(2)))
         else:
             yield ("body", line)
 
 
 def render_pdf(resume_text: str, out_path: str | Path) -> Path:
-    """Write an ATS-safe single-column PDF. Returns the path."""
+    """Write the ATS-safe single-column PDF. Returns the path."""
+    _ensure_fonts()
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     styles = _styles()
     flow = []
-    for kind, text in _parse_lines(resume_text):
-        text = _sanitize(text)
+    for kind, payload in _parse_lines(resume_text):
         if kind == "blank":
-            flow.append(Spacer(1, 5))
+            flow.append(Spacer(1, 4))
         elif kind == "name":
-            flow.append(Paragraph(escape(text), styles["name"]))
+            flow.append(Paragraph(escape(payload), styles["name"]))
         elif kind == "contact":
-            flow.append(Paragraph(escape(text), styles["contact"]))
+            flow.append(Paragraph(escape(payload), styles["contact"]))
         elif kind == "heading":
-            flow.append(Paragraph(escape(text), styles["heading"]))
+            flow.append(Paragraph(escape(payload), styles["heading"]))
+            flow.append(HRFlowable(width="100%", thickness=0.6, color=colors.grey,
+                                   spaceBefore=1, spaceAfter=4))
         elif kind == "bullet":
-            # A hyphen bullet extracts as real text under the standard base-14
-            # font; the round "•" glyph does not (it comes out as (cid:127)), and
-            # embedding a custom font would break the standard-font rule.
-            flow.append(Paragraph("-&nbsp;" + escape(text), styles["bullet"]))
+            flow.append(Paragraph("• " + escape(payload), styles["bullet"]))
         elif kind == "label":
-            label, _, rest = text.partition("\t")
-            flow.append(Paragraph(f"<b>{escape(label)}</b> {escape(rest)}", styles["body"]))
+            label, rest = payload
+            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(rest)}", styles["body"]))
+        elif kind == "category":
+            label, values = payload
+            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", styles["body"]))
         else:
-            flow.append(Paragraph(escape(text), styles["body"]))
+            flow.append(Paragraph(escape(payload), styles["body"]))
 
-    doc = SimpleDocTemplate(
+    SimpleDocTemplate(
         str(out_path), pagesize=letter,
-        leftMargin=0.75 * inch, rightMargin=0.75 * inch,
-        topMargin=0.7 * inch, bottomMargin=0.7 * inch,
-        title="Resume",
-    )
-    doc.build(flow)
+        leftMargin=0.7 * inch, rightMargin=0.7 * inch,
+        topMargin=0.6 * inch, bottomMargin=0.6 * inch, title="Resume",
+    ).build(flow)
     return out_path
 
 
 def render_docx(resume_text: str, out_path: str | Path) -> Path:
     """Write an editable single-column .docx mirroring the PDF. Returns the path."""
     from docx import Document
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     from docx.shared import Pt
 
     out_path = Path(out_path)
@@ -142,29 +171,39 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
     normal.font.name = "Calibri"
     normal.font.size = Pt(10.5)
 
-    for kind, text in _parse_lines(resume_text):
+    def heading(text: str) -> None:
+        p = doc.add_paragraph()
+        run = p.add_run(text)
+        run.bold = True
+        run.font.size = Pt(11.5)
+        # thin rule = bottom border on the heading paragraph
+        pPr = p._p.get_or_add_pPr()
+        borders = OxmlElement("w:pBdr")
+        bottom = OxmlElement("w:bottom")
+        for k, v in (("w:val", "single"), ("w:sz", "6"), ("w:space", "1"), ("w:color", "888888")):
+            bottom.set(qn(k), v)
+        borders.append(bottom)
+        pPr.append(borders)
+
+    for kind, payload in _parse_lines(resume_text):
         if kind == "blank":
             continue
         if kind == "name":
             p = doc.add_paragraph()
-            run = p.add_run(text)
-            run.bold = True
-            run.font.size = Pt(16)
+            r = p.add_run(payload); r.bold = True; r.font.size = Pt(17)
         elif kind == "contact":
-            doc.add_paragraph(text)
+            doc.add_paragraph(payload)
         elif kind == "heading":
-            p = doc.add_paragraph()
-            p.add_run(text).bold = True
-            p.runs[0].font.size = Pt(12)
+            heading(payload)
         elif kind == "bullet":
-            doc.add_paragraph(f"• {text}")
-        elif kind == "label":
-            label, _, rest = text.partition("\t")
+            doc.add_paragraph(f"• {payload}")
+        elif kind in ("label", "category"):
+            label, rest = payload
             p = doc.add_paragraph()
-            p.add_run(label + " ").bold = True
+            p.add_run(f"{label}: ").bold = True
             p.add_run(rest)
         else:
-            doc.add_paragraph(text)
+            doc.add_paragraph(payload)
 
     doc.save(str(out_path))
     return out_path

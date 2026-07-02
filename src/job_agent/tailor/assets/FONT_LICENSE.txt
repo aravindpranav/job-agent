@@ -1,0 +1,4 @@
+DejaVu Sans fonts (DejaVuSans.ttf, DejaVuSans-Bold.ttf) are bundled to embed a
+real, text-extractable bullet glyph in the generated ATS PDF. DejaVu fonts are
+distributed under a permissive license (Bitstream Vera / DejaVu Fonts License),
+which allows redistribution. See https://dejavu-fonts.github.io/License.html

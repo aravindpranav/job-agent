@@ -23,6 +23,36 @@ TAILOR_MODEL = "claude-sonnet-4-6"
 
 MEGAPROMPT_PATH = Path(__file__).resolve().parents[3] / "prompts" / "tailor_megaprompt.txt"
 
+# Appended to the base mega prompt. This is authoritative and supersedes any
+# conflicting instruction above it (notably the base prompt's [METRIC …]
+# placeholder rule — the resume FACE must never carry a bracket).
+POLICY_ADDENDUM = """=== OUTPUT & METRIC POLICY (OVERRIDES ANY CONFLICTING INSTRUCTION ABOVE) ===
+
+FORMAT:
+- Header: line 1 is my Name only; line 2 is exactly "email | phone". No title line, no tagline, no marketing subtitle.
+- Section headings in ALL CAPS, exactly: PROFESSIONAL SUMMARY, TECHNICAL SKILLS, PROFESSIONAL EXPERIENCE, EDUCATION, CERTIFICATIONS. No other sections, no reordering.
+- TECHNICAL SKILLS: render as category lines "Category: value, value, value" (comma-separated). Do NOT use tables, pipe characters (|), or bullet lists for skills.
+- PROFESSIONAL EXPERIENCE: each role has Role:, Company:, Project Description:, Duration:, then Responsibilities: bullets and Achievements: bullets, each bullet starting with a real bullet character.
+- Do NOT use em-dashes or en-dashes anywhere. Use commas, periods, or parentheses. Dates use "Mon YYYY - Mon YYYY" or "Mon YYYY - Present".
+- Do NOT output separator lines (e.g. "- --", "----"). Separate sections with a blank line only.
+- Bullets are factual statements of what was built or done. Do NOT editorialize or add flattery: never write phrases like "directly applicable to <product>", "mirroring the <company> philosophy", "demonstrating the <X> required", or "matching the role's <Y>". State the work, not why it fits.
+
+METRICS (STRICT):
+- The resume FACE must contain ZERO placeholders. Never print a bracket such as [METRIC ...] or [ADD REAL METRIC] on the resume.
+- Use ONLY the real metrics listed under each employer's "Real metrics". Weave them naturally into Achievements.
+- If a role has no real metric, write a strong, specific QUALITATIVE achievement instead (what was delivered and its real impact) with no number and no bracket.
+- Keep Achievements to 2-3 per role, high-impact. Do not over-stuff numbers.
+- Never fabricate a number. If a real number would strengthen a bullet, do NOT put it on the resume; add ONE question to NOTES instead.
+
+CERTIFICATIONS:
+- Print exactly the certifications listed in my career facts, always. Never print "None" and never invent one. A JD-valued cert I do not hold goes under NOTES as "suggested to obtain" only.
+
+NOTES (a separate block after the resume, beginning with the word NOTES):
+- Real gaps versus the JD.
+- At most 2-3 questions asking me to supply a true figure (each naming the role and the metric).
+- Suggested certifications to obtain that I do not already hold.
+"""
+
 # Case-insensitive start of the trailing NOTES block.
 _NOTES_RE = re.compile(r"(?im)^[#*\s]*NOTES\b.*$")
 
@@ -125,7 +155,8 @@ def tailor_resume(
     * ``generate`` — inject a custom ``(system, user, settings) -> str`` (tests).
     * otherwise a real Sonnet call is made using ``settings``.
     """
-    system = megaprompt or load_megaprompt()
+    base = megaprompt if megaprompt is not None else load_megaprompt()
+    system = f"{base}\n\n{POLICY_ADDENDUM}"
     user = build_user_message(facts, jd_text)
 
     if stub_response is not None:

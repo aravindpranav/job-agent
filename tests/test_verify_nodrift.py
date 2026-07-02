@@ -9,7 +9,7 @@ import pytest
 import job_agent.tailor as tailor_pkg
 from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.tailor import TailorResult, tailor_resume
-from job_agent.tailor.verify import DriftError, verify_no_drift
+from job_agent.tailor.verify import DriftError, FormatError, verify_format, verify_no_drift
 
 DEMO = Path(tailor_pkg.__file__).parent / "demo"
 FACTS = load_career_facts(DEMO / "demo_career_facts.yaml")
@@ -21,11 +21,11 @@ def _mutated(resume_text: str) -> TailorResult:
     return TailorResult(resume_text=resume_text, notes=BASE.notes, raw=resume_text)
 
 
-def test_control_passes_and_surfaces_placeholder():
+def test_control_passes_both_gates_with_no_placeholders():
     report = verify_no_drift(BASE, FACTS)
     assert report.ok
-    assert report.placeholders  # the [METRIC — …] placeholder was detected
-    assert not report.placeholders_missing_from_notes  # and it's listed in NOTES
+    assert report.placeholders == ()      # policy: no [METRIC …] on the résumé face
+    verify_format(BASE, FACTS)            # must not raise
 
 
 def test_added_employer_is_rejected():
@@ -113,3 +113,31 @@ def test_unparseable_employers_fail_loudly_not_vacuously():
             "Certifications\nNone")
     with pytest.raises(DriftError, match="Could not find any employer"):
         verify_no_drift(_mutated(text), FACTS)
+
+
+# --- format gate ------------------------------------------------------------
+
+def test_format_gate_rejects_bracket_placeholder():
+    bad = BASE.resume_text.replace("Reduced pipeline runtime by 30%",
+                                   "Reduced pipeline runtime by [METRIC — runtime?]")
+    with pytest.raises(FormatError, match="[Bb]racket"):
+        verify_format(_mutated(bad), FACTS)
+
+
+def test_format_gate_rejects_em_dash():
+    bad = BASE.resume_text.replace("Acme Analytics", "Acme Analytics — West")
+    with pytest.raises(FormatError, match="[Ee]m-dash"):
+        verify_format(_mutated(bad), FACTS)
+
+
+def test_format_gate_rejects_pipe_table_line():
+    bad = BASE.resume_text.replace("Languages: Python, SQL",
+                                   "| Skill | Level |\n| Python | Expert |")
+    with pytest.raises(FormatError, match="[Pp]ipe"):
+        verify_format(_mutated(bad), FACTS)
+
+
+def test_format_gate_requires_certifications_printed():
+    bad = BASE.resume_text.replace("AWS Certified Data Engineer - Associate", "None")
+    with pytest.raises(FormatError, match="[Cc]ertification"):
+        verify_format(_mutated(bad), FACTS)

@@ -22,27 +22,21 @@ def test_pdf_has_selectable_text_and_sections_in_order(tmp_path):
     pdf = render_pdf(RESULT.resume_text, tmp_path / "resume.pdf")
     assert verify_pdf(pdf) == CANONICAL_HEADINGS
     text = extract_pdf_text(pdf)
-    assert "Jordan Rivers" in text          # real selectable text, not outlines
-    assert "Professional Experience" in text
+    assert "Jordan Rivers" in text                     # real selectable text
+    assert "PROFESSIONAL EXPERIENCE" in text.upper()   # headings present (CAPS)
 
 
-def test_unicode_arrow_is_ascii_safe_in_pdf(tmp_path):
-    # The placeholder contains "before→after"; the PDF must still extract cleanly.
-    pdf = render_pdf(RESULT.resume_text, tmp_path / "resume.pdf")
-    text = extract_pdf_text(pdf)
-    assert "before->after" in text or "before" in text  # sanitized, still selectable
-
-
-def test_pdf_has_no_unmapped_glyphs(tmp_path):
+def test_pdf_has_real_extractable_bullets_no_unmapped_glyphs(tmp_path):
     pdf = render_pdf(RESULT.resume_text, tmp_path / "resume.pdf")
     text = extract_pdf_text(pdf)
     assert "(cid:" not in text            # every glyph maps to real Unicode
+    assert "•" in text                    # the bullet is a real, extractable character
     assert "Airflow" in text              # bullet-line words extract cleanly
 
 
 def test_pdf_missing_standard_section_is_rejected(tmp_path):
-    incomplete = ("Jordan Rivers\nData Engineer | e | p\nProfessional Summary\nx\n"
-                  "Technical Skills\nx\nProfessional Experience\nx\nEducation\nx\n")  # no Certifications
+    incomplete = ("Jordan Rivers\ne | p\nPROFESSIONAL SUMMARY\nx\n"
+                  "TECHNICAL SKILLS\nx\nPROFESSIONAL EXPERIENCE\nx\nEDUCATION\nx\n")  # no Certifications
     pdf = render_pdf(incomplete, tmp_path / "bad.pdf")
     with pytest.raises(PdfVerifyError, match="Certifications"):
         verify_pdf(pdf)

@@ -32,9 +32,16 @@ from job_agent.seen_cache import SeenCache
 from job_agent.store import load_job_record, save_search
 from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.jd_fetch import get_full_jd
-from job_agent.tailor.render_pdf import render_docx, render_pdf
-from job_agent.tailor.tailor import TAILOR_MODEL, load_megaprompt, tailor_resume
-from job_agent.tailor.verify import DriftError, PdfVerifyError, verify_no_drift, verify_pdf
+from job_agent.tailor.render_pdf import clean_resume_text, normalize_header, render_docx, render_pdf
+from job_agent.tailor.tailor import TAILOR_MODEL, TailorResult, load_megaprompt, tailor_resume
+from job_agent.tailor.verify import (
+    DriftError,
+    FormatError,
+    PdfVerifyError,
+    verify_format,
+    verify_no_drift,
+    verify_pdf,
+)
 
 SUBCOMMANDS = {"search", "tailor"}
 DEMO_DIR = Path(__file__).resolve().parent / "tailor" / "demo"
@@ -44,6 +51,13 @@ _VERDICT_STYLE = {"strong": "bold green", "possible": "yellow", "skip": "dim", "
 
 def _slug(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", text).strip("_")[:60] or "resume"
+
+
+def _resume_filename(first_name: str, role: str, company: str) -> str:
+    """{first}_{role}_{company}: spaces -> underscores, punctuation stripped.
+    The role is trimmed at the first comma/paren (e.g. drop ', CustomerLake (ML/LLM)')."""
+    role_main = re.split(r"[,(]", role)[0]
+    return "_".join(p for p in (_slug(first_name), _slug(role_main), _slug(company)) if p)
 
 
 # --------------------------------------------------------------------------- #
@@ -131,13 +145,30 @@ def _megaprompt() -> str:
         return "(mega prompt unavailable; using stub)"
 
 
-def _emit(console: Console, resume_text: str, notes: str, out_dir: Path, name: str) -> int:
-    """Render PDF + docx, run the PDF gate, print NOTES. Returns exit code."""
+def _finalize(console: Console, facts, result, out_dir: Path, filename: str) -> int:
+    """Force the header, run the no-drift + format gates, render, run the PDF gate,
+    print NOTES. Nothing is written if a gate fails. Returns an exit code."""
+    face = clean_resume_text(
+        normalize_header(result.resume_text, facts.name, facts.email, facts.phone))
+    checked = TailorResult(resume_text=face, notes=result.notes, raw=result.raw)
+
+    try:
+        verify_no_drift(checked, facts)
+    except DriftError as exc:
+        console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
+        return 1
+    try:
+        verify_format(checked, facts)
+    except FormatError as exc:
+        console.print(f"[red]Format gate FAILED — refusing to write PDF:[/red]\n{exc}")
+        return 1
+    console.print("[green]✓ No-drift + format gates passed[/green]")
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = out_dir / f"{name}.pdf"
-    docx_path = out_dir / f"{name}.docx"
-    render_pdf(resume_text, pdf_path)
-    render_docx(resume_text, docx_path)
+    pdf_path = out_dir / f"{filename}.pdf"
+    docx_path = out_dir / f"{filename}.docx"
+    render_pdf(face, pdf_path)
+    render_docx(face, docx_path)
     try:
         sections = verify_pdf(pdf_path)
     except PdfVerifyError as exc:
@@ -145,8 +176,8 @@ def _emit(console: Console, resume_text: str, notes: str, out_dir: Path, name: s
         return 1
     console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)}")
     console.print(f"[bold]PDF:[/bold] {pdf_path}\n[bold]DOCX:[/bold] {docx_path}")
-    console.print(Panel(notes or "(no notes returned)", title="NOTES — review before applying",
-                        border_style="yellow"))
+    console.print(Panel(result.notes or "(no notes returned)",
+                        title="NOTES — review before applying", border_style="yellow"))
     return 0
 
 
@@ -159,14 +190,8 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         jd = (DEMO_DIR / "demo_jd.txt").read_text()
         stub = (DEMO_DIR / "demo_response.txt").read_text()
         result = tailor_resume(facts, jd, megaprompt=_megaprompt(), stub_response=stub)
-        try:
-            verify_no_drift(result, facts)
-        except DriftError as exc:
-            console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
-            return 1
-        console.print("[green]✓ No-drift gate passed[/green]")
-        name = f"{_slug(facts.name)}_{_slug(facts.role)}"
-        return _emit(console, result.resume_text, result.notes, out_dir, name)
+        filename = _resume_filename(facts.name.split()[0], facts.role, "Demo")
+        return _finalize(console, facts, result, out_dir, filename)
 
     # real run
     if not args.job:
@@ -198,15 +223,10 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
             console.print("[yellow]warning:[/yellow] could not fetch a JD; tailoring on title only.")
 
     console.print(f"[bold cyan]job-agent tailor[/bold cyan] — tailoring with {TAILOR_MODEL}\n")
-    result = tailor_resume(facts, jd, settings=settings, megaprompt=_megaprompt())
-    try:
-        verify_no_drift(result, facts)
-    except DriftError as exc:
-        console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
-        return 1
-    console.print("[green]✓ No-drift gate passed[/green]")
-    name = f"{_slug(job.company)}_{_slug(job.title)}"
-    return _emit(console, result.resume_text, result.notes, out_dir, name)
+    # megaprompt=None so tailor_resume loads the base prompt + policy addendum.
+    result = tailor_resume(facts, jd, settings=settings)
+    filename = _resume_filename(facts.name.split()[0], job.title, job.company)
+    return _finalize(console, facts, result, out_dir, filename)
 
 
 # --------------------------------------------------------------------------- #

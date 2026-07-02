@@ -1,47 +1,44 @@
 Jordan Rivers
-Data Engineer | jordan.rivers@example.com | +1 (555) 010-0100
+jordan.rivers@example.com | +1 (555) 010-0100
 
-Professional Summary
-Data Engineer with experience designing and operating batch and streaming data
-pipelines on AWS. Strong in Python and SQL, with hands-on Apache Airflow
-orchestration, dbt data modeling, and Apache Spark processing over S3, Glue, and
-Redshift. Focused on reliable, observable pipelines and pipeline performance.
+PROFESSIONAL SUMMARY
+Data Engineer with experience designing and operating batch and streaming data pipelines on AWS. Strong in Python and SQL, with hands-on Apache Airflow orchestration, dbt data modeling, and Apache Spark processing over S3, Glue, and Redshift. Focused on reliable, observable pipelines and pipeline performance.
 
-Technical Skills
+TECHNICAL SKILLS
 Languages: Python, SQL
 Data & Orchestration: Apache Airflow, dbt, Apache Spark
 Cloud: AWS (S3, Glue, Redshift)
 
-Professional Experience
+PROFESSIONAL EXPERIENCE
 Role: Data Engineer
 Company: Acme Analytics
 Project Description: Batch and streaming data pipelines feeding the analytics warehouse.
 Duration: Jan 2022 - Present
 Responsibilities:
-- Built Apache Airflow DAGs orchestrating nightly ETL from source systems into Redshift, matching the role's workflow-orchestration and reliability requirements.
-- Implemented dbt models to produce clean, well-tested analytics marts for reporting teams, mirroring the JD's dbt data-modeling focus.
-- Developed Apache Spark jobs to process large event datasets into partitioned S3 datasets on AWS Glue, supporting the platform's throughput goals.
+- Built Apache Airflow DAGs orchestrating nightly ETL from source systems into Redshift.
+- Implemented dbt models to produce curated, tested analytics marts for reporting teams.
+- Developed Apache Spark jobs to process large event datasets into partitioned S3 datasets on AWS Glue.
 Achievements:
-- Processed 5,000,000 records/day across production pipelines.
-- Reduced pipeline runtime by 30%, improving freshness for downstream analytics.
+- Processed 5,000,000 records per day across production pipelines.
+- Reduced pipeline runtime by 30%, improving data freshness for downstream analytics.
 
 Role: Data Analyst
 Company: Beacon Software
 Project Description: Reporting and dashboards for business stakeholders.
 Duration: Jun 2019 - Dec 2021
 Responsibilities:
-- Wrote SQL to power BI dashboards in Tableau for weekly business reviews, building the SQL foundation the JD expects.
-- Automated recurring reports in Python to replace manual spreadsheet work, improving reporting reliability.
+- Wrote SQL to power BI dashboards in Tableau for weekly business reviews.
+- Automated recurring reports in Python to replace manual spreadsheet work.
 Achievements:
-- Improved reporting turnaround [METRIC — latency: report refresh before→after hours?].
+- Delivered a self-service reporting layer that removed manual weekly spreadsheet preparation and gave stakeholders consistent, on-demand metrics.
 
-Education
+EDUCATION
 B.S., Computer Science, State University
 
-Certifications
+CERTIFICATIONS
 AWS Certified Data Engineer - Associate
 
 NOTES
-- Gaps: The JD lists Kafka streaming as a nice-to-have; it is not in the candidate's real skills — flagged as a gap, not claimed.
-- Placeholders to fill with real figures: [METRIC — latency: report refresh before→after hours?]
+- Gap: The JD lists Kafka streaming as a nice-to-have; it is not in the candidate's real skills. Flagged as a gap, not claimed.
+- Please provide a real figure: at Beacon Software, how many hours per week did the automated reporting save, or how many reports were automated?
 - Suggested certifications to obtain: none beyond the AWS Certified Data Engineer - Associate already held.
