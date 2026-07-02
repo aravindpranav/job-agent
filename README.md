@@ -4,9 +4,10 @@ An AI job-hunting agent. It discovers roles freshly posted on companies' public
 Applicant Tracking System (ATS) boards, filters them to what you actually want,
 and uses an LLM to score how well each one fits you — then prints a ranked table.
 
-> **Status: Slice 1 of a larger build.** This slice does discovery + scoring.
-> Resume tailoring, an application-answer bank, and browser-based application
-> assist (with a human-approval gate) are later slices, left as clear stubs.
+> **Status: Slices 1–2 of a larger build.** Slice 1 does discovery + scoring;
+> Slice 2 tailors your résumé to a matched job as an ATS-safe PDF, gated by a
+> no-drift honesty check. An application-answer bank and browser-based
+> application assist (with a human-approval gate) are later slices, left as stubs.
 
 ## Why this exists
 
@@ -28,16 +29,22 @@ and location, and spends an LLM call only on those survivors.
 
 ## Quick start
 
+The CLI has two subcommands, `search` and `tailor`. A bare invocation with no
+subcommand defaults to `search`.
+
 ### Demo mode — no API key, no network
 
 ```bash
 pip install -e .
-python -m job_agent --demo
+python -m job_agent search --demo    # discover + score (mock jobs)
+python -m job_agent tailor --demo    # tailor a FAKE resume to a FAKE JD -> sample PDF
 ```
 
-Runs the whole pipeline against bundled mock jobs so anyone can try it instantly.
-Demo mode uses the *same* filters and ranking as a real run — only the data
-source and the scorer are swapped for offline stand-ins.
+`search --demo` runs the whole discovery pipeline against bundled mock jobs
+(same filters/ranking as a real run, offline stand-ins for the source + scorer).
+`tailor --demo` tailors a committed fake resume to a fake job and writes an
+ATS-safe sample PDF + DOCX — so anyone can see the tailoring end-to-end with no
+API key and no real résumé.
 
 ```
 Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → dedup 3
@@ -53,15 +60,18 @@ Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → dedup 3
 ```bash
 cp .env.example .env                                  # add your ANTHROPIC_API_KEY
 cp search_profile.example.yaml search_profile.yaml    # edit roles / companies / location
-python -m job_agent
+python -m job_agent search                            # fetch, filter, score, rank
+python -m job_agent tailor --job <ID>                 # tailor your resume to a match
 ```
 
-Fetches live jobs from the boards in `search_profile.yaml`, filters to the last
-24 hours, scores each survivor with the LLM, and prints them ranked.
+`search` fetches live jobs from the boards in `search_profile.yaml`, filters to
+the last 24 hours, scores each survivor, prints them ranked, and saves the run to
+`data/last_search.json`. `tailor --job <ID>` (an ID from that table) re-fetches
+the full JD, tailors your base résumé to it, runs the no-drift gate, and writes
+`data/output/<company>_<role>.pdf` (+ `.docx`) plus a NOTES block to review.
 
-Useful flags: `--profile PATH`, `--limit N`, `--max-age-hours N` (freshness
-window, default 24), and `--method {structured,tool}` (how the model is asked to
-return JSON — see *Scoring* below).
+Useful search flags: `--profile PATH`, `--limit N`, `--max-age-hours N`
+(freshness window, default 24), `--method {structured,tool}`.
 
 ## How it works
 
@@ -107,6 +117,31 @@ fails the job is kept but marked `unscored` rather than crashing the run.
 A **tool-use** path that returns the same JSON as a forced tool call is also
 implemented as a reliability fallback (`--method tool`).
 
+## Résumé tailoring (Slice 2)
+
+`tailor` turns a matched job into an **ATS-safe PDF** tailored to that JD, plus a
+NOTES block — and it is built around an **honesty gate**: it can rewrite emphasis
+and wording, but it cannot fabricate.
+
+- **Immutable career facts.** The base résumé (`.docx`) is parsed once into
+  `data/career_facts.yaml` (gitignored) — the source of truth. Company names,
+  titles, and durations are fixed; the tailoring model is constrained to them.
+- **No invented metrics.** Only real numbers from the résumé are cited. Where a
+  number is unknown, the model inserts a JD-aware placeholder naming exactly which
+  real metric to supply (e.g. `[METRIC — latency: p95 before→after ms?]`), listed
+  in NOTES for you to fill in.
+- **No invented certs/skills.** Only real certifications print; JD-valued certs you
+  lack go to NOTES as "suggested to obtain". Gaps are flagged, never faked.
+- **No-drift gate (`verify.py`).** Before any PDF is written, the output is checked
+  against the career facts: altered/added employers, uncredentialed certs, and
+  metric numbers with no basis in the facts **fail the build loudly**.
+- **ATS-safe PDF.** Single column, standard font (Helvetica), the exact standard
+  section headings, real bullets, black-on-white — then the PDF's text is
+  **extracted back out** and asserted to be selectable with sections in order. A
+  PDF that fails extraction is a failed build.
+
+Tailoring uses **`claude-sonnet-4-6`** for quality; scoring stays on Haiku.
+
 ## Project layout
 
 ```
@@ -118,10 +153,20 @@ src/job_agent/
   search.py          fetch → keyword → 24h → location → dedup
   scoring.py         LLM fit scoring (structured + tool-use paths)
   seen_cache.py      seen-ids cache for the 24h fallback
-  demo_data.py       mock jobs + offline scorer for --demo
-  cli.py             argument parsing + ranked table
-  tailor.py / answers.py / apply.py   later-slice stubs
-tests/               pytest + respx (source parsers, filters, scoring)
+  demo_data.py       mock jobs + offline scorer for search --demo
+  store.py           persist a search run for `tailor --job`
+  cli.py             search / tailor subcommands
+  tailor/
+    extract.py       base resume (.docx) -> career_facts.yaml
+    career_facts.py  frozen CareerFacts models + allow-lists
+    tailor.py        mega prompt + facts + JD -> Sonnet -> resume + NOTES
+    render_pdf.py    ATS-safe PDF + editable .docx
+    verify.py        no-drift gate + PDF text-extraction gate
+    jd_fetch.py      re-fetch the full JD at tailor time
+    demo/            committed FAKE facts / JD / stub response
+  answers.py / apply.py                 later-slice stubs
+prompts/tailor_megaprompt.txt           the tailoring mega prompt
+tests/               pytest + respx (sources, filters, scoring, tailoring, PDF)
 ```
 
 ## Development
@@ -135,11 +180,12 @@ Tests are fully offline: source parsers run against saved fixtures via `respx`,
 and the scorer is exercised with a fake client (valid output, retry-then-succeed,
 and the unscored fallback).
 
-## Roadmap (later slices)
+## Roadmap
 
-2. Resume tailoring → tailored PDF (`tailor.py`)
-3. Application answer bank, reading real ATS questions (`answers.py`)
-4. Human-approval gate, then browser-based application assist (`apply.py`)
+- ✅ Slice 1 — discovery + LLM fit scoring
+- ✅ Slice 2 — résumé tailoring → ATS-safe PDF with a no-drift honesty gate
+- ⬜ Slice 3 — application answer bank, reading real ATS questions (`answers.py`)
+- ⬜ Slice 4 — human-approval gate, then browser-based application assist (`apply.py`)
 
 ## License
 
