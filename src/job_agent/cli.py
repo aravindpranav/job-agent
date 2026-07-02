@@ -34,7 +34,9 @@ from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.jd_fetch import get_full_jd
 from job_agent.tailor.render_pdf import (
     clean_resume_text,
+    docx_to_pdf,
     drop_last_responsibility,
+    find_soffice,
     normalize_header,
     render_docx,
     render_pdf,
@@ -180,11 +182,21 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
     out_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = out_dir / f"{filename}.pdf"
     docx_path = out_dir / f"{filename}.docx"
+    use_soffice = find_soffice() is not None
+    engine = "LibreOffice (PDF matches .docx)" if use_soffice else "reportlab (LibreOffice not found)"
 
-    # Fit to 2 pages: render, and while it runs long drop the least-relevant
-    # responsibility bullet (never an achievement/metric) and re-render.
-    render_pdf(face, pdf_path)
-    pages = pdf_page_count(pdf_path)
+    def render(face_text: str) -> Path:
+        """Write the .docx (source of truth) and produce the PDF from it."""
+        render_docx(face_text, docx_path)
+        if use_soffice and (pdf := docx_to_pdf(docx_path, out_dir)):
+            return pdf
+        render_pdf(face_text, pdf_path)  # fallback
+        return pdf_path
+
+    # Fit to 2 pages on the ACTUAL output engine: render, and while it runs long
+    # drop the least-relevant responsibility bullet (never an achievement/metric).
+    pdf_out = render(face)
+    pages = pdf_page_count(pdf_out)
     dropped = 0
     for _ in range(30):
         if pages <= 2:
@@ -193,20 +205,19 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
         if trimmed == face:
             break  # at the floor; can't trim further
         face, dropped = trimmed, dropped + 1
-        render_pdf(face, pdf_path)
-        pages = pdf_page_count(pdf_path)
-    if dropped:
-        console.print(f"[dim]Trimmed {dropped} least-relevant bullet(s) to fit 2 pages.[/dim]")
+        pdf_out = render(face)
+        pages = pdf_page_count(pdf_out)
+    console.print(f"[dim]PDF engine: {engine}."
+                  + (f" Trimmed {dropped} least-relevant bullet(s) to fit 2 pages." if dropped else ""))
 
-    render_docx(face, docx_path)
     try:
-        sections = verify_pdf(pdf_path)
+        sections = verify_pdf(pdf_out)
     except PdfVerifyError as exc:
         console.print(f"[red]PDF verification failed:[/red] {exc}")
         return 1
     console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)} "
                   f"([bold]{pages} page{'s' if pages != 1 else ''}[/bold])")
-    console.print(f"[bold]PDF:[/bold] {pdf_path}\n[bold]DOCX:[/bold] {docx_path}")
+    console.print(f"[bold]PDF:[/bold] {pdf_out}\n[bold]DOCX:[/bold] {docx_path}")
     console.print(Panel(checked.notes or "(no notes returned)",
                         title="NOTES — review before applying", border_style="yellow"))
     return 0

@@ -15,6 +15,9 @@ The PDF's text is verified (verify.py) to be selectable with sections in order.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -266,11 +269,20 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
 
 
 def render_docx(resume_text: str, out_path: str | Path) -> Path:
-    """Write an editable single-column .docx mirroring the PDF. Returns the path."""
+    """Write a professional single-column .docx.
+
+    Layout: large bold name with the contact line beneath; CAPS section headings
+    under a thin rule; each experience block shows the bold Company with its dates
+    right-aligned on the same line, the role title in italics below, then the
+    project description and bulleted responsibilities/achievements. Clean Calibri
+    font, comfortable spacing. This .docx is the source of truth — the PDF is
+    produced from it via LibreOffice so the two match exactly.
+    """
     from docx import Document
+    from docx.enum.text import WD_TAB_ALIGNMENT
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
-    from docx.shared import Inches, Pt
+    from docx.shared import Emu, Inches, Pt
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -278,50 +290,115 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
     normal.font.size = Pt(10.5)
+    normal.paragraph_format.space_after = Pt(2)
+
+    sec = doc.sections[0]
+    sec.left_margin = sec.right_margin = Inches(0.7)
+    sec.top_margin = sec.bottom_margin = Inches(0.55)
+    right_edge = Emu(sec.page_width - sec.left_margin - sec.right_margin)
 
     def heading(text: str) -> None:
         p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(9)
+        p.paragraph_format.space_after = Pt(3)
         run = p.add_run(text)
         run.bold = True
         run.font.size = Pt(11.5)
-        # thin rule = bottom border on the heading paragraph
-        pPr = p._p.get_or_add_pPr()
+        pPr = p._p.get_or_add_pPr()          # thin rule = bottom border
         borders = OxmlElement("w:pBdr")
         bottom = OxmlElement("w:bottom")
-        for k, v in (("w:val", "single"), ("w:sz", "6"), ("w:space", "1"), ("w:color", "888888")):
+        for k, v in (("w:val", "single"), ("w:sz", "6"), ("w:space", "2"), ("w:color", "999999")):
             bottom.set(qn(k), v)
         borders.append(bottom)
         pPr.append(borders)
+
+    pending: dict[str, str] = {}
+
+    def flush_experience_header(duration: str) -> None:
+        # Company (bold) + dates right-aligned on the same line
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(6)
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.tab_stops.add_tab_stop(right_edge, WD_TAB_ALIGNMENT.RIGHT)
+        p.add_run(pending.get("company", "")).bold = True
+        p.add_run("\t" + duration)
+        # Role title in italics beneath the company
+        if pending.get("role"):
+            pr = doc.add_paragraph()
+            pr.paragraph_format.space_after = Pt(1)
+            pr.add_run(pending["role"]).italic = True
+        # Project description line (kept, project-focused)
+        if pending.get("projdesc"):
+            pd = doc.add_paragraph()
+            pd.add_run("Project Description: ").bold = True
+            pd.add_run(pending["projdesc"])
+        pending.clear()
 
     for kind, payload in _parse_lines(resume_text):
         if kind == "blank":
             continue
         if kind == "name":
             p = doc.add_paragraph()
-            r = p.add_run(payload); r.bold = True; r.font.size = Pt(17)
+            p.paragraph_format.space_after = Pt(0)
+            r = p.add_run(payload); r.bold = True; r.font.size = Pt(18)
         elif kind == "contact":
-            doc.add_paragraph(payload)
+            p = doc.add_paragraph(payload)
+            p.paragraph_format.space_after = Pt(2)
         elif kind == "heading":
             heading(payload)
         elif kind == "bullet":
-            doc.add_paragraph(f"• {payload}")
+            b = doc.add_paragraph(f"•  {payload}")
+            b.paragraph_format.left_indent = Inches(0.2)
+            b.paragraph_format.first_line_indent = Inches(-0.16)
         elif kind == "category":
             label, rest = payload
             p = doc.add_paragraph()
-            # modest hanging indent so wrapped values align in a column, not back at margin
             p.paragraph_format.left_indent = Inches(0.2)
             p.paragraph_format.first_line_indent = Inches(-0.2)
-            p.paragraph_format.space_after = Pt(2.5)
             p.add_run(f"{label}: ").bold = True
             p.add_run(rest)
         elif kind == "label":
             label, rest = payload
-            p = doc.add_paragraph()
-            p.add_run(f"{label}: ").bold = True
-            # bold the value too for company name / role title
-            p.add_run(rest).bold = label.lower() in _BOLD_VALUE_LABELS
+            key = label.lower()
+            if key in ("role", "company", "project description"):
+                pending["projdesc" if key == "project description" else key] = rest
+            elif key == "duration":
+                flush_experience_header(rest)
+            else:  # Responsibilities: / Achievements:
+                p = doc.add_paragraph()
+                p.paragraph_format.space_before = Pt(2)
+                p.add_run(f"{label}:").bold = True
         else:
             doc.add_paragraph(payload)
 
     doc.save(str(out_path))
     return out_path
+
+
+def find_soffice() -> str | None:
+    """Locate the LibreOffice/soffice binary, or None if not installed."""
+    for name in ("soffice", "libreoffice"):
+        if path := shutil.which(name):
+            return path
+    for path in ("/Applications/LibreOffice.app/Contents/MacOS/soffice",
+                 str(Path.home() / "Applications/LibreOffice.app/Contents/MacOS/soffice")):
+        if Path(path).exists():
+            return path
+    return None
+
+
+def docx_to_pdf(docx_path: str | Path, out_dir: str | Path) -> Path | None:
+    """Convert a .docx to PDF with LibreOffice so the PDF matches the .docx
+    exactly. Returns the PDF path, or None if LibreOffice isn't available."""
+    soffice = find_soffice()
+    if not soffice:
+        return None
+    docx_path, out_dir = Path(docx_path), Path(out_dir)
+    profile = f"file://{tempfile.gettempdir()}/jobagent_libreoffice_profile"
+    subprocess.run(
+        [soffice, f"-env:UserInstallation={profile}", "--headless",
+         "--convert-to", "pdf", "--outdir", str(out_dir), str(docx_path)],
+        capture_output=True, timeout=180, check=False,
+    )
+    pdf = out_dir / f"{docx_path.stem}.pdf"
+    return pdf if pdf.exists() else None
