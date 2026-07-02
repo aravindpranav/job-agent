@@ -17,7 +17,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from job_agent.tailor.career_facts import CareerFacts
-from job_agent.tailor.render_pdf import CANONICAL_HEADINGS
+from job_agent.tailor.render_pdf import CANONICAL_HEADINGS, _canonical_heading
 from job_agent.tailor.tailor import TailorResult
 from job_agent.tailor.textnorm import norm as _norm
 from job_agent.tailor.textnorm import strip_markdown
@@ -134,14 +134,21 @@ def _output_certifications(resume_text: str) -> list[str]:
                      if _norm(ln).rstrip(":") == "certifications")
     except StopIteration:
         return []
-    certs = []
+    certs: list[str] = []
+    started = False
     for ln in lines[start + 1:]:
-        if not ln.strip() or _norm(ln).startswith("notes"):
-            break  # end of the Certifications section
-        s = ln.strip().lstrip("-•* ").strip()
-        if _norm(s) in {"none", "n/a", "(none)"}:
+        s = ln.strip()
+        if not s:
+            if started:
+                break          # a blank line AFTER content ends the section
+            continue           # skip blank lines between the heading and the certs
+        if _norm(s).startswith("notes") or _canonical_heading(strip_markdown(s)):
+            break
+        cert = s.lstrip("-•* ").strip()
+        if _norm(cert) in {"none", "n/a", "(none)"}:
             continue
-        certs.append(s)
+        certs.append(cert)
+        started = True
     return certs
 
 

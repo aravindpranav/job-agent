@@ -133,10 +133,12 @@ def _default_generate(system: str, user: str, settings: Settings) -> str:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     resp = client.messages.create(
         model=TAILOR_MODEL,
-        max_tokens=4096,
+        max_tokens=8000,
         system=system,
         messages=[{"role": "user", "content": user}],
     )
+    if resp.stop_reason == "max_tokens":
+        raise ValueError("Tailoring output hit max_tokens (truncated). Increase max_tokens.")
     return "".join(b.text for b in resp.content if b.type == "text")
 
 
