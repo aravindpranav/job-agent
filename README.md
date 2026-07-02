@@ -136,13 +136,17 @@ and wording, but it cannot fabricate.
 - **No-drift gate (`verify.py`).** Before any PDF is written, the output is checked
   against the career facts: altered/added employers, uncredentialed certs, and
   metric numbers with no basis in the facts **fail the build loudly**.
-- **ATS-safe PDF.** Single column, `Name` / `email | phone` header, CAPS section
-  headings under a thin rule, real `•` bullets that **extract as text** (via a
-  bundled embedded font), `Category: value` skills (no tables/pipes), no
-  em-dashes or separator lines, black-on-white. A format gate rejects brackets,
-  pipes, em-dashes, or missing certs; then the PDF's text is **extracted back
-  out** and asserted selectable with sections in order. A matching `.docx` is
-  written alongside. A PDF that fails extraction is a failed build.
+- **Professional, ATS-safe output.** A clean single-column `.docx` is the source
+  of truth: large bold name with contact beneath, CAPS section headings under a
+  thin rule, bold company names with **right-aligned dates**, role titles in
+  *italics*, `Category: value` skills (no tables/pipes), real `•` bullets,
+  Calibri, no em-dashes. The **PDF is produced from the `.docx` with LibreOffice**
+  so the two match exactly (falls back to a bundled-font reportlab renderer if
+  LibreOffice isn't installed). A format gate rejects brackets, pipes, em-dashes,
+  company-blurb project descriptions, over-cap bullet counts, or missing certs;
+  the output is then fitted to 2 pages and its text **extracted back out** and
+  asserted selectable with sections in order. A PDF that fails extraction is a
+  failed build.
 
 Tailoring uses **`claude-sonnet-4-6`** for quality; scoring stays on Haiku.
 
