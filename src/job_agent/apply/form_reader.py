@@ -78,6 +78,7 @@ _SCAN_JS = r"""
       label: labelFor(el),
       groupLabel: legend ? legend.innerText.trim() : '',
       required: el.hasAttribute('required') || el.getAttribute('aria-required') === 'true',
+      maxlength: el.getAttribute('maxlength'),
       options,
       selector: selectorFor(el),
     });
@@ -97,6 +98,7 @@ def _single_field(r: dict) -> FormField:
         name=r["name"],
         required=bool(r["required"]),
         options=options,
+        max_length=int(r["maxlength"]) if r.get("maxlength") else None,
     )
 
 

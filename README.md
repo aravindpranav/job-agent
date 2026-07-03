@@ -204,6 +204,15 @@ just the docs:
   field left empty, then waits for `approve` / `edit <sel>=<val>` / `skip`
   (`review.py`). On a real submit it captures a confirmation screenshot and
   appends the outcome to `data/apply/apply_log.jsonl`.
+- **Screening questions: grounded drafts, never unreviewed.** Unfilled questions
+  are routed (`screening.py`): *factual* → answer bank/career facts only (blank +
+  flagged if absent, no LLM); *consent/EEO* → always pauses; *free-text* ("why
+  us?", "describe a project") → a Haiku draft grounded ONLY in your career facts +
+  answer bank + this JD, run through a no-fabrication gate (unknown employers,
+  unbanked metrics, "I've used their product" claims → regenerate once, else
+  `[GATE-FLAGGED]`). Drafts appear at the review tagged `[AI-DRAFT]` /
+  `[NEEDS-INPUT]`, are editable inline, and can never be auto-approved. Approved
+  answers are cached (gitignored) and re-reviewed on repeat questions.
 
 Scope: Greenhouse / Lever / Ashby embedded forms are fully fillable; for Workday
 / iCIMS it fills what's public then pauses for you to log in — it never attempts

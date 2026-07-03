@@ -27,6 +27,7 @@ from job_agent.apply.form_reader import read_form
 from job_agent.apply.handoff import detect_blockers, pause_and_resume
 from job_agent.apply.prompt_io import PromptIO
 from job_agent.apply.review import Decision, request_approval
+from job_agent.apply.screening import Drafter, apply_drafts, store_approved_answers
 from job_agent.apply.submit import SubmitResult, log_result, run_submit
 
 _SUBMIT_SELECTOR = "button[type='submit'], input[type='submit'], button#submit"
@@ -44,6 +45,12 @@ class ApplyConfig:
     job_label: str = ""
     auto_approve: bool = False       # demo only
     submit_selector: str = _SUBMIT_SELECTOR
+    # Screening-question drafting (None = off, e.g. demo / no API key). The
+    # drafter only ever sees free-text questions; consent/factual never route
+    # to it (see screening.apply_drafts).
+    drafter: Drafter | None = None
+    answer_cache: Path | None = None  # gitignored approved-answer cache
+    company: str = ""                 # cache key namespace
 
 
 def _clear_blockers(page, io: PromptIO) -> bool:
@@ -76,11 +83,21 @@ def run_apply(cfg: ApplyConfig, io: PromptIO | None = None) -> SubmitResult:
         fields = read_form(page)
         io.write(f"→ Read {len(fields)} form field(s).")
         plan = build_fill_plan(fields, cfg.bank, cfg.contact, cfg.resume_path)
+        if cfg.drafter is not None:
+            before = len(plan.planned)
+            plan = apply_drafts(plan, cfg.drafter)
+            drafted = len(plan.planned) - before
+            if drafted:
+                io.write(f"→ Drafted {drafted} screening answer(s) for your review.")
         apply_plan(page, plan)
 
         outcome = request_approval(plan, io, auto_approve=cfg.auto_approve)
         if outcome.decision == Decision.APPROVE:
             apply_plan(page, outcome.plan)   # sync any edited values before submit
+            if cfg.answer_cache is not None:
+                # persist only human-approved AI answers (re-reviewed next time)
+                store_approved_answers(cfg.answer_cache, cfg.company or cfg.job_label,
+                                       outcome.plan)
 
         result = run_submit(
             page, outcome.plan, outcome,

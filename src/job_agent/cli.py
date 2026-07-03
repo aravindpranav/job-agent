@@ -368,10 +368,28 @@ def cmd_apply(console: Console, args: argparse.Namespace) -> int:
                           "Add [bold]--submit[/bold] to enable real submission (still gated by "
                           "your explicit approval).\n")
 
+        # Screening-question drafting: grounded Haiku drafts, shown as
+        # [AI-DRAFT] at the review gate. Off without an API key.
+        drafter = None
+        if settings.anthropic_api_key:
+            from job_agent.apply.screening import make_drafter, make_llm_generate
+            drafter = make_drafter(
+                make_llm_generate(settings), facts, bank,
+                jd=record.get("description") or "",
+                company=record.get("company", ""),
+                cache_path=settings.data_dir / "answers_cache.json",
+            )
+        else:
+            console.print("[dim]No ANTHROPIC_API_KEY — screening questions will pause "
+                          "instead of being AI-drafted.[/dim]")
+
         cfg = ApplyConfig(
             apply_url=apply_url, bank=bank, contact=contact, resume_path=resume,
             submit_flag=args.submit, headless=False, out_dir=Path(args.out_dir),
             job_label=f"{record.get('company', '?')} — {record.get('title', '?')}",
+            drafter=drafter,
+            answer_cache=settings.data_dir / "answers_cache.json",
+            company=record.get("company", ""),
         )
         result = run_apply(cfg, io=io)
         _print_apply_result(console, result)

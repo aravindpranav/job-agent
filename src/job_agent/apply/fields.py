@@ -42,6 +42,7 @@ class FormField:
     name: str = ""                      # the control's name/id attribute
     required: bool = False
     options: tuple[str, ...] = ()       # for SELECT / RADIO
+    max_length: int | None = None       # the control's maxlength, if declared
 
     def describe(self) -> str:
         req = " (required)" if self.required else ""

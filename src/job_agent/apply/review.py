@@ -28,20 +28,51 @@ class ReviewOutcome:
     plan: FillPlan
 
 
+def source_tag(source: str) -> str:
+    """The review tag for a planned value's provenance."""
+    s = source.lower()
+    if s.startswith("ai-draft"):
+        if "gate-flagged" in s:
+            return "[GATE-FLAGGED]"
+        if "needs-input" in s:
+            return "[NEEDS-INPUT]"
+        return "[AI-DRAFT]"
+    if s.startswith(("answer_bank", "career_facts", "resume")):
+        return "[FROM ANSWER_BANK]"
+    return "[MANUAL]"
+
+
+def _unfilled_tag(reason: str) -> str:
+    low = reason.lower()
+    if "consent" in low:
+        return "[PAUSED: consent]"
+    if "credential" in low:
+        return "[PAUSED: credential]"
+    return "[MISSING]"
+
+
+def has_ai_drafts(plan: FillPlan) -> bool:
+    return any(p.source.lower().startswith("ai-draft") for p in plan.planned)
+
+
 def render_review(plan: FillPlan, heading: str = "APPLICATION REVIEW") -> str:
     """A readable summary of EVERY value to be submitted, plus every gap."""
     lines = [f"=== {heading} ===", ""]
     lines.append(f"Will submit {len(plan.planned)} field(s):")
     for pf in plan.planned:
         req = " *required" if pf.field.required else ""
-        lines.append(f"  • {pf.field.describe():<40} = {pf.value}")
+        lines.append(f"  • {source_tag(pf.source):<18} {pf.field.describe():<40} = {pf.value}")
         lines.append(f"      ↳ source: {pf.source}{req}")
     if plan.unfilled:
         lines += ["", f"Left EMPTY ({len(plan.unfilled)} — never guessed):"]
         for u in plan.unfilled:
             mark = "‼ REQUIRED" if u.field.required else "optional"
-            lines.append(f"  • [{mark}] {u.field.describe()}")
+            lines.append(f"  • {_unfilled_tag(u.reason):<20} [{mark}] {u.field.describe()}")
             lines.append(f"      ↳ {u.reason}")
+    if has_ai_drafts(plan):
+        lines += ["", "⚠ AI-DRAFTED answers above — read each one; edit with "
+                      "'edit <selector>=<value>' before approving. You must be able "
+                      "to stand behind every sentence."]
     missing = plan.missing_required()
     lines += [""]
     if missing:
@@ -80,15 +111,20 @@ def request_approval(plan: FillPlan, io: PromptIO, *, auto_approve: bool = False
         if plan.missing_required():
             io.write("[demo] cannot auto-approve: required fields missing.")
             return ReviewOutcome(Decision.SKIP, plan)
+        if has_ai_drafts(plan):
+            # An AI answer is NEVER submitted unreviewed — no auto path past it.
+            io.write("cannot auto-approve: AI-drafted answers require human review.")
+            return ReviewOutcome(Decision.SKIP, plan)
         io.write("[demo] simulated approval: approve")
         return ReviewOutcome(Decision.APPROVE, plan)
 
     while True:
-        choice = io.read("\nApprove and continue? [approve / edit <sel>=<val> / skip]: ").strip().lower()
+        raw = io.read("\nApprove and continue? [approve / edit <sel>=<val> / skip]: ").strip()
+        choice = raw.lower()
         if choice in ("skip", "s", "no", "n"):
             return ReviewOutcome(Decision.SKIP, plan)
         if choice.startswith("edit"):
-            plan = _apply_edit(plan, choice, io)
+            plan = _apply_edit(plan, raw, io)   # raw: edited values keep their case
             io.write(render_review(plan))
             continue
         if choice in ("approve", "a", "yes", "y"):

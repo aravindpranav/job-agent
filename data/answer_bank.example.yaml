@@ -58,6 +58,13 @@ eeo:
   veteran_status: "Decline to state"
   disability_status: "Decline to state"
 
+# --- AI-draft style (screening-question drafting) -----------------------------
+# Free-text screening questions the bank can't answer get a grounded AI draft
+# (career facts + JD only) shown at the review gate as [AI-DRAFT] — you always
+# review/edit before anything is submitted.
+answer_max_words: 120
+answer_tone: "concise and professional"
+
 # --- Prepared free-text answers ----------------------------------------------
 # Keyed by a lowercase question keyword. A form's free-text question can be
 # matched against these keys; an unmatched question still pauses for you rather

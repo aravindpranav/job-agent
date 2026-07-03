@@ -106,6 +106,10 @@ class AnswerBank(BaseModel):
     # --- optional demographic block ------------------------------------------
     eeo: EeoAnswers | None = None
 
+    # --- AI-draft style knobs (for screening-question drafting) --------------
+    answer_max_words: int = Field(default=120, gt=0)
+    answer_tone: str = "concise and professional"
+
     # --- prepared free-text answers, keyed by question keyword ---------------
     #: e.g. {"why this company": "…", "why leaving": "…"}. A Slice-4 filler can
     #: match a form's free-text question against these keys; an unmatched
