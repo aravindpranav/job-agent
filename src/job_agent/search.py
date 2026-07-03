@@ -13,11 +13,19 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, ConfigDict
 
 from job_agent.config import SearchProfile
+from job_agent.experience import required_years
+from job_agent.geo import infer_country
 from job_agent.models import Job
 from job_agent.seen_cache import SeenCache
+from job_agent.seniority import LEVEL_NAMES, seniority_rank
 from job_agent.sources import JobSource, build_source
 
 FRESH_WINDOW = timedelta(hours=24)
+
+# A job is dropped on experience only when its JD requires at least this many
+# more years than the candidate has (so an "8+ years" role is dropped for a
+# 5-year candidate, but "6+"/"7+" and reachable ranges are kept).
+EXPERIENCE_GAP = 3
 
 # Country strings (any case) we treat as the United States.
 _US_ALIASES = {"US", "USA", "U.S.", "U.S.A.", "UNITED STATES", "UNITED STATES OF AMERICA"}
@@ -32,7 +40,9 @@ class StageCounts(BaseModel):
     after_keyword: int = 0
     after_fresh: int = 0
     after_location: int = 0
+    after_seniority: int = 0
     after_dedup: int = 0
+    after_experience: int = 0
 
 
 class SearchOutcome(BaseModel):
@@ -70,16 +80,46 @@ def passes_location(job: Job, profile: SearchProfile) -> bool:
 
     * Known country → honor the allow-list, *even for remote roles* (a role that
       is "remote within the UK" is still a non-US role and is dropped).
-    * Unknown country → keep it: if it's remote, gate on ``remote_ok``; otherwise
+    * No structured country → infer one from the location text (``geo``). A
+      *clearly* foreign string ("Bengaluru, India") is dropped here, before
+      scoring, exactly as if the country were structured.
+    * Still unknown → keep it: if it's remote, gate on ``remote_ok``; otherwise
       leave it for the scorer to weigh.
     """
     rule = profile.location
-    allowed = _country_allowed(job.country, rule.allowed_countries)
+    country = job.country or infer_country(job.location)
+    allowed = _country_allowed(country, rule.allowed_countries)
     if allowed is not None:
         return allowed
     if job.remote:
         return rule.remote_ok
     return True
+
+
+def passes_seniority(job: Job, profile: SearchProfile) -> bool:
+    """Drop titles above the profile's ceiling. ``max_seniority`` None = off.
+
+    With ``max_seniority: senior`` this drops Lead / Staff / Principal / Director
+    / VP and keeps Senior/Sr. and below — title-only, so it runs cheaply before
+    dedup and enrichment.
+    """
+    if profile.max_seniority is None:
+        return True
+    return seniority_rank(job.title) <= LEVEL_NAMES[profile.max_seniority]
+
+
+def passes_experience(job: Job, profile: SearchProfile) -> bool:
+    """Drop jobs whose JD requires clearly more years than the candidate has.
+
+    ``experience_years`` None = off. A JD with no stated minimum is kept (left to
+    the scorer). Runs after enrichment so every source's full JD is available.
+    """
+    if profile.experience_years is None:
+        return True
+    required = required_years(job.description or "")
+    if required is None:
+        return True
+    return required < profile.experience_years + EXPERIENCE_GAP
 
 
 def is_fresh(job: Job, now: datetime, cache: SeenCache,
@@ -138,7 +178,11 @@ def run(
     kept = [(j, lbl) for (j, lbl) in kept if passes_location(j, profile)]
     after_location = len(kept)
 
-    # Stage 4: dedup (first occurrence wins).
+    # Stage 4: seniority ceiling (title-only, so it runs before enrichment).
+    kept = [(j, lbl) for (j, lbl) in kept if passes_seniority(j, profile)]
+    after_seniority = len(kept)
+
+    # Stage 5: dedup (first occurrence wins).
     seen_keys: set[str] = set()
     deduped: list[tuple[Job, str]] = []
     for job, lbl in kept:
@@ -148,26 +192,34 @@ def run(
             deduped.append((job, lbl))
     after_dedup = len(deduped)
 
-    # Enrich only the final survivors (e.g. SmartRecruiters detail fetch).
-    enriched: list[Job] = []
-    boards: list[str] = []
+    # Enrich only the final survivors (e.g. SmartRecruiters detail fetch), so the
+    # experience filter below sees every source's full JD.
+    enriched_pairs: list[tuple[Job, str]] = []
     for job, lbl in deduped:
-        boards.append(lbl.split("/", 1)[1] if "/" in lbl else lbl)
+        board = lbl.split("/", 1)[1] if "/" in lbl else lbl
         try:
-            enriched.append(sources[lbl].enrich(job))
+            enriched_pairs.append((sources[lbl].enrich(job), board))
         except Exception as exc:  # enrichment is best-effort
             warnings.append(f"{lbl}: enrich failed for {job.id} ({exc})")
-            enriched.append(job)
+            enriched_pairs.append((job, board))
+
+    # Stage 6: experience gap (needs the full JD, hence after enrichment).
+    enriched_pairs = [(j, b) for (j, b) in enriched_pairs if passes_experience(j, profile)]
+    after_experience = len(enriched_pairs)
+    jobs = [j for j, _ in enriched_pairs]
+    boards = [b for _, b in enriched_pairs]
 
     return SearchOutcome(
-        jobs=enriched,
+        jobs=jobs,
         boards=boards,
         counts=StageCounts(
             fetched=len(all_jobs),
             after_keyword=after_keyword,
             after_fresh=after_fresh,
             after_location=after_location,
+            after_seniority=after_seniority,
             after_dedup=after_dedup,
+            after_experience=after_experience,
         ),
         per_source=per_source,
         warnings=warnings,

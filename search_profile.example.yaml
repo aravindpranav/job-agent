@@ -23,6 +23,17 @@ location:
   remote_ok: true
   allowed_countries: [US]           # ISO-ish; matched loosely (US / USA / United States)
 
+# Optional seniority ceiling. Titles ABOVE this are dropped BEFORE scoring, the
+# same way the location rule drops non-US roles. One of:
+#   entry | junior | associate | mid | senior | lead | staff | principal | director | vp
+# "senior" screens out Lead / Staff / Principal / Director / VP. Omit to disable.
+max_seniority: senior
+
+# Optional: your approximate years of experience. When set, a job whose JD
+# requires clearly more (>= this + 3 years, e.g. an "8+ years" role for 5) is
+# dropped before scoring. Omit to disable.
+experience_years: 5
+
 # Boards to fetch. Each entry is {ats, board}. All are public, no auth for GET.
 # Swap these for your own targets; discovery is per-company by design.
 sources:
@@ -34,7 +45,7 @@ sources:
 
 # A short description of you, given to the scorer as context for fit.
 candidate_summary: >
-  Data / ML engineer targeting Data Engineer, Data Scientist, Machine Learning
-  Engineer, AI Engineer, and Gen AI Engineer roles across all seniorities.
-  Strong in Python, SQL, cloud data platforms (AWS / Azure / GCP), and building
-  ML/LLM pipelines. Open to remote (US) or onsite/hybrid within the USA.
+  Data / ML engineer (~5 years) targeting Data Engineer, Data Scientist, Machine
+  Learning Engineer, AI Engineer, and Gen AI Engineer roles at the Senior level
+  and below. Strong in Python, SQL, cloud data platforms (AWS / Azure / GCP), and
+  building ML/LLM pipelines. Open to remote (US) or onsite/hybrid within the USA.

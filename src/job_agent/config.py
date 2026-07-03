@@ -15,7 +15,9 @@ from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
+
+from job_agent.seniority import LEVEL_NAMES
 
 # A low-cost, current Haiku-class model. Confirmed against the Anthropic docs
 # rather than assumed. Overridable via the JOB_AGENT_MODEL env var.
@@ -47,10 +49,28 @@ class SearchProfile(BaseModel):
     location: LocationRule = Field(default_factory=LocationRule)
     sources: list[SourceRef] = Field(min_length=1)
     candidate_summary: str = ""
+    # Optional seniority ceiling: titles ranked above this are dropped before
+    # scoring (see job_agent.seniority.LEVEL_NAMES). None = filter off.
+    max_seniority: str | None = None
+    # Optional candidate years of experience: a job whose JD requires clearly
+    # more (see search.EXPERIENCE_GAP) is dropped before scoring. None = off.
+    experience_years: int | None = Field(default=None, ge=0)
 
     model_config = {"extra": "forbid"}
 
     _KNOWN_ATS = {"greenhouse", "lever", "ashby", "smartrecruiters"}
+
+    @field_validator("max_seniority")
+    @classmethod
+    def _known_level(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        level = v.strip().lower()
+        if level not in LEVEL_NAMES:
+            raise ValueError(
+                f"max_seniority must be one of {sorted(LEVEL_NAMES)}; got {v!r}"
+            )
+        return level
 
     def unknown_sources(self) -> list[str]:
         """ATS names in the profile we don't have a source for."""

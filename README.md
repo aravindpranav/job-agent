@@ -53,7 +53,7 @@ to the local page, and saves a confirmation screenshot — the entire assisted-a
 flow with no real-world side effects.
 
 ```
-Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → dedup 3
+Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → seniority 3 → dedup 3 → experience 3
                         Ranked job matches
   #  Score  Verdict   Title                       Company            Location
   1   89    strong    Data Scientist, Growth      Meridian Labs      Austin, TX
@@ -90,7 +90,7 @@ Useful search flags: `--profile PATH`, `--limit N`, `--max-age-hours N`
 sources/ (Greenhouse, Lever, Ashby, SmartRecruiters)
    │  each fetch() -> list[Job]   (coded against real API shapes, not guesses)
    ▼
-search.py   keyword pre-filter ─▶ 24h freshness ─▶ location rule ─▶ dedup
+search.py   keyword ─▶ 24h freshness ─▶ location ─▶ seniority ─▶ dedup ─▶ experience
    │            every stage's survivor count is reported (no silent truncation)
    ▼
 scoring.py  LLM fit score per surviving job  ─▶ ScoredJob {score, verdict, …}
@@ -115,6 +115,22 @@ seen-ids cache under `/data` ("first observed in the last 24h").
 
 **Location rule.** Keep remote or in-country (US by default) roles; drop known
 non-US roles even if remote; keep unknown-country roles for the scorer to weigh.
+When a board leaves the country blank, it's inferred from the location text
+(`geo.py`) so a clearly-foreign posting ("Bengaluru, India") is dropped here too.
+
+**Seniority + experience filters (optional).** Two profile knobs keep
+over-level roles out of results entirely — dropped before scoring, like the
+location rule, not merely downranked:
+
+- `max_seniority` (e.g. `senior`) drops titles ranked above it — Lead, Staff,
+  Principal, Director, VP (`seniority.py`, title-only, runs before dedup).
+- `experience_years` (e.g. `5`) drops a job whose JD *requires* clearly more —
+  a stated minimum of `experience_years + 3` or higher, so "8+ years" goes for a
+  5-year candidate while "6+"/reachable ranges stay (`experience.py`, runs after
+  enrichment so every source's full JD is present).
+
+Both are off when unset, so existing profiles are unaffected. The scorer then
+only ranks roles that already fit your level and years.
 
 ### Scoring
 
@@ -203,7 +219,10 @@ src/job_agent/
   config.py          .env + search_profile.yaml loading & validation
   http.py            shared httpx client (timeout, retries, error mapping)
   sources/           one module per ATS + JobSource base
-  search.py          fetch → keyword → 24h → location → dedup
+  search.py          fetch → keyword → 24h → location → seniority → dedup → experience
+  geo.py             infer a country from free-text location (US-vs-foreign)
+  seniority.py       title → seniority level (for the max_seniority filter)
+  experience.py      required years-of-experience parsed from a JD
   scoring.py         LLM fit scoring (structured + tool-use paths)
   seen_cache.py      seen-ids cache for the 24h fallback
   demo_data.py       mock jobs + offline scorer for search --demo

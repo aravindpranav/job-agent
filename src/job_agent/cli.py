@@ -78,7 +78,9 @@ def _print_pipeline_summary(console: Console, outcome: SearchOutcome, age_hours:
     c = outcome.counts
     console.print(
         f"[bold]Pipeline:[/bold] fetched {c.fetched} → keyword {c.after_keyword} "
-        f"→ {age_hours}h {c.after_fresh} → location {c.after_location} → dedup {c.after_dedup}"
+        f"→ {age_hours}h {c.after_fresh} → location {c.after_location} "
+        f"→ seniority {c.after_seniority} → dedup {c.after_dedup} "
+        f"→ experience {c.after_experience}"
     )
     if outcome.per_source:
         console.print("[dim]Sources: " + ", ".join(f"{k}: {v}" for k, v in outcome.per_source.items()) + "[/dim]")
