@@ -17,6 +17,7 @@ import re
 from pathlib import Path
 
 from job_agent.apply.answer_bank import DECLINE_TO_STATE, AnswerBank, Contact
+from job_agent.geo import infer_country
 from job_agent.apply.fields import (
     FieldType,
     FillPlan,
@@ -77,6 +78,25 @@ _US_COUNTRY_SPELLINGS = ("united states of america", "united states", "usa",
                          "u.s.a.", "u.s.", "america")
 
 
+def _pick_location_option(options: tuple[str, ...], want: str) -> str | None:
+    """Pick exactly ONE work-mode/location option, never a non-US one.
+
+    From ["Remote Canada", "Remote US", "Hybrid"] with want="remote": candidates
+    are both remotes; "Remote Canada" is discarded (infer_country -> Canada),
+    "Remote US" wins (infer_country -> US). A generic "Remote" (no country) is
+    fine when it's the only candidate; several ambiguous candidates -> None
+    (pause) rather than guess.
+    """
+    cands = [o for o in options if want.lower() in o.lower()]
+    cands = [o for o in cands if infer_country(o) in (None, "US")]  # never non-US
+    if not cands:
+        return None
+    us_marked = [o for o in cands if infer_country(o) == "US"]
+    if us_marked:
+        return us_marked[0]
+    return cands[0] if len(cands) == 1 else None
+
+
 def _match_country(options: tuple[str, ...], want: str) -> str | None:
     """Pick the country option, bridging spellings ("USA" bank vs a "United
     States" dropdown option). Free-text fields just get the bank value."""
@@ -124,7 +144,12 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
         return contact.name.split()[0], "career_facts.name"
     if "last name" in hay or "surname" in hay:
         return contact.name.split()[-1], "career_facts.name"
-    if has("full", "name") or hay.strip() in {"name", "your name", "name*"}:
+    # Full name: the word "name" without a qualifier that means a DIFFERENT
+    # name (Ashby renders it as label "Name" + name="_systemfield_name", which
+    # an exact-string check missed).
+    if _word(hay, "name") and not any(w in hay for w in (
+            "first", "last", "middle", "company", "employer", "school",
+            "university", "college", "user", "file", "nickname")):
         return contact.name, "career_facts.name"
     if "email" in hay:
         return contact.email, "career_facts.email"
@@ -180,11 +205,26 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
         if bank.willing_to_relocate is None:
             return None
         return _yes_no(f.options, bank.willing_to_relocate), "answer_bank.willing_to_relocate"
+    # Office-preference options ("New York City Office", "San Francisco HQ")
+    # are choices about THEIR offices, not our city/work_mode — pause. An
+    # arrangement cue ("remote or in-office?") means it's a work-mode question,
+    # which the next matcher handles.
+    if ("office" in hay or _word(hay, "hq") or "headquarters" in hay) and not any(
+            cue in hay for cue in ("remote", "arrangement", "work mode",
+                                   "hybrid", "on-site", "onsite")):
+        return None
     if "remote" in hay or "work mode" in hay or "arrangement" in hay or "on-site" in hay or "onsite" in hay:
         if not bank.work_mode:
             return None
-        picked = _match_option(f.options, bank.work_mode) if f.options else bank.work_mode
-        return (picked, "answer_bank.work_mode") if picked else None
+        if f.field_type == FieldType.CHECKBOX and not f.options:
+            # A bare checkbox labeled "Remote US" / "Remote Canada" is one
+            # option of a location picker — checking it from work_mode is how
+            # multiple (and non-US) options got selected. Pause instead.
+            return None
+        if f.options:
+            picked = _pick_location_option(f.options, bank.work_mode)
+            return (picked, "answer_bank.work_mode") if picked else None
+        return bank.work_mode, "answer_bank.work_mode"
 
     # structured location — checked BEFORE the generic "location" fallback, and
     # each returns None (-> unfilled, pause) when the bank value is empty, so
@@ -281,6 +321,9 @@ def apply_plan(page, plan: FillPlan) -> None:
                 locator.select_option(label=pf.value)
             except Exception:
                 locator.select_option(pf.value)
+        elif f.field_type in (FieldType.CHECKBOX, FieldType.RADIO) and f.options:
+            # grouped picker: check exactly the ONE box whose label was picked
+            page.get_by_label(pf.value).first.check()
         elif f.field_type == FieldType.CHECKBOX:
             if pf.value.strip().lower() in {"yes", "true", "on"}:
                 locator.check()

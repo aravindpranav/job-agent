@@ -221,6 +221,85 @@ def test_word_boundaries_keep_state_out_of_statement_and_city_out_of_ethnicity()
     assert plan.planned == ()   # neither gets a location value
 
 
+# --- office-location options: pause, never city/work_mode --------------------
+
+def test_office_checkboxes_never_get_city_or_work_mode():
+    # The Plaid (Ashby) bug: office-preference checkboxes were filled with
+    # city ("Santa Clara") via "City" and with work_mode via "Remote".
+    plan = _plan_for([
+        _f("#nyc", FieldType.CHECKBOX, "New York City Office"),
+        _f("#sf", FieldType.CHECKBOX, "San Francisco HQ"),
+    ])
+    assert plan.planned == ()               # both pause
+    for u in plan.unfilled:
+        assert u.field.selector in ("#nyc", "#sf")
+
+
+def test_grouped_office_field_pauses_too():
+    plan = _plan_for([
+        _f("#offices", FieldType.CHECKBOX, "Which office locations interest you?",
+           options=["New York City Office", "San Francisco HQ", "Remote US"]),
+    ])
+    assert plan.planned == ()
+
+
+def test_bare_remote_checkboxes_pause_never_multi_select():
+    # Ungrouped "Remote US" / "Remote Canada" checkboxes: both previously
+    # matched work_mode. Now both pause — nothing is selected at all.
+    plan = _plan_for([
+        _f("#rus", FieldType.CHECKBOX, "Remote US"),
+        _f("#rca", FieldType.CHECKBOX, "Remote Canada"),
+    ])
+    assert plan.planned == ()
+
+
+def test_grouped_location_picker_selects_only_the_us_option():
+    plan = _plan_for([
+        _f("#loc", FieldType.RADIO, "Remote or in-office arrangement",
+           options=["Remote Canada", "Remote US", "Hybrid"]),
+    ])
+    assert _value(plan, "#loc") == "Remote US"    # exactly one, never Canada
+    assert len(plan.planned) == 1
+
+
+def test_only_non_us_remote_option_pauses():
+    plan = _plan_for([
+        _f("#loc", FieldType.SELECT, "Remote arrangement",
+           options=["Remote Canada", "Onsite Toronto"]),
+    ])
+    assert plan.planned == ()               # never select a non-US location
+
+
+def test_generic_remote_option_still_picked_when_unambiguous():
+    plan = _plan_for([
+        _f("#mode", FieldType.SELECT, "Preferred work arrangement",
+           options=["Remote", "Hybrid", "Onsite"]),
+    ])
+    assert _value(plan, "#mode") == "Remote"
+
+
+# --- Ashby name field ---------------------------------------------------------
+
+def test_ashby_systemfield_name_maps_to_full_name():
+    # label "Name" + name="_systemfield_name" — the exact-string check missed it.
+    plan = _plan_for([
+        _f('input[name="_systemfield_name"]', FieldType.TEXT, "Name",
+           name="_systemfield_name", required=True),
+        _f("#email", FieldType.TEXT, "Email"),
+    ])
+    assert _value(plan, 'input[name="_systemfield_name"]') == "Jordan Rivers"
+    assert _value(plan, "#email") == "jordan@example.com"
+
+
+def test_other_name_fields_do_not_get_the_full_name():
+    plan = _plan_for([
+        _f("#co", FieldType.TEXT, "Company name"),
+        _f("#un", FieldType.TEXT, "Username"),
+    ])
+    assert all(p.field.selector not in ("#co", "#un") or p.value != "Jordan Rivers"
+               for p in plan.planned)
+
+
 # --- legal consent guard: NEVER auto-filled ----------------------------------
 
 def test_privacy_notice_consent_is_never_filled_with_notice_period():
