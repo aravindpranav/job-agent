@@ -55,19 +55,32 @@ def has_ai_drafts(plan: FillPlan) -> bool:
     return any(p.source.lower().startswith("ai-draft") for p in plan.planned)
 
 
+def _row_selectors(plan: FillPlan) -> list[str]:
+    """Selectors in display order — row N in the review is index N-1 here."""
+    return ([p.field.selector for p in plan.planned]
+            + [u.field.selector for u in plan.unfilled])
+
+
 def render_review(plan: FillPlan, heading: str = "APPLICATION REVIEW") -> str:
-    """A readable summary of EVERY value to be submitted, plus every gap."""
+    """A readable summary of EVERY value to be submitted, plus every gap.
+
+    Rows are numbered; ``edit <row>=<value>`` targets a row by that number
+    (``edit <selector>=<value>`` still works).
+    """
     lines = [f"=== {heading} ===", ""]
     lines.append(f"Will submit {len(plan.planned)} field(s):")
+    row = 0
     for pf in plan.planned:
+        row += 1
         req = " *required" if pf.field.required else ""
-        lines.append(f"  • {source_tag(pf.source):<18} {pf.field.describe():<40} = {pf.value}")
+        lines.append(f"  {row:>2}. {source_tag(pf.source):<18} {pf.field.describe():<40} = {pf.value}")
         lines.append(f"      ↳ source: {pf.source}{req}")
     if plan.unfilled:
         lines += ["", f"Left EMPTY ({len(plan.unfilled)} — never guessed):"]
         for u in plan.unfilled:
+            row += 1
             mark = "‼ REQUIRED" if u.field.required else "optional"
-            lines.append(f"  • {_unfilled_tag(u.reason):<20} [{mark}] {u.field.describe()}")
+            lines.append(f"  {row:>2}. {_unfilled_tag(u.reason):<20} [{mark}] {u.field.describe()}")
             lines.append(f"      ↳ {u.reason}")
     if has_ai_drafts(plan):
         lines += ["", "⚠ AI-DRAFTED answers above — read each one; edit with "
@@ -84,15 +97,24 @@ def render_review(plan: FillPlan, heading: str = "APPLICATION REVIEW") -> str:
 
 
 def _apply_edit(plan: FillPlan, command: str, io: PromptIO) -> FillPlan:
-    """Parse and apply an ``edit <selector>=<value>`` command; report errors."""
+    """Apply ``edit <row>=<value>`` or ``edit <selector>=<value>``; report errors.
+
+    The value is stored verbatim (case preserved) — only the target is resolved.
+    """
     body = command[len("edit"):].strip()
     if "=" not in body:
-        io.write("  edit needs the form: edit <selector>=<value>")
+        io.write("  edit needs the form: edit <row|selector>=<value>")
         return plan
-    selector, value = (s.strip() for s in body.split("=", 1))
+    target, value = (s.strip() for s in body.split("=", 1))
+    if target.isdigit():                       # row number from the review listing
+        rows = _row_selectors(plan)
+        if not 1 <= int(target) <= len(rows):
+            io.write(f"  no row {target} (rows are 1-{len(rows)})")
+            return plan
+        target = rows[int(target) - 1]
     try:
-        new_plan = plan.with_value(selector, value)
-        io.write(f"  set {selector} = {value}")
+        new_plan = plan.with_value(target, value)
+        io.write(f"  set {target} = {value}")
         return new_plan
     except KeyError as exc:
         io.write(f"  {exc}")
@@ -119,7 +141,7 @@ def request_approval(plan: FillPlan, io: PromptIO, *, auto_approve: bool = False
         return ReviewOutcome(Decision.APPROVE, plan)
 
     while True:
-        raw = io.read("\nApprove and continue? [approve / edit <sel>=<val> / skip]: ").strip()
+        raw = io.read("\nApprove and continue? [approve / edit <row|sel>=<val> / skip]: ").strip()
         choice = raw.lower()
         if choice in ("skip", "s", "no", "n"):
             return ReviewOutcome(Decision.SKIP, plan)

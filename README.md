@@ -15,8 +15,8 @@ and uses an LLM to score how well each one fits you — then prints a ranked tab
 Company career pages are backed by a handful of ATS vendors that expose **public,
 no-auth JSON APIs**. Instead of scraping aggregators (which violates their terms),
 `job-agent` reads these official endpoints directly, normalizes every board into
-one shape, keeps only roles posted in the last 24 hours that match your keywords
-and location, and spends an LLM call only on those survivors.
+one shape, keeps only recently posted roles (default: the last 7 days) that match
+your keywords and location, and spends an LLM call only on those survivors.
 
 **Deliberate constraints:**
 
@@ -53,7 +53,7 @@ to the local page, and saves a confirmation screenshot — the entire assisted-a
 flow with no real-world side effects.
 
 ```
-Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → seniority 3 → dedup 3 → experience 3
+Pipeline: fetched 6 → keyword 5 → recency(7d) 5 → location 4 → seniority 4 → dedup 4 → experience 4
                         Ranked job matches
   #  Score  Verdict   Title                       Company            Location
   1   89    strong    Data Scientist, Growth      Meridian Labs      Austin, TX
@@ -74,15 +74,16 @@ python -m job_agent apply  --job <ID> --submit        # real submit (still needs
 ```
 
 `search` fetches live jobs from the boards in `search_profile.yaml`, filters to
-the last 24 hours, scores each survivor, prints them ranked, and saves the run to
+the recency window (default 7 days), scores each survivor, prints them ranked, and saves the run to
 `data/last_search.json`. `tailor --job <ID>` (an ID from that table) re-fetches
 the full JD, tailors your base résumé to it, runs the no-drift gate, and writes
 `data/output/<company>_<role>.pdf` (+ `.docx`) plus a NOTES block to review.
 `apply --job <ID>` opens that job's application in a **visible** browser, fills
 it from your answer bank + tailored PDF, and shows a full review — see below.
 
-Useful search flags: `--profile PATH`, `--limit N`, `--max-age-hours N`
-(freshness window, default 24), `--method {structured,tool}`.
+Useful search flags: `--profile PATH`, `--limit N`, `--days N` (recency
+window, default 7; `--max-age-hours N` overrides it for sub-day windows),
+`--method {structured,tool}`.
 
 ## How it works
 
@@ -90,7 +91,7 @@ Useful search flags: `--profile PATH`, `--limit N`, `--max-age-hours N`
 sources/ (Greenhouse, Lever, Ashby, SmartRecruiters)
    │  each fetch() -> list[Job]   (coded against real API shapes, not guesses)
    ▼
-search.py   keyword ─▶ 24h freshness ─▶ location ─▶ seniority ─▶ dedup ─▶ experience
+search.py   keyword ─▶ recency ─▶ location ─▶ seniority ─▶ dedup ─▶ experience
    │            every stage's survivor count is reported (no silent truncation)
    ▼
 scoring.py  LLM fit score per surviving job  ─▶ ScoredJob {score, verdict, …}
@@ -108,10 +109,10 @@ written against a real captured response — see `tests/fixtures/`.
 Titles are matched against your keywords *before* anything expensive, so no LLM
 call is ever spent on an off-target job.
 
-**24h freshness.** Uses each board's real post date (Greenhouse
+**Recency window (default 7 days, `--days`).** Uses each board's real post date (Greenhouse
 `first_published`, Lever `createdAt`, Ashby `publishedAt`, SmartRecruiters
 `releasedDate`). For the rare posting with no date, it falls back to a small
-seen-ids cache under `/data` ("first observed in the last 24h").
+seen-ids cache under `/data` ("first observed within the window").
 
 **Location rule.** Keep remote or in-country (US by default) roles; drop known
 non-US roles even if remote; keep unknown-country roles for the scorer to weigh.
@@ -124,10 +125,12 @@ location rule, not merely downranked:
 
 - `max_seniority` (e.g. `senior`) drops titles ranked above it — Lead, Staff,
   Principal, Director, VP (`seniority.py`, title-only, runs before dedup).
-- `experience_years` (e.g. `5`) drops a job whose JD *requires* clearly more —
-  a stated minimum of `experience_years + 3` or higher, so "8+ years" goes for a
-  5-year candidate while "6+"/reachable ranges stay (`experience.py`, runs after
-  enrichment so every source's full JD is present).
+- `experience_years` (e.g. `5`) drops a job whose JD *unambiguously requires*
+  clearly more — a hard-cued minimum ("required", "must", "minimum", "at least")
+  of `experience_years + 3` or higher. Soft phrasings never drop: "8+ years
+  preferred (or equivalent)" and bare figures survive; "8 years required" goes
+  for a 5-year candidate (`experience.py`, runs after enrichment so every
+  source's full JD is present).
 
 Both are off when unset, so existing profiles are unaffected. The scorer then
 only ranks roles that already fit your level and years.
@@ -228,12 +231,12 @@ src/job_agent/
   config.py          .env + search_profile.yaml loading & validation
   http.py            shared httpx client (timeout, retries, error mapping)
   sources/           one module per ATS + JobSource base
-  search.py          fetch → keyword → 24h → location → seniority → dedup → experience
+  search.py          fetch → keyword → recency → location → seniority → dedup → experience
   geo.py             infer a country from free-text location (US-vs-foreign)
   seniority.py       title → seniority level (for the max_seniority filter)
   experience.py      required years-of-experience parsed from a JD
   scoring.py         LLM fit scoring (structured + tool-use paths)
-  seen_cache.py      seen-ids cache for the 24h fallback
+  seen_cache.py      seen-ids cache for the no-post-date fallback
   demo_data.py       mock jobs + offline scorer for search --demo
   store.py           persist a search run for `tailor --job`
   cli.py             search / tailor / apply subcommands

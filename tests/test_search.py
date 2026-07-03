@@ -102,6 +102,13 @@ def test_is_fresh_uses_posted_at():
     assert not is_fresh(make_job(posted_at=NOW - timedelta(hours=30)), NOW, SeenCache("/tmp/_b.json"))
 
 
+def test_recency_window_is_configurable():
+    # A job posted 5 days ago survives a 7-day window and is dropped by a 1-day one.
+    job = make_job(posted_at=NOW - timedelta(days=5))
+    assert is_fresh(job, NOW, SeenCache("/tmp/_w7.json"), timedelta(days=7)) is True
+    assert is_fresh(job, NOW, SeenCache("/tmp/_w1.json"), timedelta(days=1)) is False
+
+
 def test_is_fresh_falls_back_to_seen_cache(tmp_path):
     cache = SeenCache(tmp_path / "seen.json")
     job = make_job(id="42", posted_at=None, source="greenhouse")
@@ -137,8 +144,11 @@ def test_passes_seniority_off_when_unset():
 # --- experience filter ------------------------------------------------------
 
 @pytest.mark.parametrize("desc,kept", [
-    ("8+ years of experience required.", False),      # 8 >= 5+3 -> drop
+    ("8+ years of experience required.", False),      # hard 8 >= 5+3 -> drop
+    ("8 years of experience required.", False),       # unambiguous "X years required"
     ("Minimum of 10 years in ML.", False),
+    ("8+ years preferred (or equivalent).", True),    # soft cue -> reachable, keep
+    ("10+ years of experience.", True),               # bare figure, no hard cue -> keep
     ("6+ years of experience.", True),                # reachable -> keep
     ("7+ years of experience.", True),
     ("5-8 years of experience.", True),               # lower bound 5 -> keep
@@ -190,7 +200,7 @@ def test_run_pipeline_drops_over_level_and_over_experience(tmp_path):
                  remote=True, country="US", posted_at=fresh, description="3+ years."),   # seniority drop
         make_job(id="3", title="Senior Machine Learning Engineer", company="Beta", location="Remote",
                  remote=True, country="US", posted_at=fresh,
-                 description="We need 10+ years of experience."),                        # experience drop
+                 description="10+ years of experience required."),                       # experience drop
         make_job(id="4", title="Machine Learning Engineer", company="Gamma", location="Remote",
                  remote=True, country="US", posted_at=fresh, description="5+ years."),
     ]

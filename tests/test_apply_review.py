@@ -74,6 +74,36 @@ def test_edit_on_unknown_selector_is_reported_and_loops():
     assert any("#nope" in w for w in io.written)
 
 
+def test_rows_are_numbered_in_display_order():
+    text = render_review(MISSING_REQUIRED)
+    assert "1." in text and "Email" in text      # planned row 1
+    assert "2." in text and "Resume" in text     # unfilled continues the numbering
+
+
+def test_edit_by_row_number_targets_that_row_case_preserved():
+    # Row 1 = planned Email, row 2 = unfilled Resume; edit row 2 with mixed case.
+    io = ScriptedIO(answers=["edit 2=My Answer", "approve"])
+    outcome = request_approval(MISSING_REQUIRED, io.as_io())
+    assert outcome.decision == Decision.APPROVE
+    assert any(p.field.selector == "#resume" and p.value == "My Answer"
+               for p in outcome.plan.planned)    # exact case, right field
+
+
+def test_edit_by_out_of_range_row_is_reported_and_loops():
+    io = ScriptedIO(answers=["edit 9=x", "skip"])
+    outcome = request_approval(COMPLETE, io.as_io())
+    assert outcome.decision == Decision.SKIP
+    assert any("no row 9" in w for w in io.written)
+
+
+def test_edit_by_selector_still_works():
+    io = ScriptedIO(answers=["edit #resume=/tmp/r.pdf", "approve"])
+    outcome = request_approval(MISSING_REQUIRED, io.as_io())
+    assert outcome.decision == Decision.APPROVE
+    assert any(p.field.selector == "#resume" and p.value == "/tmp/r.pdf"
+               for p in outcome.plan.planned)
+
+
 def test_auto_approve_demo_path():
     io = ScriptedIO(answers=[])
     outcome = request_approval(COMPLETE, io.as_io(), auto_approve=True)

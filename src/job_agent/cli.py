@@ -74,11 +74,16 @@ def _resume_filename(first_name: str, role: str, company: str) -> str:
 # search
 # --------------------------------------------------------------------------- #
 
+def _window_label(hours: int) -> str:
+    """A human recency-window label: whole days as '7d', otherwise '36h'."""
+    return f"{hours // 24}d" if hours % 24 == 0 else f"{hours}h"
+
+
 def _print_pipeline_summary(console: Console, outcome: SearchOutcome, age_hours: int) -> None:
     c = outcome.counts
     console.print(
         f"[bold]Pipeline:[/bold] fetched {c.fetched} → keyword {c.after_keyword} "
-        f"→ {age_hours}h {c.after_fresh} → location {c.after_location} "
+        f"→ recency({_window_label(age_hours)}) {c.after_fresh} → location {c.after_location} "
         f"→ seniority {c.after_seniority} → dedup {c.after_dedup} "
         f"→ experience {c.after_experience}"
     )
@@ -110,7 +115,11 @@ def _print_ranked_table(console: Console, scored: list[ScoredJob], limit: int | 
 
 
 def cmd_search(console: Console, args: argparse.Namespace) -> int:
-    window = timedelta(hours=args.max_age_hours)
+    # --days is the primary recency knob (default 7); --max-age-hours, when
+    # given explicitly, overrides it for sub-day windows.
+    hours = args.max_age_hours if args.max_age_hours is not None else args.days * 24
+    window = timedelta(hours=hours)
+    args.max_age_hours = hours  # downstream prints use the effective window
     if args.demo:
         console.print("[bold cyan]job-agent search — demo mode[/bold cyan] (mock data, no key)\n")
         profile = demo_profile()
@@ -409,7 +418,10 @@ def _build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("search", help="Discover fresh jobs and score their fit.")
     s.add_argument("--demo", action="store_true", help="Bundled mock jobs (no key/network).")
     s.add_argument("--profile", default="search_profile.yaml")
-    s.add_argument("--max-age-hours", type=int, default=24, help="Freshness window (default 24).")
+    s.add_argument("--days", type=int, default=7,
+                   help="Recency window in days (default 7).")
+    s.add_argument("--max-age-hours", type=int, default=None,
+                   help="Recency window in hours; overrides --days when given.")
     s.add_argument("--limit", type=int, default=None)
     s.add_argument("--method", choices=["structured", "tool"], default="structured")
 
