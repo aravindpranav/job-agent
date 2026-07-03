@@ -13,6 +13,7 @@ screenshot is captured and the outcome is appended to a JSONL log.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +42,27 @@ def submit_block_reason(decision: Decision, submit_flag: bool) -> str | None:
     if not submit_flag:
         return "dry-run: real submission requires the --submit flag (nothing was sent)"
     return None
+
+
+#: Visible submit-button text (Ashby and other React forms render submit as a
+#: plain <button> with text, no type attribute).
+_SUBMIT_TEXT = re.compile(r"^\s*submit(\s+application)?\s*$", re.IGNORECASE)
+
+
+def find_submit(page, submit_selector: str):
+    """Locate the submit control: type-based selector, then visible-text fallback.
+
+    Ashby-style React forms have no ``button[type='submit']`` — fall back to a
+    button whose accessible text is "Submit" / "Submit Application"
+    (case-insensitive) when the selector matches nothing.
+    """
+    by_type = page.locator(submit_selector)
+    if by_type.count() > 0:
+        return by_type.first
+    by_text = page.get_by_role("button", name=_SUBMIT_TEXT)
+    if by_text.count() > 0:
+        return by_text.first
+    return by_type.first  # nothing matched — clicking raises Playwright's usual error
 
 
 def log_result(result: SubmitResult, path: str | Path) -> Path:
@@ -77,7 +99,7 @@ def run_submit(page, plan: FillPlan, outcome: ReviewOutcome, *, submit_flag: boo
     stamp = (now or datetime.now(timezone.utc))
     screenshot_dir.mkdir(parents=True, exist_ok=True)
     shot = screenshot_dir / f"confirmation_{stamp:%Y%m%d_%H%M%S}.png"
-    page.locator(submit_selector).first.click()
+    find_submit(page, submit_selector).click()
     page.wait_for_timeout(1500)   # let the confirmation render
     page.screenshot(path=str(shot))
     return SubmitResult(

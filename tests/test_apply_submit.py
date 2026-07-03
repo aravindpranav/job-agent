@@ -41,21 +41,37 @@ def test_gate_allows_only_with_both():
 
 # --- run_submit refuses to touch the page unless both locks are satisfied ----
 
+class _FakeLocator:
+    def __init__(self, page, kind, n):
+        self._page, self._kind, self._n = page, kind, n
+
+    def count(self):
+        return self._n
+
+    @property
+    def first(self):
+        return self
+
+    def click(self):
+        self._page.clicked = True
+        self._page.clicked_via = self._kind
+
+
 class _FakePage:
-    def __init__(self):
+    """type_matches / text_matches control which lookup finds the button."""
+
+    def __init__(self, type_matches=1, text_matches=0):
         self.clicked = False
+        self.clicked_via = None
+        self._type, self._text = type_matches, text_matches
+        self.text_queries = []
 
     def locator(self, selector):
-        page = self
+        return _FakeLocator(self, "type", self._type)
 
-        class _L:
-            @property
-            def first(self):
-                return self
-
-            def click(self_inner):
-                page.clicked = True
-        return _L()
+    def get_by_role(self, role, name=None):
+        self.text_queries.append((role, name))
+        return _FakeLocator(self, "text", self._text)
 
     def wait_for_timeout(self, ms):
         pass
@@ -90,6 +106,42 @@ def test_real_submit_clicks_and_screenshots(tmp_path):
     assert page.clicked is True
     assert result.screenshot and Path(result.screenshot).exists()
     assert result.submitted_at == when.isoformat()
+
+
+# --- submit-button lookup: type selector, then visible-text fallback ----------
+
+def test_submit_prefers_the_type_selector_when_it_matches(tmp_path):
+    page = _FakePage(type_matches=1, text_matches=1)
+    run_submit(page, PLAN, APPROVED, submit_flag=True,
+               submit_selector="#submit", screenshot_dir=tmp_path, job_label="J")
+    assert page.clicked_via == "type"
+    assert page.text_queries == []          # fallback never consulted
+
+
+def test_submit_falls_back_to_button_text_for_react_forms(tmp_path):
+    # Ashby-style: no button[type=submit]; a plain button reads "Submit Application".
+    page = _FakePage(type_matches=0, text_matches=1)
+    result = run_submit(page, PLAN, APPROVED, submit_flag=True,
+                        submit_selector="button[type='submit']",
+                        screenshot_dir=tmp_path, job_label="J")
+    assert result.status == "submitted"
+    assert page.clicked_via == "text"
+    role, name = page.text_queries[0]
+    assert role == "button"
+    # the pattern accepts "Submit" and "Submit Application", case-insensitively,
+    # but not e.g. "Submit feedback"
+    assert name.match("Submit Application") and name.match("SUBMIT") \
+        and name.match("submit")
+    assert not name.match("Submit feedback")
+
+
+def test_text_fallback_never_runs_on_dry_run_or_skip(tmp_path):
+    page = _FakePage(type_matches=0, text_matches=1)
+    run_submit(page, PLAN, APPROVED, submit_flag=False,     # dry run
+               submit_selector="#s", screenshot_dir=tmp_path, job_label="J")
+    run_submit(page, PLAN, SKIPPED, submit_flag=True,       # not approved
+               submit_selector="#s", screenshot_dir=tmp_path, job_label="J")
+    assert page.clicked is False and page.text_queries == []
 
 
 # --- logging ----------------------------------------------------------------
