@@ -47,6 +47,9 @@ class EeoAnswers(BaseModel):
 
     gender: str = DECLINE_TO_STATE
     race: str = DECLINE_TO_STATE
+    # The "Are you Hispanic/Latino?" question is asked SEPARATELY from race on
+    # real forms (e.g. Greenhouse EEO sections) — it maps here, never to race.
+    hispanic_latino: str = DECLINE_TO_STATE
     veteran_status: str = DECLINE_TO_STATE
     disability_status: str = DECLINE_TO_STATE
 
@@ -76,6 +79,14 @@ class AnswerBank(BaseModel):
     work_mode: WorkMode | None = None
     willing_to_relocate: bool | None = None
     location_preference: str = ""
+
+    # --- structured location (for City / State / ZIP / Country form fields) --
+    # These map to the corresponding form fields verbatim; the free-text
+    # ``location_preference`` sentence is never used for them.
+    city: str = ""            # e.g. "Santa Clara"
+    state: str = ""           # e.g. "California"
+    zip: str = ""             # e.g. "95050"
+    country: str = ""         # e.g. "USA"
 
     # --- availability --------------------------------------------------------
     notice_period: str = ""

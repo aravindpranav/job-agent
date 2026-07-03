@@ -69,11 +69,14 @@ _SCAN_JS = r"""
     const options = el.tagName.toLowerCase() === 'select'
       ? Array.from(el.options).map(o => o.text.trim()).filter(t => t && !/^select/i.test(t))
       : [];
+    const fieldset = el.closest('fieldset');
+    const legend = fieldset ? fieldset.querySelector('legend') : null;
     out.push({
       tag: el.tagName.toLowerCase(),
       type,
       name: el.getAttribute('name') || el.id || '',
       label: labelFor(el),
+      groupLabel: legend ? legend.innerText.trim() : '',
       required: el.hasAttribute('required') || el.getAttribute('aria-required') === 'true',
       options,
       selector: selectorFor(el),
@@ -84,21 +87,60 @@ _SCAN_JS = r"""
 """
 
 
+def _single_field(r: dict) -> FormField:
+    options = tuple(r["options"])
+    field_type = classify_control(r["tag"], r["type"], r["label"], r["name"], bool(options))
+    return FormField(
+        selector=r["selector"],
+        field_type=field_type,
+        label=r["label"],
+        name=r["name"],
+        required=bool(r["required"]),
+        options=options,
+    )
+
+
+def _grouped_field(name: str, members: list[dict]) -> FormField:
+    """Collapse same-name radio/checkbox controls into ONE field.
+
+    A 30-country radio picker is one question with 30 options — not 30 required
+    fields. Each member's own label becomes an option; the group label is the
+    fieldset legend (falling back to the shared name); required if any member is.
+    """
+    label = next((m["groupLabel"] for m in members if m.get("groupLabel")), "") or name
+    options = tuple(m["label"] for m in members if m["label"])
+    field_type = classify_control(members[0]["tag"], members[0]["type"], label, name,
+                                  bool(options))
+    return FormField(
+        selector=f'input[name="{name}"]',
+        field_type=field_type,
+        label=label,
+        name=name,
+        required=any(m["required"] for m in members),
+        options=options,
+    )
+
+
 def read_form(page) -> tuple[FormField, ...]:
-    """Enumerate and classify every fillable control on the current page."""
+    """Enumerate and classify every fillable control on the current page.
+
+    Same-name radio/checkbox controls are grouped into a single field with one
+    option per control (see :func:`_grouped_field`); everything else maps 1:1.
+    """
     raw = page.evaluate(_SCAN_JS)
     fields: list[FormField] = []
+    groups: dict[str, list[dict]] = {}
+    order: list[tuple[str, str | dict]] = []   # ("single", r) | ("group", name)
     for r in raw:
         if not r["selector"]:
             continue  # unaddressable control — skip rather than guess a selector
-        options = tuple(r["options"])
-        field_type = classify_control(r["tag"], r["type"], r["label"], r["name"], bool(options))
-        fields.append(FormField(
-            selector=r["selector"],
-            field_type=field_type,
-            label=r["label"],
-            name=r["name"],
-            required=bool(r["required"]),
-            options=options,
-        ))
+        if r["type"] in ("radio", "checkbox") and r["name"]:
+            if r["name"] not in groups:
+                order.append(("group", r["name"]))
+            groups.setdefault(r["name"], []).append(r)
+        else:
+            order.append(("single", r))
+    for kind, item in order:
+        fields.append(_grouped_field(item, groups[item]) if kind == "group"
+                      else _single_field(item))
     return tuple(fields)

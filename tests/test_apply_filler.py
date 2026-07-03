@@ -18,10 +18,16 @@ BANK = AnswerBank.model_validate({
     "salary_expectation": "$160k",
     "work_mode": "remote",
     "willing_to_relocate": False,
+    "location_preference": "Anywhere (US), remote preferred",
+    "city": "Santa Clara",
+    "state": "California",
+    "zip": "95050",
+    "country": "USA",
     "notice_period": "2 weeks",
     "earliest_start_date": "2025-09-15",
     "total_years_experience": 6,
     "linkedin": "https://linkedin.com/in/jordan",
+    "eeo": {"hispanic_latino": "No", "race": "Asian"},
     "prepared_answers": {"why do you want": "Because your data platform is great."},
 })
 
@@ -153,6 +159,85 @@ def test_build_fill_plan_does_not_mutate_inputs():
     before = fields[0]
     build_fill_plan(fields, BANK, CONTACT, None)
     assert fields[0] is before  # frozen dataclass, untouched
+
+
+# --- structured location ------------------------------------------------------
+
+def test_city_state_zip_map_to_structured_values_not_the_sentence():
+    plan = _plan_for([
+        _f("#city", FieldType.TEXT, "City"),
+        _f("#state", FieldType.TEXT, "State"),
+        _f("#zip", FieldType.TEXT, "Zip / Postal code"),
+    ])
+    assert _value(plan, "#city") == "Santa Clara"
+    assert _value(plan, "#state") == "California"
+    assert _value(plan, "#zip") == "95050"
+    for p in plan.planned:   # the location_preference sentence appears nowhere
+        assert "Anywhere" not in p.value
+
+
+def test_country_select_matches_united_states_from_usa():
+    plan = _plan_for([
+        _f("#country", FieldType.SELECT, "Country",
+           options=["Australia", "Belgium", "United States", "India"]),
+        _f("#reside", FieldType.SELECT, "Where do you currently reside?",
+           options=["United States of America", "Other"]),
+    ])
+    assert _value(plan, "#country") == "United States"
+    assert _value(plan, "#reside") == "United States of America"
+    assert _sources(plan)["#country"] == "answer_bank.country"
+
+
+def test_country_text_field_gets_bank_value_verbatim():
+    plan = _plan_for([_f("#c", FieldType.TEXT, "Country")])
+    assert _value(plan, "#c") == "USA"
+
+
+def test_empty_city_pauses_instead_of_using_the_sentence():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "location_preference": "Anywhere (US), remote preferred",   # city empty
+    })
+    plan = build_fill_plan((_f("#city", FieldType.TEXT, "City", required=True),),
+                           bank, CONTACT, None)
+    assert plan.planned == ()           # never the sentence
+    assert plan.missing_required()      # surfaced + blocks approval
+
+
+def test_location_preference_still_maps_on_the_word_location():
+    plan = _plan_for([_f("#loc", FieldType.TEXT, "Preferred work location")])
+    assert _value(plan, "#loc") == "Anywhere (US), remote preferred"
+
+
+def test_word_boundaries_keep_state_out_of_statement_and_city_out_of_ethnicity():
+    plan = _plan_for([
+        _f("#essay", FieldType.TEXTAREA, "Personal statement"),
+        _f("#eth", FieldType.TEXT, "What is your ethnicity capacity limit?"),  # contrived
+    ])
+    assert plan.planned == ()   # neither gets a location value
+
+
+# --- Hispanic/Latino vs race ---------------------------------------------------
+
+def test_hispanic_latino_maps_to_hispanic_latino_not_race():
+    plan = _plan_for([
+        _f("#hisp", FieldType.EEO, "Ethnicity: Are you Hispanic or Latino?",
+           options=["Yes", "No", "Decline to state"]),
+        _f("#race", FieldType.EEO, "Race",
+           options=["Asian", "White", "Decline to state"]),
+    ])
+    assert _value(plan, "#hisp") == "No"       # eeo.hispanic_latino
+    assert _value(plan, "#race") == "Asian"    # eeo.race, untouched
+    assert _sources(plan)["#hisp"] == "answer_bank.eeo.hispanic"
+
+
+def test_hispanic_latino_declines_when_not_provided():
+    bank = AnswerBank.model_validate({"authorized_us": True, "requires_sponsorship": False})
+    plan = build_fill_plan(
+        (_f("#hisp", FieldType.EEO, "Are you Hispanic/Latino?",
+            options=["Yes", "No", "Decline to state"]),),
+        bank, CONTACT, None)
+    assert _value(plan, "#hisp") == "Decline to state"
 
 
 # --- apply_plan drives a (fake) page ----------------------------------------

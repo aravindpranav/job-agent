@@ -24,6 +24,13 @@ work_mode: remote            # one of: remote | hybrid | onsite
 willing_to_relocate: false
 location_preference: "Anywhere (US), remote preferred"
 
+# Structured location — used verbatim for City / State / ZIP / Country form
+# fields (the location_preference sentence above is never put in those).
+city: "Santa Clara"
+state: "California"
+zip: "95050"
+country: "USA"
+
 # --- Availability ------------------------------------------------------------
 notice_period: "2 weeks"
 earliest_start_date: "2025-09-01"
@@ -41,6 +48,7 @@ github: "https://github.com/example"
 eeo:
   gender: "Decline to state"
   race: "Decline to state"
+  hispanic_latino: "No"       # the Hispanic/Latino question is separate from race
   veteran_status: "Decline to state"
   disability_status: "Decline to state"
 

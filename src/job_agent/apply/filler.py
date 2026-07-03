@@ -13,6 +13,7 @@ sets each value on the live page.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from job_agent.apply.answer_bank import DECLINE_TO_STATE, AnswerBank, Contact
@@ -29,6 +30,12 @@ _NO_MATCH = "no matching answer in the answer bank (pause to fill by hand)"
 
 def _haystack(f: FormField) -> str:
     return f"{f.label} {f.name}".lower()
+
+
+def _word(hay: str, term: str) -> bool:
+    """Whole-word match — keeps 'city' out of 'ethnicity' and 'state' out of
+    'personal statement'."""
+    return re.search(rf"\b{re.escape(term)}\b", hay) is not None
 
 
 def _fmt_years(value: float) -> str:
@@ -53,15 +60,39 @@ def _match_option(options: tuple[str, ...], want: str) -> str | None:
     return None
 
 
+_US_COUNTRY_SPELLINGS = ("united states of america", "united states", "usa",
+                         "u.s.a.", "u.s.", "america")
+
+
+def _match_country(options: tuple[str, ...], want: str) -> str | None:
+    """Pick the country option, bridging spellings ("USA" bank vs a "United
+    States" dropdown option). Free-text fields just get the bank value."""
+    if not options:
+        return want
+    hit = _match_option(options, want)
+    if hit:
+        return hit
+    if want.strip().lower() in _US_COUNTRY_SPELLINGS:
+        for alias in _US_COUNTRY_SPELLINGS:
+            if (hit := _match_option(options, alias)):
+                return hit
+    return None
+
+
 def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str]:
     """(value, source) for a self-identification field — declines by default."""
     hay = _haystack(f)
     eeo = bank.eeo
-    key = ("gender" if "gender" in hay or "sex" in hay
+    # Hispanic/Latino is checked FIRST: forms often title it "Ethnicity: Are you
+    # Hispanic or Latino?", and "ethnic" alone would otherwise mis-route it to
+    # the race value. Race keeps only the separate race/ethnicity question.
+    key = ("hispanic" if "hispanic" in hay or "latino" in hay or "latinx" in hay
+           else "gender" if "gender" in hay or "sex" in hay
            else "race" if "race" in hay or "ethnic" in hay
            else "veteran" if "veteran" in hay
            else "disability" if "disab" in hay else "")
-    value = getattr(eeo, {"gender": "gender", "race": "race", "veteran": "veteran_status",
+    value = getattr(eeo, {"hispanic": "hispanic_latino", "gender": "gender", "race": "race",
+                          "veteran": "veteran_status",
                           "disability": "disability_status"}[key]) if (eeo and key) else DECLINE_TO_STATE
     if f.options:
         value = _match_option(f.options, value) or _match_option(f.options, "decline") or value
@@ -118,7 +149,23 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
             return None
         picked = _match_option(f.options, bank.work_mode) if f.options else bank.work_mode
         return (picked, "answer_bank.work_mode") if picked else None
-    if "location" in hay or "city" in hay:
+
+    # structured location — checked BEFORE the generic "location" fallback, and
+    # each returns None (-> unfilled, pause) when the bank value is empty, so
+    # the location_preference sentence can never land in a city/state/zip field.
+    if _word(hay, "zip") or "postal" in hay:
+        return (bank.zip, "answer_bank.zip") if bank.zip else None
+    if _word(hay, "city") or _word(hay, "town"):
+        return (bank.city, "answer_bank.city") if bank.city else None
+    if _word(hay, "state") or "province" in hay:
+        return (bank.state, "answer_bank.state") if bank.state else None
+    if _word(hay, "country") or "reside" in hay or "applying from" in hay:
+        if not bank.country:
+            return None
+        picked = _match_country(f.options, bank.country)
+        return (picked, "answer_bank.country") if picked else None
+
+    if _word(hay, "location"):
         val = bank.location_preference or contact.location
         return (val, "answer_bank.location_preference") if val else None
 
