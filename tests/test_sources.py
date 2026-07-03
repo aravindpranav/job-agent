@@ -25,6 +25,23 @@ def test_greenhouse_parses_real_shape():
 
 
 @respx.mock
+def test_greenhouse_apply_url_is_the_hosted_form_not_the_careers_page():
+    # absolute_url is the company careers page (a listing/search page with no
+    # form — e.g. stripe.com/jobs/search?gh_jid=...), and /jobs/{id} redirects
+    # back to it for boards with a careers-site override. The apply_url must be
+    # the embed endpoint, which always serves the real application form.
+    respx.route(method="GET", url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
+        return_value=httpx.Response(200, json=load_fixture("greenhouse.json"))
+    )
+    job = GreenhouseSource("databricks").fetch()[0]
+    assert job.apply_url == (
+        f"https://boards.greenhouse.io/embed/job_app?for=databricks&token={job.id}"
+    )
+    assert job.url != job.apply_url          # careers page stays the human URL
+    assert "databricks.com" in job.url       # ...and is untouched
+
+
+@respx.mock
 def test_lever_parses_country_and_epoch_date():
     respx.route(method="GET", url__regex=r"https://api\.lever\.co/.*").mock(
         return_value=httpx.Response(200, json=load_fixture("lever.json"))

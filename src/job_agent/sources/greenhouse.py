@@ -9,6 +9,17 @@ Real shape (observed): each job has ``id``, ``title``, ``company_name``,
 observed, so it's the primary post date; the seen-ids cache is the fallback if a
 future posting has it null. Greenhouse has no structured country, so country is
 guessed loosely from the location string.
+
+``absolute_url`` is the company's own careers-site page (e.g.
+``stripe.com/jobs/search?gh_jid=...``) — a listing/search page, often with no
+form on it — so it is only used as the human-readable ``url``. Even
+``boards.greenhouse.io/{board}/jobs/{id}`` can't be the apply URL: boards with a
+configured careers-site override (Stripe) redirect it straight back to the
+company page. The one URL verified to always serve the actual application form
+(first name / email / resume upload fields) is Greenhouse's embed endpoint,
+constructed from board + id:
+
+    https://boards.greenhouse.io/embed/job_app?for={board}&token={id}
 """
 
 from __future__ import annotations
@@ -46,7 +57,11 @@ class GreenhouseSource(JobSource):
                     company=raw.get("company_name") or self.board.title(),
                     location=location,
                     url=raw.get("absolute_url", ""),
-                    apply_url=raw.get("absolute_url"),
+                    # NOT absolute_url (company careers page, no form) and NOT
+                    # /jobs/{id} (redirects back to it for boards like Stripe):
+                    # the embed endpoint always serves the real application form.
+                    apply_url=(f"https://boards.greenhouse.io/embed/job_app"
+                               f"?for={self.board}&token={raw['id']}"),
                     source=self.ats,
                     posted_at=parse_iso(raw.get("first_published") or raw.get("updated_at")),
                     remote="remote" in location.lower(),
