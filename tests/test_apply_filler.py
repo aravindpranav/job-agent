@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from job_agent.apply.answer_bank import AnswerBank, Contact
 from job_agent.apply.fields import FieldType, FormField
 from job_agent.apply.filler import apply_plan, build_fill_plan
@@ -217,6 +219,54 @@ def test_word_boundaries_keep_state_out_of_statement_and_city_out_of_ethnicity()
         _f("#eth", FieldType.TEXT, "What is your ethnicity capacity limit?"),  # contrived
     ])
     assert plan.planned == ()   # neither gets a location value
+
+
+# --- legal consent guard: NEVER auto-filled ----------------------------------
+
+def test_privacy_notice_consent_is_never_filled_with_notice_period():
+    # The reported bug: this label contains the word "notice" and got "2 weeks".
+    plan = _plan_for([
+        _f("#consent", FieldType.CHECKBOX,
+           "Please confirm receipt of the Global Data Privacy Notice and "
+           "US Arbitration Agreement", required=True),
+    ])
+    assert plan.planned == ()                          # nothing auto-filled
+    assert "consent" in plan.unfilled[0].reason
+    assert plan.missing_required()                     # pauses/blocks approval
+
+
+@pytest.mark.parametrize("label", [
+    "I agree to the Terms of Service",
+    "Do you consent to a background check?",
+    "Acknowledgment of the candidate privacy policy",
+    "Signature",
+    "I certify that my answers are true",
+    "GDPR data protection notice",
+])
+def test_consent_and_acknowledgment_fields_always_pause(label):
+    plan = _plan_for([_f("#c", FieldType.CHECKBOX, label)])
+    assert plan.planned == ()
+    assert "never auto-filled" in plan.unfilled[0].reason
+
+
+def test_consent_guard_beats_every_mapper_even_country_and_eeo():
+    # Consent wording mixed with otherwise-mappable words still pauses.
+    plan = _plan_for([
+        _f("#c1", FieldType.SELECT, "I consent to work in the United States country terms",
+           options=["Yes", "No"]),
+        _f("#c2", FieldType.EEO, "Privacy consent for gender data", options=["Yes", "No"]),
+    ])
+    assert plan.planned == ()
+
+
+def test_notice_period_still_maps_and_work_auth_not_blocked():
+    plan = _plan_for([
+        _f("#np", FieldType.TEXT, "Notice period"),
+        _f("#auth", FieldType.SELECT, "Are you legally authorized to work in the US?",
+           options=["Yes", "No"]),
+    ])
+    assert _value(plan, "#np") == "2 weeks"     # tightened matcher still works
+    assert _value(plan, "#auth") == "Yes"       # "authorize" is not a consent marker
 
 
 # --- employment history / education (from career facts) -------------------------

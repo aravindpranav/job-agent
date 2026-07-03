@@ -27,6 +27,19 @@ from job_agent.apply.fields import (
 
 _NO_MATCH = "no matching answer in the answer bank (pause to fill by hand)"
 
+# Legal consent / acknowledgment markers. Any field whose label carries one is
+# NEVER auto-filled — it always pauses for the human, whatever its type. (Found
+# the hard way: a "confirm receipt of the Global Data Privacy Notice and US
+# Arbitration Agreement" field got notice_period via the bare word "notice".)
+# "authorize" is deliberately absent — it would collide with "authorized to
+# work in the US".
+_CONSENT_MARKERS = (
+    "consent", "agreement", "acknowledge", "acknowledgment", "privacy",
+    "arbitration", "terms and conditions", "terms of service", "certify",
+    "signature", "waiver", "disclaimer", "confirm receipt", "data protection",
+    "gdpr",
+)
+
 
 def _haystack(f: FormField) -> str:
     return f"{f.label} {f.name}".lower()
@@ -154,7 +167,7 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
     # compensation / availability / experience ----------------------------
     if "salary" in hay or "compensation" in hay or has("expected", "pay"):
         return (bank.salary_expectation, "answer_bank.salary_expectation") if bank.salary_expectation else None
-    if "notice" in hay:
+    if "notice period" in hay:   # NOT bare "notice" — see _CONSENT_MARKERS story
         return (bank.notice_period, "answer_bank.notice_period") if bank.notice_period else None
     if "start date" in hay or has("start") and ("available" in hay or "when" in hay):
         return (bank.earliest_start_date, "answer_bank.earliest_start_date") if bank.earliest_start_date else None
@@ -196,9 +209,22 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
     return None
 
 
+def _is_legal_consent(f: FormField) -> bool:
+    """True for consent / acknowledgment / legal-agreement fields."""
+    hay = _haystack(f)
+    return any(m in hay for m in _CONSENT_MARKERS) or _word(hay, "agree")
+
+
 def _resolve(f: FormField, bank: AnswerBank, contact: Contact,
              resume_path: Path | None) -> PlannedFill | Unfilled:
     """Resolve a single field to either a PlannedFill or an Unfilled (never guess)."""
+    # FIRST check, before any mapping — a consent field must never receive an
+    # unrelated value; the human reads and answers it (a required one blocks
+    # approval at the review gate until edited in or skipped).
+    if _is_legal_consent(f):
+        return Unfilled(f, "legal consent/acknowledgment — never auto-filled "
+                           "(read and answer this yourself)")
+
     if f.field_type == FieldType.CREDENTIAL:
         return Unfilled(f, "credential field — never auto-filled (log in yourself)")
 
