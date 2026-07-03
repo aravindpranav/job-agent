@@ -53,7 +53,7 @@ from job_agent.tailor.verify import (
     verify_pdf,
 )
 
-SUBCOMMANDS = {"search", "tailor"}
+SUBCOMMANDS = {"search", "tailor", "apply"}
 DEMO_DIR = Path(__file__).resolve().parent / "tailor" / "demo"
 
 _VERDICT_STYLE = {"strong": "bold green", "possible": "yellow", "skip": "dim", "unscored": "red"}
@@ -294,6 +294,92 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------- #
+#  apply  (Slice 4 — assisted apply in a visible browser)
+# --------------------------------------------------------------------------- #
+
+def _find_tailored_resume(explicit: str | None, tailor_out: Path,
+                          facts, record: dict) -> Path | None:
+    """Locate the tailored PDF for this job, or None (review will then pause)."""
+    if explicit:
+        return Path(explicit)
+    fname = _resume_filename(facts.name.split()[0], record.get("title", ""),
+                             record.get("company", ""))
+    candidate = tailor_out / f"{fname}.pdf"
+    return candidate if candidate.exists() else None
+
+
+def _print_apply_result(console: Console, result) -> None:
+    color = {"submitted": "bold green", "dry_run": "yellow", "skipped": "dim"}.get(
+        result.status, "white")
+    console.print(f"\n[{color}]● {result.status.upper()}[/{color}] — {result.reason}")
+    if result.screenshot:
+        console.print(f"  screenshot: {result.screenshot}")
+    console.print(f"  job: {result.job_label}")
+
+
+def cmd_apply(console: Console, args: argparse.Namespace) -> int:
+    from job_agent.apply.answer_bank import load_answer_bank, resolve_contact
+    from job_agent.apply.browser import PlaywrightNotInstalled
+    from job_agent.apply.demo_apply import run_demo
+    from job_agent.apply.prompt_io import PromptIO
+    from job_agent.apply.runner import ApplyConfig, run_apply
+
+    io = PromptIO()  # plain input/print — the review text is not rich markup
+
+    try:
+        if args.demo:
+            console.print("[bold]apply --demo[/bold] — local fake form, zero network, "
+                          "no real employer.\n")
+            result = run_demo(io, headless=not args.headed)
+            _print_apply_result(console, result)
+            return 0
+
+        if not args.job:
+            console.print("[red]apply needs --job <id> (from a prior search) or --demo.[/red]")
+            return 2
+
+        settings = load_settings()
+        record = load_job_record(settings.data_dir / "last_search.json", args.job)
+        if not record:
+            console.print(f"[red]Job id {args.job!r} not found in data/last_search.json.[/red] "
+                          "Run a search first.")
+            return 1
+        apply_url = record.get("apply_url") or record.get("url")
+        if not apply_url:
+            console.print("[red]That job record has no apply/URL to open.[/red]")
+            return 1
+
+        facts = load_career_facts(args.facts)
+        try:
+            bank = load_answer_bank(args.answers)
+        except FileNotFoundError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 1
+        contact = resolve_contact(facts, bank)
+        resume = _find_tailored_resume(args.resume, Path(args.tailor_out), facts, record)
+        if resume is None:
+            console.print("[yellow]No tailored resume found[/yellow] — the resume upload will "
+                          "be left empty and paused on. Pass --resume PATH or run `tailor` first.")
+
+        if not args.submit:
+            console.print("[yellow]DRY RUN[/yellow] — preview + fill only. Nothing is submitted. "
+                          "Add [bold]--submit[/bold] to enable real submission (still gated by "
+                          "your explicit approval).\n")
+
+        cfg = ApplyConfig(
+            apply_url=apply_url, bank=bank, contact=contact, resume_path=resume,
+            submit_flag=args.submit, headless=False, out_dir=Path(args.out_dir),
+            job_label=f"{record.get('company', '?')} — {record.get('title', '?')}",
+        )
+        result = run_apply(cfg, io=io)
+        _print_apply_result(console, result)
+        return 0
+    except PlaywrightNotInstalled as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 1
+
+
+# --------------------------------------------------------------------------- #
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="job_agent",
@@ -313,6 +399,21 @@ def _build_parser() -> argparse.ArgumentParser:
     t.add_argument("--facts", default="data/career_facts.yaml", help="Career facts YAML.")
     t.add_argument("--jd", help="Use this JD text file instead of re-fetching.")
     t.add_argument("--out-dir", default="data/output", help="Where to write the PDF/DOCX.")
+
+    a = sub.add_parser("apply", help="Assisted apply in a visible browser (human-gated).")
+    a.add_argument("--demo", action="store_true",
+                   help="Run the whole flow against a local fake form (no key/network).")
+    a.add_argument("--job", help="Job id from a prior search (opens its apply URL).")
+    a.add_argument("--submit", action="store_true",
+                   help="Enable REAL submission (still gated by your in-session approval).")
+    a.add_argument("--answers", default="data/answer_bank.yaml", help="Answer bank YAML.")
+    a.add_argument("--facts", default="data/career_facts.yaml", help="Career facts YAML.")
+    a.add_argument("--resume", default=None, help="Tailored resume PDF to upload.")
+    a.add_argument("--tailor-out", default="data/output", dest="tailor_out",
+                   help="Where tailored resumes are written (for auto-detect).")
+    a.add_argument("--out-dir", default="data/apply", help="Where to write logs/screenshots.")
+    a.add_argument("--headed", action="store_true",
+                   help="Demo only: show the browser window (demo defaults to headless).")
     return parser
 
 
@@ -323,8 +424,10 @@ def main(argv: list[str] | None = None) -> int:
         argv = ["search"] + argv
     args = _build_parser().parse_args(argv)
     console = Console()
+    dispatch = {"tailor": cmd_tailor, "apply": cmd_apply}
+    handler = dispatch.get(args.command, cmd_search)
     try:
-        return cmd_tailor(console, args) if args.command == "tailor" else cmd_search(console, args)
+        return handler(console, args)
     except KeyboardInterrupt:
         console.print("\n[dim]interrupted[/dim]")
         return 130

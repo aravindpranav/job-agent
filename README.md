@@ -4,10 +4,11 @@ An AI job-hunting agent. It discovers roles freshly posted on companies' public
 Applicant Tracking System (ATS) boards, filters them to what you actually want,
 and uses an LLM to score how well each one fits you — then prints a ranked table.
 
-> **Status: Slices 1–2 of a larger build.** Slice 1 does discovery + scoring;
+> **Status: Slices 1–4 of a larger build.** Slice 1 does discovery + scoring;
 > Slice 2 tailors your résumé to a matched job as an ATS-safe PDF, gated by a
-> no-drift honesty check. An application-answer bank and browser-based
-> application assist (with a human-approval gate) are later slices, left as stubs.
+> no-drift honesty check; Slice 3 adds a validated answer bank; Slice 4 does
+> browser-based assisted apply that fills the real form but submits only behind
+> an explicit `--submit` flag *and* your per-application approval.
 
 ## Why this exists
 
@@ -29,22 +30,27 @@ and location, and spends an LLM call only on those survivors.
 
 ## Quick start
 
-The CLI has two subcommands, `search` and `tailor`. A bare invocation with no
-subcommand defaults to `search`.
+The CLI has three subcommands, `search`, `tailor`, and `apply`. A bare
+invocation with no subcommand defaults to `search`.
 
 ### Demo mode — no API key, no network
 
 ```bash
 pip install -e .
+playwright install chromium            # one-time, only needed for `apply`
 python -m job_agent search --demo    # discover + score (mock jobs)
 python -m job_agent tailor --demo    # tailor a FAKE resume to a FAKE JD -> sample PDF
+python -m job_agent apply  --demo    # fill + "submit" a LOCAL fake form, end to end
 ```
 
 `search --demo` runs the whole discovery pipeline against bundled mock jobs
 (same filters/ranking as a real run, offline stand-ins for the source + scorer).
 `tailor --demo` tailors a committed fake resume to a fake job and writes an
-ATS-safe sample PDF + DOCX — so anyone can see the tailoring end-to-end with no
-API key and no real résumé.
+ATS-safe sample PDF + DOCX. `apply --demo` opens a committed local HTML form over
+`file://` (zero network, no real employer), fills it from a fake answer bank +
+fake resume, prints the full review, pauses for a simulated approval, "submits"
+to the local page, and saves a confirmation screenshot — the entire assisted-apply
+flow with no real-world side effects.
 
 ```
 Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → dedup 3
@@ -60,8 +66,11 @@ Pipeline: fetched 6 → keyword 5 → 24h 4 → location 3 → dedup 3
 ```bash
 cp .env.example .env                                  # add your ANTHROPIC_API_KEY
 cp search_profile.example.yaml search_profile.yaml    # edit roles / companies / location
+cp data/answer_bank.example.yaml data/answer_bank.yaml # fill your real apply answers
 python -m job_agent search                            # fetch, filter, score, rank
 python -m job_agent tailor --job <ID>                 # tailor your resume to a match
+python -m job_agent apply  --job <ID>                 # assisted apply (dry-run by default)
+python -m job_agent apply  --job <ID> --submit        # real submit (still needs your OK)
 ```
 
 `search` fetches live jobs from the boards in `search_profile.yaml`, filters to
@@ -69,6 +78,8 @@ the last 24 hours, scores each survivor, prints them ranked, and saves the run t
 `data/last_search.json`. `tailor --job <ID>` (an ID from that table) re-fetches
 the full JD, tailors your base résumé to it, runs the no-drift gate, and writes
 `data/output/<company>_<role>.pdf` (+ `.docx`) plus a NOTES block to review.
+`apply --job <ID>` opens that job's application in a **visible** browser, fills
+it from your answer bank + tailored PDF, and shows a full review — see below.
 
 Useful search flags: `--profile PATH`, `--limit N`, `--max-age-hours N`
 (freshness window, default 24), `--method {structured,tool}`.
@@ -150,6 +161,40 @@ and wording, but it cannot fabricate.
 
 Tailoring uses **`claude-sonnet-4-6`** for quality; scoring stays on Haiku.
 
+## Assisted apply (Slice 4)
+
+`apply` opens a job's real application form in a **visible** browser, fills it
+from your answer bank + tailored PDF, shows you everything it will submit, and
+submits **only** with both a `--submit` flag *and* your explicit approval. It is
+built to be cautious by construction — the safety rules live in the code, not
+just the docs:
+
+- **Two independent locks on submit.** A real submission needs `--submit` on the
+  command line **and** an in-session `approve` at the review gate. Missing either
+  → dry-run or skipped, never sent (`submit.py:submit_block_reason`). Default is
+  preview/dry-run. One approval submits exactly one application — there is no
+  batch path.
+- **Never guesses an answer.** Fields are filled only from your answer bank or
+  résumé (`filler.py` is a pure `fields → FillPlan` function). An unmatched or
+  ambiguous field is recorded as *unfilled with a reason* and surfaced in the
+  review; a required one blocks approval until you `edit` it in or `skip`.
+- **Never handles credentials or captchas.** It never creates accounts, types
+  passwords, or solves captchas. On a login / account-creation / captcha it
+  **pauses**, tells you what to do in the *same* browser window, waits for you to
+  do it yourself, then re-checks the page is clear and resumes from where it
+  paused — no reload, no lost state (`handoff.py`).
+- **Full review before anything is sent.** The review prints every value *and its
+  source* (e.g. `career_facts.email`, `answer_bank.salary_expectation`) plus every
+  field left empty, then waits for `approve` / `edit <sel>=<val>` / `skip`
+  (`review.py`). On a real submit it captures a confirmation screenshot and
+  appends the outcome to `data/apply/apply_log.jsonl`.
+
+Scope: Greenhouse / Lever / Ashby embedded forms are fully fillable; for Workday
+/ iCIMS it fills what's public then pauses for you to log in — it never attempts
+account creation. Playwright drives the browser (`playwright install chromium`
+once). The pure logic (classification, mapping, gates, blocker detection) is
+fully unit-tested with no browser; only the thin driver touches Playwright.
+
 ## Project layout
 
 ```
@@ -163,7 +208,7 @@ src/job_agent/
   seen_cache.py      seen-ids cache for the 24h fallback
   demo_data.py       mock jobs + offline scorer for search --demo
   store.py           persist a search run for `tailor --job`
-  cli.py             search / tailor subcommands
+  cli.py             search / tailor / apply subcommands
   tailor/
     extract.py       base resume (.docx) -> career_facts.yaml
     career_facts.py  frozen CareerFacts models + allow-lists
@@ -174,10 +219,20 @@ src/job_agent/
     demo/            committed FAKE facts / JD / stub response
   apply/
     answer_bank.py   frozen answer-bank models + load/validate; contact merged
-                     from career_facts (Slice 3). Browser modules land here next.
-  answers.py / apply.py                 Slice-4 browser-automation stubs
+                     from career_facts (Slice 3)
+    fields.py        immutable FormField / FillPlan value types
+    form_reader.py   read + classify a form's controls (pure classify + DOM scan)
+    filler.py        pure answer-bank -> FillPlan mapping; apply plan to the page
+    review.py        human review gate (approve / edit / skip); blocks on missing
+    handoff.py       pause/resume for login / captcha / account (pure detection)
+    submit.py        two-lock submit gate + screenshot + JSONL log
+    runner.py        orchestrates one application end to end
+    browser.py       lazy Playwright launch (visible for real runs)
+    prompt_io.py     console-IO seam so the gates are testable offline
+    demo/            committed local fake form + fake answers + fake resume
 prompts/tailor_megaprompt.txt           the tailoring mega prompt
-tests/               pytest + respx (sources, filters, scoring, tailoring, PDF)
+tests/               pytest + respx (sources, filters, scoring, tailoring, PDF,
+                     answer bank, apply: mapping / review / handoff / submit)
 ```
 
 ## Development
@@ -198,9 +253,10 @@ and the unscored fallback).
 - ✅ Slice 3 — application answer bank (`apply/answer_bank.py`): validated,
   gitignored PII store; work-auth required, EEO opt-in/declinable, contact merged
   from career facts. Template: `data/answer_bank.example.yaml`.
-- ⬜ Slice 4 — assisted apply in a visible browser (Playwright): fill from the
-  bank, pause on login/captcha/unknown fields, full review, submit only behind
-  `--submit` + per-application approval.
+- ✅ Slice 4 — assisted apply in a visible browser (Playwright): fills from the
+  bank + tailored PDF, pauses on login/captcha/unknown fields, shows a full
+  review, and submits only behind `--submit` + per-application approval. Runs
+  end to end offline via `apply --demo` against a local fake form.
 
 ## License
 

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!--
+  DEMO application form — a static, local, fully-fillable page.
+
+  Served from file:// so `apply --demo` touches ZERO network and no real
+  employer. Its fields mirror the shape of a real embedded ATS form (contact,
+  work authorization, salary, availability, resume upload, EEO, a free-text
+  question) so the full read → fill → review → submit flow is exercised.
+
+  Submit is handled entirely client-side: it hides the form and shows a
+  confirmation banner. Nothing leaves the machine.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Demo Co — Apply: Data Engineer</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 620px; margin: 2rem auto; color: #1a1a1a; }
+    h1 { font-size: 1.4rem; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input, select, textarea { width: 100%; padding: .5rem; margin-top: .25rem; font-size: 1rem; box-sizing: border-box; }
+    .req::after { content: " *"; color: #c0392b; }
+    button { margin-top: 1.5rem; padding: .7rem 1.4rem; font-size: 1rem; background: #2d6cdf; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+    #confirmation { display: none; padding: 2rem; background: #e8f6ec; border: 1px solid #38a169; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Demo Co — Data Engineer</h1>
+  <p>Apply below. (This is a local demo form — nothing is sent anywhere.)</p>
+
+  <form id="apply-form" onsubmit="event.preventDefault(); document.getElementById('apply-form').style.display='none'; document.getElementById('confirmation').style.display='block';">
+    <label class="req" for="full_name">Full name</label>
+    <input id="full_name" name="full_name" type="text" required />
+
+    <label class="req" for="email">Email</label>
+    <input id="email" name="email" type="email" required />
+
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel" />
+
+    <label for="linkedin">LinkedIn URL</label>
+    <input id="linkedin" name="linkedin" type="url" />
+
+    <label class="req" for="work_auth">Are you legally authorized to work in the US?</label>
+    <select id="work_auth" name="work_auth" required>
+      <option value="">Select…</option>
+      <option>Yes</option>
+      <option>No</option>
+    </select>
+
+    <label class="req" for="sponsorship">Will you now or in the future require visa sponsorship?</label>
+    <select id="sponsorship" name="sponsorship" required>
+      <option value="">Select…</option>
+      <option>Yes</option>
+      <option>No</option>
+    </select>
+
+    <label for="salary">Salary expectation</label>
+    <input id="salary" name="salary" type="text" />
+
+    <label for="notice">Notice period</label>
+    <input id="notice" name="notice" type="text" />
+
+    <label for="start_date">Earliest start date</label>
+    <input id="start_date" name="start_date" type="text" />
+
+    <label for="years_experience">Total years of experience</label>
+    <input id="years_experience" name="years_experience" type="number" />
+
+    <label for="work_mode">Preferred work arrangement</label>
+    <select id="work_mode" name="work_mode">
+      <option value="">Select…</option>
+      <option>Remote</option>
+      <option>Hybrid</option>
+      <option>Onsite</option>
+    </select>
+
+    <label class="req" for="resume">Resume (PDF)</label>
+    <input id="resume" name="resume" type="file" accept="application/pdf" required />
+
+    <label for="why_company">Why do you want to work at Demo Co?</label>
+    <textarea id="why_company" name="why_company" rows="4"></textarea>
+
+    <label for="gender">Gender (voluntary self-identification)</label>
+    <select id="gender" name="gender">
+      <option>Decline to state</option>
+      <option>Male</option>
+      <option>Female</option>
+      <option>Non-binary</option>
+    </select>
+
+    <label for="veteran_status">Veteran status (voluntary)</label>
+    <select id="veteran_status" name="veteran_status">
+      <option>Decline to state</option>
+      <option>Not a veteran</option>
+      <option>Veteran</option>
+    </select>
+
+    <button id="submit" type="submit">Submit application</button>
+  </form>
+
+  <div id="confirmation">
+    <h2>✓ Application submitted</h2>
+    <p>Thanks for applying to Demo Co. (Demo confirmation — nothing was sent.)</p>
+  </div>
+</body>
+</html>

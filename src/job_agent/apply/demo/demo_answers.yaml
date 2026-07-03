@@ -1,0 +1,27 @@
+# DEMO answer bank — committed FAKE values (for `apply --demo`).
+# Mirrors data/answer_bank.example.yaml; used with the fake career facts so the
+# whole assisted-apply flow runs with no real person and no network.
+
+authorized_us: true
+requires_sponsorship: false
+
+salary_expectation: "$160,000 - $180,000"
+
+work_mode: remote
+willing_to_relocate: false
+location_preference: "Remote (US)"
+
+notice_period: "2 weeks"
+earliest_start_date: "2025-09-15"
+
+total_years_experience: 6
+
+linkedin: "https://www.linkedin.com/in/jordan-rivers-demo"
+github: "https://github.com/jordan-rivers-demo"
+
+eeo:
+  gender: "Decline to state"
+  veteran_status: "Decline to state"
+
+prepared_answers:
+  why do you want to work: "I admire Demo Co's data platform work and want to build reliable, well-tested pipelines with your team."

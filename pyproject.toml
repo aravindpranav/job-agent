@@ -23,6 +23,9 @@ dependencies = [
     "python-docx>=1.1",
     "reportlab>=4.0",
     "pdfminer.six>=20240706",
+    # Slice 4 (assisted apply): browser automation. After install, run once:
+    #   playwright install chromium
+    "playwright>=1.40",
 ]
 
 [project.optional-dependencies]
