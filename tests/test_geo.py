@@ -23,6 +23,17 @@ from job_agent.geo import infer_country
     ("Remote (UK)", "United Kingdom"),
     ("Tel Aviv, Israel", "Israel"),
     ("Singapore", "Singapore"),
+    ("Seoul, South Korea", "South Korea"),   # the miss that let job 8574655002 through
+    ("Seoul", "South Korea"),
+    ("Seoul, Korea", "South Korea"),
+    ("Taipei, Taiwan", "Taiwan"),
+    ("Hong Kong", "Hong Kong"),
+    ("Shanghai", "China"),
+    ("Zurich", "Switzerland"),
+    ("Stockholm, Sweden", "Sweden"),
+    ("Prague", "Czechia"),
+    ("São Paulo, Brazil", "Brazil"),
+    ("Jakarta, Indonesia", "Indonesia"),
 ])
 def test_clearly_foreign_locations(location, expected):
     assert infer_country(location) == expected
@@ -41,6 +52,10 @@ def test_clearly_foreign_locations(location, expected):
     "Columbus, OH",           # 'us' must NOT be matched inside 'Columbus'
     "Cambridge, MA",          # US Cambridge, not the UK one
     "Portland, OR",           # 'OR' the state, not the word 'or'
+    "Vancouver, WA",          # US Vancouver — must not be misread as Canada
+    "Dublin, OH",             # US Dublin — must not be misread as Ireland
+    "Waterloo, IA",           # US Waterloo — must not be misread as Canada
+    "Atlanta, Georgia",       # the US state, not the country Georgia
 ])
 def test_us_locations_are_recognized_as_us(location):
     assert infer_country(location) == "US"
