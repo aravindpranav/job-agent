@@ -172,7 +172,10 @@ src/job_agent/
     verify.py        no-drift gate + PDF text-extraction gate
     jd_fetch.py      re-fetch the full JD at tailor time
     demo/            committed FAKE facts / JD / stub response
-  answers.py / apply.py                 later-slice stubs
+  apply/
+    answer_bank.py   frozen answer-bank models + load/validate; contact merged
+                     from career_facts (Slice 3). Browser modules land here next.
+  answers.py / apply.py                 Slice-4 browser-automation stubs
 prompts/tailor_megaprompt.txt           the tailoring mega prompt
 tests/               pytest + respx (sources, filters, scoring, tailoring, PDF)
 ```
@@ -192,8 +195,12 @@ and the unscored fallback).
 
 - ✅ Slice 1 — discovery + LLM fit scoring
 - ✅ Slice 2 — résumé tailoring → ATS-safe PDF with a no-drift honesty gate
-- ⬜ Slice 3 — application answer bank, reading real ATS questions (`answers.py`)
-- ⬜ Slice 4 — human-approval gate, then browser-based application assist (`apply.py`)
+- ✅ Slice 3 — application answer bank (`apply/answer_bank.py`): validated,
+  gitignored PII store; work-auth required, EEO opt-in/declinable, contact merged
+  from career facts. Template: `data/answer_bank.example.yaml`.
+- ⬜ Slice 4 — assisted apply in a visible browser (Playwright): fill from the
+  bank, pause on login/captcha/unknown fields, full review, submit only behind
+  `--submit` + per-application approval.
 
 ## License
 

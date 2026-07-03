@@ -1,9 +1,12 @@
 # Secrets & personal data — never commit
 .env
-/data/
+/data/*
 resume/
 *.resume.pdf
 search_profile.yaml
+
+# ...but keep the committed fill-in template (fake values only)
+!/data/answer_bank.example.yaml
 
 # Python
 __pycache__/

@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+# Answer bank — FILL-IN TEMPLATE (fake values)
+#
+# Copy this file to data/answer_bank.yaml and replace every value with your own.
+# data/answer_bank.yaml is gitignored (it holds personal data); this .example
+# file is committed so anyone can see the shape.
+#
+# Contact details (name / email / phone / location) are NOT here — they are read
+# from career_facts.yaml so there is a single source of truth. This file only
+# adds apply-specific links and answers.
+# ---------------------------------------------------------------------------
+
+# --- Work authorization (REQUIRED — no defaults; must be answered explicitly) --
+# These two must be present, or the bank fails to load. We never guess a
+# work-authorization answer to a real employer.
+authorized_us: true          # Legally authorized to work in the US?
+requires_sponsorship: false  # Do you (now or later) require visa sponsorship?
+
+# --- Compensation ------------------------------------------------------------
+salary_expectation: "$150,000 - $170,000"
+
+# --- Location / mobility -----------------------------------------------------
+work_mode: remote            # one of: remote | hybrid | onsite
+willing_to_relocate: false
+location_preference: "Anywhere (US), remote preferred"
+
+# --- Availability ------------------------------------------------------------
+notice_period: "2 weeks"
+earliest_start_date: "2025-09-01"
+
+# --- Experience --------------------------------------------------------------
+total_years_experience: 5
+
+# --- Apply-specific links (contact proper comes from career_facts.yaml) ------
+linkedin: "https://www.linkedin.com/in/example"
+github: "https://github.com/example"
+
+# --- Optional demographic / EEO block ----------------------------------------
+# Entirely optional. Delete this block to omit it. Every field may be left as
+# "Decline to state", which is always a valid, complete answer.
+eeo:
+  gender: "Decline to state"
+  race: "Decline to state"
+  veteran_status: "Decline to state"
+  disability_status: "Decline to state"
+
+# --- Prepared free-text answers ----------------------------------------------
+# Keyed by a lowercase question keyword. A form's free-text question can be
+# matched against these keys; an unmatched question still pauses for you rather
+# than being guessed.
+prepared_answers:
+  why this company: "I'm drawn to your work on X and want to contribute to Y."
+  why are you leaving: "Seeking a role with more scope in Z."
