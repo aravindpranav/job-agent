@@ -105,6 +105,22 @@ def test_resolve_contact_takes_identity_from_career_facts():
     assert contact.phone == DEMO_FACTS.phone
 
 
+def test_resolve_contact_derives_recent_employer_and_education():
+    contact = resolve_contact(DEMO_FACTS, AnswerBank.model_validate(_MINIMAL))
+    recent = DEMO_FACTS.employers[0]              # facts list most-recent first
+    assert contact.employer == recent.company     # "Acme Analytics"
+    assert contact.title == recent.title          # "Data Engineer"
+    # "B.S., Computer Science, State University" splits school out of degree
+    assert contact.school == "State University"
+    assert contact.degree == "B.S., Computer Science"
+
+
+def test_new_screener_fields_default_to_no():
+    bank = AnswerBank.model_validate(_MINIMAL)
+    assert bank.previously_employed_here == "No"
+    assert bank.whatsapp_optin == "No"
+
+
 def test_resolve_contact_prefers_bank_links():
     bank = AnswerBank.model_validate(
         {**_MINIMAL, "linkedin": "https://linkedin.com/in/aravind"}

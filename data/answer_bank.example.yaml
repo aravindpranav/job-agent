@@ -38,7 +38,13 @@ earliest_start_date: "2025-09-01"
 # --- Experience --------------------------------------------------------------
 total_years_experience: 5
 
+# --- Common yes/no screeners (defaults shown; override if different) ----------
+previously_employed_here: "No"   # "Have you previously worked for this company?"
+whatsapp_optin: "No"             # "Receive application updates via WhatsApp?"
+
 # --- Apply-specific links (contact proper comes from career_facts.yaml) ------
+# Employer / job title / school / degree are NOT here — they auto-fill from
+# career_facts.yaml (most recent entry), so they can never drift from the resume.
 linkedin: "https://www.linkedin.com/in/example"
 github: "https://github.com/example"
 

@@ -95,6 +95,10 @@ class AnswerBank(BaseModel):
     # --- experience ----------------------------------------------------------
     total_years_experience: float | None = Field(default=None, ge=0)
 
+    # --- common yes/no screeners (sensible defaults, overridable) ------------
+    previously_employed_here: str = "No"   # "Have you previously worked here?"
+    whatsapp_optin: str = "No"             # "Receive updates via WhatsApp?"
+
     # --- apply-specific links (contact proper comes from career facts) -------
     linkedin: str = ""
     github: str = ""
@@ -110,7 +114,8 @@ class AnswerBank(BaseModel):
 
 
 class Contact(BaseModel):
-    """Resolved contact block: career-facts identity + apply-specific links."""
+    """Resolved facts for form-filling: identity, links, and the most recent
+    employer/education — all derived from career facts, never typed twice."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -120,6 +125,12 @@ class Contact(BaseModel):
     location: str = ""
     linkedin: str = ""
     github: str = ""
+    # Most recent employer / education, derived from the career facts (facts
+    # list most-recent first, mirroring the resume).
+    employer: str = ""     # e.g. "JPMorgan Chase and Co."
+    title: str = ""        # e.g. "Generative AI Engineer"
+    school: str = ""       # e.g. "University of North Texas"
+    degree: str = ""       # e.g. "Masters, Computer Science"
 
 
 def _link_matching(links: tuple[str, ...], needle: str) -> str:
@@ -130,16 +141,34 @@ def _link_matching(links: tuple[str, ...], needle: str) -> str:
     return ""
 
 
-def resolve_contact(facts: CareerFacts, bank: AnswerBank) -> Contact:
-    """Merge contact from ``facts`` (source of truth) with the bank's links.
+_SCHOOL_WORDS = ("university", "college", "institute", "school", "academy")
 
-    Name / email / phone / location always come from the career facts, so the
-    answer bank can never drift from the résumé. LinkedIn / GitHub prefer an
-    explicit value in the bank, falling back to a matching entry in
-    ``facts.links``.
+
+def _split_education(entry: str) -> tuple[str, str]:
+    """Split one education line into (school, degree).
+
+    "Masters, Computer Science, University of North Texas" -> the segments
+    naming an institution become the school; the rest stay the degree,
+    verbatim (no reformatting — honesty rule).
+    """
+    parts = [p.strip() for p in entry.split(",") if p.strip()]
+    school = [p for p in parts if any(w in p.lower() for w in _SCHOOL_WORDS)]
+    degree = [p for p in parts if p not in school]
+    return ", ".join(school), ", ".join(degree)
+
+
+def resolve_contact(facts: CareerFacts, bank: AnswerBank) -> Contact:
+    """Merge contact + recent employer/education from ``facts`` with the bank's links.
+
+    Name / email / phone / location / employer / title / school / degree always
+    come from the career facts, so the answer bank can never drift from the
+    résumé. LinkedIn / GitHub prefer an explicit value in the bank, falling back
+    to a matching entry in ``facts.links``.
     """
     linkedin = bank.linkedin or _link_matching(facts.links, "linkedin.com")
     github = bank.github or _link_matching(facts.links, "github.com")
+    recent = facts.employers[0]
+    school, degree = _split_education(facts.education[0]) if facts.education else ("", "")
     return Contact(
         name=facts.name,
         email=facts.email,
@@ -147,6 +176,10 @@ def resolve_contact(facts: CareerFacts, bank: AnswerBank) -> Contact:
         location=facts.location or "",
         linkedin=linkedin,
         github=github,
+        employer=recent.company,
+        title=recent.title,
+        school=school,
+        degree=degree,
     )
 
 

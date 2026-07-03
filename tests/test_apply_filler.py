@@ -11,6 +11,8 @@ from job_agent.apply.filler import apply_plan, build_fill_plan
 CONTACT = Contact(
     name="Jordan Rivers", email="jordan@example.com", phone="+1 (555) 010-0100",
     location="Remote, US", linkedin="https://linkedin.com/in/jordan", github="https://github.com/jordan",
+    employer="Acme Analytics", title="Data Engineer",
+    school="State University", degree="B.S., Computer Science",
 )
 BANK = AnswerBank.model_validate({
     "authorized_us": True,
@@ -215,6 +217,64 @@ def test_word_boundaries_keep_state_out_of_statement_and_city_out_of_ethnicity()
         _f("#eth", FieldType.TEXT, "What is your ethnicity capacity limit?"),  # contrived
     ])
     assert plan.planned == ()   # neither gets a location value
+
+
+# --- employment history / education (from career facts) -------------------------
+
+def test_recent_employer_and_title_map_from_career_facts():
+    plan = _plan_for([
+        _f("#emp", FieldType.TEXT, "Current or most recent employer"),
+        _f("#title", FieldType.TEXT, "Most recent job title"),
+    ])
+    assert _value(plan, "#emp") == "Acme Analytics"
+    assert _value(plan, "#title") == "Data Engineer"
+    assert _sources(plan)["#emp"] == "career_facts.employer"
+
+
+def test_school_and_degree_map_from_career_facts():
+    plan = _plan_for([
+        _f("#school", FieldType.TEXT, "School / University"),
+        _f("#degree", FieldType.TEXT, "Degree"),
+    ])
+    assert _value(plan, "#school") == "State University"
+    assert _value(plan, "#degree") == "B.S., Computer Science"
+
+
+def test_bare_title_is_not_mapped_it_may_be_a_salutation():
+    plan = _plan_for([_f("#t", FieldType.SELECT, "Title", options=["Mr", "Ms", "Dr"])])
+    assert plan.planned == ()   # pause — a bare "Title" is ambiguous
+
+
+def test_previously_employed_gets_no_not_the_company_name():
+    plan = _plan_for([
+        _f("#prev", FieldType.SELECT, "Have you previously been employed by Demo Co?",
+           options=["Yes", "No"]),
+    ])
+    assert _value(plan, "#prev") == "No"
+    assert _sources(plan)["#prev"] == "answer_bank.previously_employed_here"
+
+
+def test_whatsapp_optin_defaults_no():
+    plan = _plan_for([
+        _f("#wa", FieldType.SELECT, "Would you like to receive updates via WhatsApp?",
+           options=["Yes", "No"]),
+    ])
+    assert _value(plan, "#wa") == "No"
+
+
+def test_high_school_question_does_not_get_the_university():
+    plan = _plan_for([_f("#hs", FieldType.SELECT, "Did you graduate high school?",
+                         options=["Yes", "No"])])
+    assert plan.planned == ()   # pause — never the university name
+
+
+def test_countries_anticipate_working_maps_to_country():
+    plan = _plan_for([
+        _f("#cw", FieldType.SELECT, "Which countries do you anticipate working in?",
+           options=["Australia", "United States", "India"]),
+    ])
+    assert _value(plan, "#cw") == "United States"
+    assert _sources(plan)["#cw"] == "answer_bank.country"
 
 
 # --- Hispanic/Latino vs race ---------------------------------------------------

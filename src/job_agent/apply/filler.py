@@ -122,6 +122,29 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
     if "github" in hay:
         return (contact.github, "answer_bank.github") if contact.github else None
 
+    # employment history / education / opt-ins ----------------------------
+    # "previously employed" is checked BEFORE the employer matcher so a
+    # "Have you previously been employed by X?" screener can never receive
+    # the company name.
+    if ("previously" in hay and ("employed" in hay or "worked" in hay)) or "former employee" in hay:
+        picked = _match_option(f.options, bank.previously_employed_here) if f.options \
+            else bank.previously_employed_here
+        return (picked, "answer_bank.previously_employed_here") if picked else None
+    if "whatsapp" in hay:
+        picked = _match_option(f.options, bank.whatsapp_optin) if f.options else bank.whatsapp_optin
+        return (picked, "answer_bank.whatsapp_optin") if picked else None
+    if _word(hay, "employer") or "current company" in hay or "recent company" in hay:
+        return (contact.employer, "career_facts.employer") if contact.employer else None
+    if _word(hay, "title") and ("job" in hay or "current" in hay or "recent" in hay
+                                or "position" in hay):
+        # bare "Title" is often a salutation (Mr/Ms) — needs a job cue to map
+        return (contact.title, "career_facts.title") if contact.title else None
+    if (_word(hay, "school") and "high school" not in hay) or _word(hay, "university") \
+            or _word(hay, "college") or "alma mater" in hay:
+        return (contact.school, "career_facts.school") if contact.school else None
+    if _word(hay, "degree") or "highest education" in hay or "level of education" in hay:
+        return (contact.degree, "career_facts.degree") if contact.degree else None
+
     # work authorization (booleans -> option) -----------------------------
     if "sponsor" in hay:
         return _yes_no(f.options, bank.requires_sponsorship), "answer_bank.requires_sponsorship"
@@ -159,7 +182,8 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
         return (bank.city, "answer_bank.city") if bank.city else None
     if _word(hay, "state") or "province" in hay:
         return (bank.state, "answer_bank.state") if bank.state else None
-    if _word(hay, "country") or "reside" in hay or "applying from" in hay:
+    if _word(hay, "country") or _word(hay, "countries") or "reside" in hay \
+            or "applying from" in hay or "anticipate working" in hay:
         if not bank.country:
             return None
         picked = _match_country(f.options, bank.country)
