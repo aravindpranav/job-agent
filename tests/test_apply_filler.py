@@ -429,6 +429,28 @@ def test_hispanic_latino_declines_when_not_provided():
     assert _value(plan, "#hisp") == "Decline to state"
 
 
+# --- ARIA combobox (React selects) ---------------------------------------------
+
+def test_combobox_country_resolves_from_scanned_options():
+    plan = _plan_for([
+        _f("#country", FieldType.COMBOBOX, "Country",
+           options=["Australia", "United States"]),
+    ])
+    assert _value(plan, "#country") == "United States"
+
+
+def test_combobox_with_no_scanned_options_plans_the_bank_value():
+    # Popup options render only on open — plan the bank value; the click path
+    # selects it only if a matching option actually appears.
+    plan = _plan_for([_f("#country", FieldType.COMBOBOX, "Country")])
+    assert _value(plan, "#country") == "USA"
+
+
+def test_unmatched_combobox_still_pauses():
+    plan = _plan_for([_f("#mystery", FieldType.COMBOBOX, "Favorite dinosaur")])
+    assert plan.planned == ()          # pause-don't-guess unchanged
+
+
 # --- apply_plan drives a (fake) page ----------------------------------------
 
 class _FakeLocator:
@@ -451,6 +473,9 @@ class _FakeLocator:
     def check(self):
         self.sink.append(("check", self.selector, True))
 
+    def click(self):
+        self.sink.append(("click", self.selector, None))
+
 
 class _FakePage:
     def __init__(self):
@@ -461,6 +486,69 @@ class _FakePage:
 
     def get_by_label(self, label):
         return _FakeLocator(self.calls, f"label:{label}")
+
+
+class _ComboPage(_FakePage):
+    """Fake page with role=option lookup for the combobox click path."""
+
+    def __init__(self, option_names):
+        super().__init__()
+        self._options = option_names
+        self.escape_pressed = False
+
+        page = self
+
+        class _KB:
+            def press(self, key):
+                if key == "Escape":
+                    page.escape_pressed = True
+        self.keyboard = _KB()
+
+    def get_by_role(self, role, name=None):
+        assert role == "option"
+        matches = [o for o in self._options if name.search(o)]
+        page, calls = self, self.calls
+
+        class _Opt:
+            @property
+            def first(self):
+                return self
+
+            def click(self, timeout=None):
+                if not matches:
+                    raise TimeoutError("no matching option")
+                calls.append(("option-click", matches[0], None))
+        return _Opt()
+
+
+def test_combobox_is_selected_by_clicking_its_option():
+    from job_agent.apply.filler import click_select
+    page = _ComboPage(["Australia", "United States", "India"])
+    ok = click_select(page, page.locator("#country"), "United States")
+    assert ok is True
+    assert ("option-click", "United States", None) in page.calls
+    assert page.escape_pressed is False
+
+
+def test_combobox_with_no_matching_option_selects_nothing():
+    # Never guess a near-miss option: close the popup, select nothing.
+    from job_agent.apply.filler import click_select
+    page = _ComboPage(["Australia", "Belgium"])
+    ok = click_select(page, page.locator("#country"), "United States")
+    assert ok is False
+    assert not any(c[0] == "option-click" for c in page.calls)
+    assert page.escape_pressed is True
+
+
+def test_apply_plan_routes_combobox_through_click_select():
+    plan = _plan_for([
+        _f("#country", FieldType.COMBOBOX, "Country",
+           options=["Australia", "United States"]),
+    ])
+    page = _ComboPage(["Australia", "United States"])
+    apply_plan(page, plan)
+    assert ("option-click", "United States", None) in page.calls
+    assert not any(c[0] == "select" for c in page.calls)   # no native select_option
 
 
 def test_apply_plan_only_touches_planned_fields():

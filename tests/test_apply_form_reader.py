@@ -38,6 +38,25 @@ def test_checkbox_and_radio():
     assert classify_control("input", "radio", "Option") == FieldType.RADIO
 
 
+def test_aria_combobox_and_listbox_are_comboboxes():
+    assert classify_control("combobox", "", "Country") == FieldType.COMBOBOX
+    assert classify_control("listbox", "", "Office") == FieldType.COMBOBOX
+
+
+def test_read_form_emits_combobox_fields_with_scanned_options():
+    from job_agent.apply.form_reader import read_form
+    page = _FakePage([{
+        "tag": "combobox", "type": "", "name": "country-select",
+        "label": "Country", "groupLabel": "", "required": True,
+        "maxlength": None, "options": ["Australia", "United States"],
+        "selector": "#country-select",
+    }])
+    (f,) = read_form(page)
+    assert f.field_type == FieldType.COMBOBOX
+    assert f.options == ("Australia", "United States")
+    assert f.required is True
+
+
 # --- grouping: same-name radios/checkboxes are ONE field ---------------------
 
 class _FakePage:

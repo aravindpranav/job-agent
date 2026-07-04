@@ -28,6 +28,10 @@ def classify_control(tag: str, input_type: str, label: str = "", name: str = "",
         return FieldType.TEXTAREA
     if tag == "select":
         return FieldType.EEO if _is_eeo(label, name) else FieldType.SELECT
+    if tag in ("combobox", "listbox"):
+        # ARIA widget (React select) — selected by clicking its option, and its
+        # option list may be empty at scan time (popup renders on open).
+        return FieldType.COMBOBOX
     if input_type == "password":
         return FieldType.CREDENTIAL
     if input_type == "file":
@@ -55,11 +59,36 @@ _SCAN_JS = r"""
     }
     const wrap = el.closest('label');
     if (wrap) return wrap.innerText.trim();
-    return el.getAttribute('aria-label') || el.getAttribute('placeholder') || '';
+    const lb = el.getAttribute('aria-labelledby');           // ARIA widgets
+    if (lb) {
+      const t = lb.split(/\s+/)
+        .map((i) => (document.getElementById(i) || {}).innerText || '')
+        .join(' ').trim();
+      if (t) return t;
+    }
+    const aria = el.getAttribute('aria-label');
+    if (aria) return aria;
+    // widget libraries (Ashby) often put the label elsewhere in the field
+    // container — walk a few ancestors looking for one. Placeholder text
+    // ("Start typing...") is the LAST resort: it names the widget, not the field.
+    let anc = el.parentElement;
+    for (let i = 0; i < 4 && anc; i++) {
+      const l = anc.querySelector('label');
+      if (l && l.innerText.trim()) return l.innerText.trim();
+      anc = anc.parentElement;
+    }
+    return el.getAttribute('placeholder') || '';
+  };
+  const roleSelector = (el, role) => {
+    // Playwright's :nth-match — addresses widgets with no id/name at all
+    const all = Array.from(document.querySelectorAll(`[role="${role}"]`));
+    return `:nth-match([role="${role}"], ${all.indexOf(el) + 1})`;
   };
   const selectorFor = (el) => {
     if (el.id) return '#' + CSS.escape(el.id);
     if (el.name) return `${el.tagName.toLowerCase()}[name="${el.name}"]`;
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (role === 'combobox' || role === 'listbox') return roleSelector(el, role);
     return '';
   };
   controls.forEach((el) => {
@@ -71,8 +100,10 @@ _SCAN_JS = r"""
       : [];
     const fieldset = el.closest('fieldset');
     const legend = fieldset ? fieldset.querySelector('legend') : null;
+    const role = (el.getAttribute('role') || '').toLowerCase();
     out.push({
-      tag: el.tagName.toLowerCase(),
+      // an <input role="combobox"> (Ashby) is a click-select widget, not a text box
+      tag: role === 'combobox' ? 'combobox' : el.tagName.toLowerCase(),
       type,
       name: el.getAttribute('name') || el.id || '',
       label: labelFor(el),
@@ -81,6 +112,34 @@ _SCAN_JS = r"""
       maxlength: el.getAttribute('maxlength'),
       options,
       selector: selectorFor(el),
+    });
+  });
+  // ARIA widgets (React selects): role=combobox / role=listbox on non-native
+  // elements. Their [role=option] children may live inside the widget or in a
+  // popup referenced by aria-controls/aria-owns — and may be absent entirely
+  // until the widget is opened (options then resolve at click time).
+  document.querySelectorAll('[role="combobox"], [role="listbox"]').forEach((el) => {
+    if (['input', 'select', 'textarea'].includes(el.tagName.toLowerCase())) return; // native pass
+    if (el.offsetParent === null) return;
+    let opts = Array.from(el.querySelectorAll('[role="option"]'))
+      .map((o) => o.innerText.trim()).filter(Boolean);
+    const owns = el.getAttribute('aria-controls') || el.getAttribute('aria-owns');
+    if (!opts.length && owns) {
+      const pop = document.getElementById(owns);
+      if (pop) opts = Array.from(pop.querySelectorAll('[role="option"]'))
+        .map((o) => o.innerText.trim()).filter(Boolean);
+    }
+    out.push({
+      tag: el.getAttribute('role').toLowerCase(),
+      type: '',
+      name: el.id || '',
+      label: labelFor(el),
+      groupLabel: '',
+      required: el.getAttribute('aria-required') === 'true',
+      maxlength: null,
+      options: opts,
+      selector: el.id ? '#' + CSS.escape(el.id)
+                      : roleSelector(el, el.getAttribute('role').toLowerCase()),
     });
   });
   return out;

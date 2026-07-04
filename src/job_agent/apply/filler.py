@@ -305,6 +305,35 @@ def build_fill_plan(fields: tuple[FormField, ...], bank: AnswerBank,
     return FillPlan(planned=tuple(planned), unfilled=tuple(unfilled))
 
 
+def click_select(page, locator, value: str) -> bool:
+    """Select ``value`` in an ARIA combobox/listbox by CLICKING its option.
+
+    Opens the widget, types the value when it accepts text (filters the list),
+    then clicks the [role=option] whose name matches — exact first, containing
+    second. If no option matches, the popup is closed and NOTHING is selected
+    (never guess a near-miss option); returns False so callers can report it.
+    """
+    locator.click()
+    try:
+        locator.fill(value)          # input-backed combobox: typing filters options
+    except Exception:
+        pass                         # div-backed widget — click alone opens it
+    exact = re.compile(rf"^\s*{re.escape(value)}\s*$", re.IGNORECASE)
+    loose = re.compile(re.escape(value), re.IGNORECASE)
+    for pattern in (exact, loose):
+        option = page.get_by_role("option", name=pattern).first
+        try:
+            option.click(timeout=3000)
+            return True
+        except Exception:
+            continue
+    try:
+        page.keyboard.press("Escape")   # close the popup; leave it unselected
+    except Exception:
+        pass
+    return False
+
+
 def apply_plan(page, plan: FillPlan) -> None:
     """Drive Playwright to enter each planned value on the live page.
 
@@ -316,11 +345,17 @@ def apply_plan(page, plan: FillPlan) -> None:
         locator = page.locator(f.selector).first
         if f.field_type == FieldType.FILE:
             locator.set_input_files(pf.value)
+        elif f.field_type == FieldType.COMBOBOX:
+            click_select(page, locator, pf.value)
         elif f.field_type in (FieldType.SELECT, FieldType.EEO) and f.options:
             try:
                 locator.select_option(label=pf.value)
             except Exception:
-                locator.select_option(pf.value)
+                try:
+                    locator.select_option(pf.value)
+                except Exception:
+                    # React select misclassified as native — click path fallback
+                    click_select(page, locator, pf.value)
         elif f.field_type in (FieldType.CHECKBOX, FieldType.RADIO) and f.options:
             # grouped picker: check exactly the ONE box whose label was picked
             page.get_by_label(pf.value).first.check()

@@ -23,7 +23,8 @@ class FieldType(str, Enum):
 
     TEXT = "text"          # single-line text / email / tel / number / url
     TEXTAREA = "textarea"  # free-text (often custom questions)
-    SELECT = "select"      # dropdown with fixed options
+    SELECT = "select"      # native dropdown with fixed options
+    COMBOBOX = "combobox"  # ARIA widget (role=combobox/listbox) — filled by CLICK
     CHECKBOX = "checkbox"
     RADIO = "radio"
     FILE = "file"          # resume / document upload
