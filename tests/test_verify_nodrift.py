@@ -9,7 +9,14 @@ import pytest
 import job_agent.tailor as tailor_pkg
 from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.tailor import TailorResult, tailor_resume
-from job_agent.tailor.verify import DriftError, FormatError, verify_format, verify_no_drift
+from job_agent.tailor.verify import (
+    DriftError,
+    FormatError,
+    ScopeDriftError,
+    unbanked_scope_words,
+    verify_format,
+    verify_no_drift,
+)
 
 DEMO = Path(tailor_pkg.__file__).parent / "demo"
 FACTS = load_career_facts(DEMO / "demo_career_facts.yaml")
@@ -131,6 +138,52 @@ def test_unparseable_employers_fail_loudly_not_vacuously():
         verify_no_drift(_mutated(text), FACTS)
 
 
+# --- scope-qualifier gate -----------------------------------------------------
+
+def test_unbanked_scope_word_is_rejected():
+    # "multi-terabyte" is NOT in the demo career facts -> soft drift, rejected.
+    mutated = BASE.resume_text.replace(
+        "Built Apache Airflow DAGs",
+        "Built multi-terabyte Apache Airflow DAGs")
+    with pytest.raises(ScopeDriftError, match="multi terabyte"):
+        verify_no_drift(_mutated(mutated), FACTS)
+
+
+@pytest.mark.parametrize("phrase", [
+    "enterprise-scale", "across the firm", "petabyte", "billions", "firm-wide",
+])
+def test_other_unbanked_scope_qualifiers_are_rejected(phrase):
+    mutated = BASE.resume_text.replace(
+        "Built Apache Airflow DAGs",
+        f"Built {phrase} Apache Airflow DAGs")
+    with pytest.raises(ScopeDriftError):
+        verify_no_drift(_mutated(mutated), FACTS)
+
+
+def test_scope_word_supported_by_facts_passes():
+    # Same qualifier, but the facts literally contain it -> allowed.
+    raw = FACTS.model_dump()
+    raw["employers"][0]["real_bullets"] = tuple(raw["employers"][0]["real_bullets"]) + (
+        "Operated multi-terabyte batch pipelines.",)
+    from job_agent.tailor.career_facts import CareerFacts
+    facts = CareerFacts.model_validate(raw)
+    mutated = BASE.resume_text.replace(
+        "Built Apache Airflow DAGs",
+        "Built multi-terabyte Apache Airflow DAGs")
+    assert verify_no_drift(_mutated(mutated), facts).ok
+    assert unbanked_scope_words(mutated, facts) == []
+
+
+def test_hard_fabrication_still_beats_scope_drift():
+    # Employer fabrication + scope word: must raise DriftError (never retryable),
+    # not the softer ScopeDriftError.
+    mutated = BASE.resume_text.replace(
+        "Company: Acme Analytics", "Company: Shadow Corp").replace(
+        "Built Apache Airflow DAGs", "Built multi-terabyte Apache Airflow DAGs")
+    with pytest.raises(DriftError):
+        verify_no_drift(_mutated(mutated), FACTS)
+
+
 # --- format gate ------------------------------------------------------------
 
 def test_format_gate_rejects_bracket_placeholder():
@@ -165,6 +218,16 @@ def test_format_gate_rejects_company_blurb_project_description():
         "Project Description: Acme Analytics is a leading analytics company serving enterprises.")
     with pytest.raises(FormatError, match="restates the company"):
         verify_format(_mutated(bad), FACTS)
+
+
+def test_format_gate_rejects_a_metric_stated_twice():
+    # The 30% figure already appears once; restating it in a responsibility
+    # bullet doubles it -> rejected (each metric appears exactly once).
+    doubled = BASE.resume_text.replace(
+        "Built Apache Airflow DAGs",
+        "Built Apache Airflow DAGs, cutting runtime by 30%, and orchestrated jobs")
+    with pytest.raises(FormatError, match="appears 2 times"):
+        verify_format(_mutated(doubled), FACTS)
 
 
 def test_format_gate_enforces_responsibility_cap():

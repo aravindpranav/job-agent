@@ -47,6 +47,7 @@ from job_agent.tailor.verify import (
     DriftError,
     FormatError,
     PdfVerifyError,
+    ScopeDriftError,
     pdf_page_count,
     verify_format,
     verify_no_drift,
@@ -246,7 +247,7 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         result = tailor_resume(facts, jd, megaprompt=_megaprompt(), stub_response=stub)
         try:
             checked = _gate(facts, result)
-        except (DriftError, FormatError) as exc:
+        except (DriftError, ScopeDriftError, FormatError) as exc:
             console.print(f"[red]Gate FAILED — refusing to write PDF:[/red]\n{exc}")
             return 1
         filename = _resume_filename(facts.name.split()[0], facts.role, "Demo")
@@ -284,11 +285,13 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
     console.print(f"[bold cyan]job-agent tailor[/bold cyan] — tailoring with {TAILOR_MODEL}\n")
     filename = _resume_filename(facts.name.split()[0], job.title, job.company)
 
-    # Tailor, then gate. On a format-cap overshoot, retry once with a correction.
+    # Tailor, then gate. Format issues and unsupported scope qualifiers get ONE
+    # regeneration with the gate's message as a correction; hard fabrication
+    # (DriftError) is never retried.
     # (megaprompt=None so tailor_resume loads the base prompt + policy addendum.)
     checked = None
+    correction = None
     for attempt in (1, 2):
-        correction = None if attempt == 1 else _CAP_CORRECTION
         result = tailor_resume(facts, jd, settings=settings, extra_instruction=correction)
         try:
             checked = _gate(facts, result)
@@ -296,11 +299,13 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         except DriftError as exc:  # fabrication — never retry, fail loudly
             console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
             return 1
-        except FormatError as exc:
+        except (FormatError, ScopeDriftError) as exc:
             if attempt == 2:
-                console.print(f"[red]Format gate FAILED after retry — refusing to write PDF:[/red]\n{exc}")
+                console.print(f"[red]Gate FAILED after retry — refusing to write PDF:[/red]\n{exc}")
                 return 1
-            console.print(f"[yellow]Format issue, retrying once:[/yellow] {exc}")
+            console.print(f"[yellow]Gate issue, retrying once:[/yellow] {exc}")
+            correction = (f"{_CAP_CORRECTION}\nYour previous draft was REJECTED by an "
+                          f"automated check:\n{exc}\nRegenerate and fix exactly this.")
     return _write(console, checked, out_dir, filename)
 
 

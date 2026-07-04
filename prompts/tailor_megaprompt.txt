@@ -49,9 +49,13 @@ real experience. Show what the role is about, what the company expects, how the 
 business outcomes, and how I genuinely fit the domain.
 
 RESPONSIBILITY EXPANSION (MANDATORY): EVERY responsibility bullet must state WHAT was built,
-HOW it was implemented, WHY it mattered, include scale/performance/reliability context,
-mirror JD vocabulary, include a JD technical keyword, and use ONLY tools/skills that were
-realistically available during that engagement and that I actually possess. No generic
+HOW it was implemented, WHY it mattered, mirror JD vocabulary, include a JD technical
+keyword, and use ONLY tools/skills that were realistically available during that engagement
+and that I actually possess. Scale/performance/reliability context is allowed ONLY as stated
+in my career facts: NEVER put a numeric metric in a Responsibilities bullet (numbers belong
+in Achievements, and each metric appears exactly ONCE on the whole resume), and NEVER use a
+scale qualifier (multi-terabyte, petabyte, billions, enterprise-scale, firm-wide,
+company-wide, and the like) unless that exact phrase appears in my career facts. No generic
 bullets. No anachronistic tools.
 
 ACHIEVEMENTS (STRICT, REAL METRICS ONLY): Use only my real, verifiable metrics. If a real
@@ -62,7 +66,12 @@ exactly which real metric to supply, e.g. [METRIC — latency: p95 before→afte
 duration), phrase a precise metric from those real facts. Never generate a number without a
 real basis — a plausible number is not interview-defensible; a true one is. List every
 placeholder in NOTES as a question so I can fill it with my true figure. Tie achievements to
-JD themes. No exaggeration.
+JD themes. No exaggeration. State every metric together with the mechanism that actually
+produced it, in a bullet whose action plausibly causes that outcome (a cost reduction goes
+with right-sizing/serving optimization, not with fine-tuning; an accuracy gain goes with the
+modeling/evaluation work). Each metric appears exactly ONCE on the entire resume, in its
+single strongest placement; Achievements must be distinct outcomes, never a restatement of a
+Responsibilities bullet.
 
 CERTIFICATIONS: List only certifications I actually hold. If the JD values a cert I lack,
 put it under NOTES as "suggested to obtain" — never print an uncredentialed cert on the resume.

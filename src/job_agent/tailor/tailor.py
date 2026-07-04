@@ -50,6 +50,9 @@ LENGTH AND SELECTIVITY (tailor hard to THIS JD; target 2 pages):
 METRICS (STRICT):
 - The resume FACE must contain ZERO placeholders. Never print a bracket such as [METRIC ...] or [ADD REAL METRIC] on the resume.
 - Use ONLY the real metrics listed under each employer's "Real metrics". Weave them naturally into Achievements.
+- METRIC-MECHANISM COHERENCE: state every metric WITH the mechanism that actually produced it, and only in a bullet whose action plausibly causes that outcome. An infrastructure-cost reduction belongs with resource right-sizing, serving/inference optimization, or capacity work, NEVER attached to fine-tuning or model-quality work. An accuracy figure belongs with the modeling/evaluation work that produced it. If the producing mechanism is not in my career facts, attach the metric to the closest real activity or leave it out.
+- EACH METRIC APPEARS EXACTLY ONCE on the entire resume (an automated check REJECTS the resume if a banked number appears twice). Choose its single strongest placement, normally an Achievements bullet. Never restate a Responsibilities bullet's number in Achievements or vice versa. Achievements must be DISTINCT outcomes, not reworded copies of Responsibilities bullets.
+- SCOPE HONESTY: never use scale/scope qualifiers (multi-terabyte, petabyte, billions, enterprise-scale, firm-wide, company-wide, across the firm, web-scale, and the like) unless that exact phrase appears in my career facts. An automated check REJECTS the resume if an unsupported qualifier appears.
 - If a role has no real metric, write a strong, specific QUALITATIVE achievement instead (what was delivered and its real impact) with no number and no bracket.
 - Keep Achievements to 2-3 per role, high-impact. Do not over-stuff numbers.
 - Never fabricate a number. If a real number would strengthen a bullet, do NOT put it on the resume; add ONE question to NOTES instead.

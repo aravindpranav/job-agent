@@ -27,6 +27,15 @@ class DriftError(Exception):
     """The tailored output drifted from the immutable career facts."""
 
 
+class ScopeDriftError(Exception):
+    """Unbanked scale/scope qualifier on the face (e.g. "multi-terabyte").
+
+    Deliberately NOT a DriftError subclass: hard fabrication (employers, certs,
+    metric values) is never retried, while an unsupported scope qualifier is
+    soft drift worth one stricter regeneration before failing loudly.
+    """
+
+
 class PdfVerifyError(Exception):
     """The generated PDF failed text-extraction verification."""
 
@@ -74,6 +83,20 @@ def verify_format(result: TailorResult, facts: CareerFacts) -> None:
             problems.append(f"Role #{i + 1} has {counts['resp']} responsibility bullets (cap {cap}).")
         if counts["ach"] > 3:
             problems.append(f"Role #{i + 1} has {counts['ach']} achievement bullets (cap 3).")
+
+    # Each banked metric appears ONCE on the face — no restating the same number
+    # in both Responsibilities and Achievements.
+    banked = _banked_metric_values(facts)
+    seen: dict[float, int] = {}
+    for match in _OUTPUT_METRIC.finditer(face):
+        value = _to_value(match.group(1))
+        if value is not None and value in banked:
+            seen[value] = seen.get(value, 0) + 1
+    for value, n in seen.items():
+        if n > 1:
+            problems.append(
+                f"Banked metric {value:g} appears {n} times on the face; each metric "
+                f"appears ONCE, in its single strongest placement.")
 
     if problems:
         raise FormatError("Format gate failed:\n  - " + "\n  - ".join(problems))
@@ -145,6 +168,44 @@ def _to_value(token: str) -> float | None:
         return round(float(token) * mult, 4)
     except ValueError:
         return None
+
+
+# Scale/scope qualifiers that inflate a resume. Written dash-free because both
+# sides are compared through _scope_norm (lowercase, dashes -> spaces).
+_SCOPE_QUALIFIERS = (
+    "multi terabyte", "terabyte", "petabyte", "exabyte",
+    "billions", "trillions",
+    "enterprise scale", "enterprise wide", "enterprise grade",
+    "firm wide", "firmwide", "across the firm",
+    "company wide", "companywide", "across the company",
+    "org wide", "organization wide",
+    "planet scale", "web scale", "internet scale", "global scale",
+)
+
+
+def _scope_norm(text: str) -> str:
+    return re.sub(r"\s+", " ", text.lower().replace("-", " ").replace("–", " "))
+
+
+def _facts_corpus(facts: CareerFacts) -> str:
+    """Every phrase career_facts literally contains — the licence pool for
+    scope qualifiers."""
+    parts: list[str] = [*facts.education, *(c.name for c in facts.certifications)]
+    for group in facts.skills_inventory.values():
+        parts.extend(group)
+    for e in facts.employers:
+        parts += [e.company, e.title, e.project_description,
+                  *e.real_bullets, *e.real_metrics, *e.real_skills]
+    return _scope_norm(" ".join(p for p in parts if p))
+
+
+def unbanked_scope_words(resume_text: str, facts: CareerFacts) -> list[str]:
+    """Scale/scope qualifiers on the face with no literal support in the facts."""
+    face = _scope_norm(resume_text)
+    corpus = _facts_corpus(facts)
+    hits = [q for q in _SCOPE_QUALIFIERS if q in face and q not in corpus]
+    # report only the longest form ("multi terabyte", not also "terabyte")
+    return [q for q in hits if not any(q != other and q in other for other in hits)]
 
 
 def _banked_metric_values(facts: CareerFacts) -> set[float]:
@@ -262,6 +323,15 @@ def verify_no_drift(result: TailorResult, facts: CareerFacts) -> VerifyReport:
 
     if problems:
         raise DriftError("No-drift gate failed:\n  - " + "\n  - ".join(problems))
+
+    # 4. Scope qualifiers: "multi-terabyte" / "enterprise-scale" / "across the
+    #    firm" style inflation must be literally supported by the career facts.
+    #    Raised only when nothing above failed — hard fabrication stays DriftError.
+    if scope := unbanked_scope_words(result.resume_text, facts):
+        raise ScopeDriftError(
+            "Scope-qualifier gate failed (not supported by career facts): "
+            + ", ".join(repr(s) for s in scope)
+            + ". Remove the qualifier or state the work without inflated scale.")
 
     # Not drift, but reported: placeholders and whether NOTES surfaces them.
     placeholders = tuple(sorted(set(_PLACEHOLDER.findall(result.resume_text))))
