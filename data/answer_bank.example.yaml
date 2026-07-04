@@ -50,13 +50,19 @@ github: "https://github.com/example"
 
 # --- Optional demographic / EEO block ----------------------------------------
 # Entirely optional. Delete this block to omit it. Every field may be left as
-# "Decline to state", which is always a valid, complete answer.
+# "Decline to state", which is always a valid, complete answer. These keys are
+# ALSO accepted at the top level of this file (top-level wins over this block);
+# an absent key resolves to the form's own decline option ("Decline To Self
+# Identify" / "Prefer not to answer" / ...). Never guessed, never AI-drafted.
 eeo:
   gender: "Decline to state"
   race: "Decline to state"
   hispanic_latino: "No"       # the Hispanic/Latino question is separate from race
   veteran_status: "Decline to state"
   disability_status: "Decline to state"
+
+# Some forms ask your field/discipline; filled verbatim when set, paused when not.
+discipline: "Software Engineering"
 
 # --- AI-draft style (screening-question drafting) -----------------------------
 # Free-text screening questions the bank can't answer get a grounded AI draft

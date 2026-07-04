@@ -406,6 +406,96 @@ def test_countries_anticipate_working_maps_to_country():
     assert _sources(plan)["#cw"] == "answer_bank.country"
 
 
+# --- top-level EEO keys + decline variants ---------------------------------------
+
+def test_top_level_eeo_keys_are_accepted_not_extra_forbidden():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "gender": "Male", "hispanic_latino": "No", "race": "Asian",
+        "veteran_status": "I am not a protected veteran",
+        "disability_status": "No, I do not have a disability",
+        "discipline": "Software Engineering",
+    })
+    assert bank.gender == "Male" and bank.discipline == "Software Engineering"
+
+
+def test_top_level_eeo_key_overrides_the_eeo_block():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "gender": "Male",                       # top level
+        "eeo": {"gender": "Non-binary"},        # block loses
+    })
+    assert bank.eeo_answer("gender") == "Male"
+    assert bank.eeo_answer("race") == "Decline to state"   # absent everywhere
+
+
+def test_eeo_resolves_deterministically_from_top_level_keys():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "gender": "Male", "veteran_status": "I am not a protected veteran",
+    })
+    plan = build_fill_plan((
+        _f("#g", FieldType.EEO, "Gender", options=["Male", "Female", "Decline To Self Identify"]),
+        _f("#v", FieldType.EEO, "Are you a protected veteran?",
+           options=["I am not a protected veteran", "I identify as one or more...",
+                    "I don't wish to answer"]),
+    ), bank, CONTACT, None)
+    assert _value(plan, "#g") == "Male"
+    assert _value(plan, "#v") == "I am not a protected veteran"
+
+
+@pytest.mark.parametrize("options,expected", [
+    (["Male", "Female", "Decline To Self Identify"], "Decline To Self Identify"),   # Greenhouse
+    (["Male", "Female", "Prefer not to answer"], "Prefer not to answer"),           # Ashby
+    (["Male", "Female", "Prefer not to say"], "Prefer not to say"),
+    (["Male", "Female", "I don't wish to answer"], "I don't wish to answer"),
+])
+def test_absent_eeo_key_falls_back_to_the_forms_decline_variant(options, expected):
+    bank = AnswerBank.model_validate({"authorized_us": True, "requires_sponsorship": False})
+    plan = build_fill_plan((_f("#g", FieldType.EEO, "Gender", options=tuple(options)),),
+                           bank, CONTACT, None)
+    assert _value(plan, "#g") == expected
+
+
+def test_disability_self_identification_label_variant():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "disability_status": "No, I do not have a disability",
+    })
+    plan = build_fill_plan((
+        _f("#d", FieldType.EEO, "Voluntary Self-Identification of Disability",
+           options=["Yes, I have a disability", "No, I do not have a disability",
+                    "I don't wish to answer"]),
+    ), bank, CONTACT, None)
+    assert _value(plan, "#d") == "No, I do not have a disability"
+
+
+def test_discipline_maps_from_bank_and_pauses_when_absent():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "discipline": "Software Engineering",
+    })
+    plan = build_fill_plan((
+        _f("#disc", FieldType.SELECT, "Discipline",
+           options=["Software Engineering", "Data Science", "Design"]),
+    ), bank, CONTACT, None)
+    assert _value(plan, "#disc") == "Software Engineering"
+    empty = AnswerBank.model_validate({"authorized_us": True, "requires_sponsorship": False})
+    plan2 = build_fill_plan((_f("#disc", FieldType.TEXT, "Discipline"),), empty, CONTACT, None)
+    assert plan2.planned == ()          # absent -> pause, never guessed
+
+
+def test_consent_still_pauses_regardless_of_eeo_keys():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False, "gender": "Male",
+    })
+    plan = build_fill_plan((
+        _f("#c", FieldType.CHECKBOX, "I consent to the privacy policy", required=True),
+    ), bank, CONTACT, None)
+    assert plan.planned == ()
+    assert "consent" in plan.unfilled[0].reason
+
+
 # --- Hispanic/Latino vs race ---------------------------------------------------
 
 def test_hispanic_latino_maps_to_hispanic_latino_not_race():
@@ -417,7 +507,7 @@ def test_hispanic_latino_maps_to_hispanic_latino_not_race():
     ])
     assert _value(plan, "#hisp") == "No"       # eeo.hispanic_latino
     assert _value(plan, "#race") == "Asian"    # eeo.race, untouched
-    assert _sources(plan)["#hisp"] == "answer_bank.eeo.hispanic"
+    assert _sources(plan)["#hisp"] == "answer_bank.eeo.hispanic_latino"
 
 
 def test_hispanic_latino_declines_when_not_provided():

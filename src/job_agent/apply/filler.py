@@ -112,23 +112,37 @@ def _match_country(options: tuple[str, ...], want: str) -> str | None:
     return None
 
 
+# Decline-option wordings across ATSes: Greenhouse "Decline To Self Identify",
+# Ashby "Prefer not to answer"/"Prefer not to say", plus "I don't wish to answer".
+_DECLINE_VARIANTS = ("decline", "prefer not", "don't wish", "do not wish", "rather not")
+
+
+def _match_decline(options: tuple[str, ...]) -> str | None:
+    for variant in _DECLINE_VARIANTS:
+        if (hit := _match_option(options, variant)):
+            return hit
+    return None
+
+
 def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str]:
-    """(value, source) for a self-identification field — declines by default."""
+    """(value, source) for a self-identification field.
+
+    Deterministic from the answer bank (top-level key, else the eeo block) —
+    never LLM-drafted, never guessed: an absent key resolves to the form's own
+    decline option ("Decline To Self Identify" / "Prefer not to answer" / ...).
+    """
     hay = _haystack(f)
-    eeo = bank.eeo
     # Hispanic/Latino is checked FIRST: forms often title it "Ethnicity: Are you
     # Hispanic or Latino?", and "ethnic" alone would otherwise mis-route it to
     # the race value. Race keeps only the separate race/ethnicity question.
-    key = ("hispanic" if "hispanic" in hay or "latino" in hay or "latinx" in hay
+    key = ("hispanic_latino" if "hispanic" in hay or "latino" in hay or "latinx" in hay
            else "gender" if "gender" in hay or "sex" in hay
            else "race" if "race" in hay or "ethnic" in hay
-           else "veteran" if "veteran" in hay
-           else "disability" if "disab" in hay else "")
-    value = getattr(eeo, {"hispanic": "hispanic_latino", "gender": "gender", "race": "race",
-                          "veteran": "veteran_status",
-                          "disability": "disability_status"}[key]) if (eeo and key) else DECLINE_TO_STATE
+           else "veteran_status" if "veteran" in hay
+           else "disability_status" if "disab" in hay else "")
+    value = bank.eeo_answer(key) if key else DECLINE_TO_STATE
     if f.options:
-        value = _match_option(f.options, value) or _match_option(f.options, "decline") or value
+        value = _match_option(f.options, value) or _match_decline(f.options) or value
     return value, f"answer_bank.eeo.{key or 'decline'}"
 
 
@@ -182,6 +196,11 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
         return (contact.school, "career_facts.school") if contact.school else None
     if _word(hay, "degree") or "highest education" in hay or "level of education" in hay:
         return (contact.degree, "career_facts.degree") if contact.degree else None
+    if _word(hay, "discipline") or "field of study" in hay:
+        if not bank.discipline:
+            return None
+        picked = _match_option(f.options, bank.discipline) if f.options else bank.discipline
+        return (picked, "answer_bank.discipline") if picked else None
 
     # work authorization (booleans -> option) -----------------------------
     if "sponsor" in hay:

@@ -99,6 +99,17 @@ class AnswerBank(BaseModel):
     previously_employed_here: str = "No"   # "Have you previously worked here?"
     whatsapp_optin: str = "No"             # "Receive updates via WhatsApp?"
 
+    # --- EEO / demographic, top-level (optional; overrides the eeo block) ----
+    # Resolved deterministically — never LLM-drafted, never guessed. An absent
+    # key falls back to declining (see eeo_answer / DECLINE_TO_STATE).
+    gender: str = ""
+    hispanic_latino: str = ""
+    race: str = ""
+    veteran_status: str = ""
+    disability_status: str = ""
+    # Some forms ask your field/discipline (e.g. "Software Engineering").
+    discipline: str = ""
+
     # --- apply-specific links (contact proper comes from career facts) -------
     linkedin: str = ""
     github: str = ""
@@ -115,6 +126,20 @@ class AnswerBank(BaseModel):
     #: match a form's free-text question against these keys; an unmatched
     #: question still pauses for the human rather than guessing.
     prepared_answers: dict[str, str] = Field(default_factory=dict)
+
+    def eeo_answer(self, key: str) -> str:
+        """Resolve one EEO answer: top-level field > eeo block > decline.
+
+        ``key`` is an EEO attribute name (gender, hispanic_latino, race,
+        veteran_status, disability_status). Deterministic by construction —
+        the fallback is always a decline, never a guess.
+        """
+        top = getattr(self, key, "")
+        if top:
+            return top
+        if self.eeo is not None:
+            return getattr(self.eeo, key)
+        return DECLINE_TO_STATE
 
 
 class Contact(BaseModel):
