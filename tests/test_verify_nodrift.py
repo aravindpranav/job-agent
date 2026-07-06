@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -182,6 +183,67 @@ def test_hard_fabrication_still_beats_scope_drift():
         "Built Apache Airflow DAGs", "Built multi-terabyte Apache Airflow DAGs")
     with pytest.raises(DriftError):
         verify_no_drift(_mutated(mutated), FACTS)
+
+
+# --- JD-driven summary + skills order + themes ----------------------------------
+
+DEMO_JD = (DEMO / "demo_jd.txt").read_text()
+
+
+def test_jd_themes_are_salient_terms_not_stopwords():
+    from job_agent.tailor.tailor import jd_themes
+    themes = jd_themes(DEMO_JD)
+    assert "pipelines" in themes and "airflow" in themes   # real JD emphasis
+    assert not {"the", "and", "you", "experience"} & set(themes)
+
+
+def test_summary_engaging_the_jd_passes():
+    verify_format(BASE, FACTS, DEMO_JD)   # demo summary mirrors the demo JD
+
+
+def test_generic_summary_ignoring_the_jd_fails_review():
+    generic = re.sub(
+        r"(?s)(PROFESSIONAL SUMMARY\n).+?(\n\s*TECHNICAL SKILLS)",
+        r"\1Results-oriented GenAI professional passionate about cutting-edge "
+        r"innovation, leveraging synergies to deliver transformative business "
+        r"value in dynamic environments.\2",
+        BASE.resume_text)
+    with pytest.raises(FormatError, match="ignores the JD"):
+        verify_format(_mutated(generic), FACTS, DEMO_JD)
+
+
+def test_reorder_skills_puts_jd_emphasized_lines_first_lossless():
+    from job_agent.tailor.tailor import reorder_skills
+    face = ("Jordan Rivers\ne | p\nPROFESSIONAL SUMMARY\nx\nTECHNICAL SKILLS\n"
+            "Soft Skills: communication, mentoring\n"
+            "Orchestration: Apache Airflow, dbt\n"
+            "Processing: Apache Spark, AWS Glue\n"
+            "PROFESSIONAL EXPERIENCE\nRole: r\n")
+    out = reorder_skills(face, DEMO_JD)
+    start = out.splitlines().index("TECHNICAL SKILLS") + 1
+    lines = out.splitlines()[start:start + 3]                     # the 3 skill lines
+    assert lines[0].startswith(("Orchestration", "Processing"))   # JD-emphasized first
+    assert lines[-1].startswith("Soft Skills")                    # JD-peripheral last
+    assert sorted(out.splitlines()) == sorted(face.splitlines())  # lossless reorder
+
+
+# --- final-artifact scope gate ---------------------------------------------------
+
+def test_rendered_artifact_with_unbanked_scope_word_is_rejected(tmp_path):
+    from job_agent.tailor.render_pdf import render_pdf
+    from job_agent.tailor.verify import verify_artifact
+    mutated = BASE.resume_text.replace(
+        "Built Apache Airflow DAGs", "Built multi-terabyte Apache Airflow DAGs")
+    pdf = render_pdf(mutated, tmp_path / "bad.pdf")
+    with pytest.raises(ScopeDriftError, match="multi terabyte"):
+        verify_artifact(pdf, FACTS)
+
+
+def test_clean_rendered_artifact_passes_scope_check(tmp_path):
+    from job_agent.tailor.render_pdf import render_pdf
+    from job_agent.tailor.verify import verify_artifact
+    pdf = render_pdf(BASE.resume_text, tmp_path / "ok.pdf")
+    verify_artifact(pdf, FACTS)   # must not raise — zero unbanked scope words
 
 
 # --- format gate ------------------------------------------------------------

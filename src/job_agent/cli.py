@@ -42,13 +42,20 @@ from job_agent.tailor.render_pdf import (
     render_pdf,
     trim_to_caps,
 )
-from job_agent.tailor.tailor import TAILOR_MODEL, TailorResult, load_megaprompt, tailor_resume
+from job_agent.tailor.tailor import (
+    TAILOR_MODEL,
+    TailorResult,
+    load_megaprompt,
+    reorder_skills,
+    tailor_resume,
+)
 from job_agent.tailor.verify import (
     DriftError,
     FormatError,
     PdfVerifyError,
     ScopeDriftError,
     pdf_page_count,
+    verify_artifact,
     verify_format,
     verify_no_drift,
     verify_pdf,
@@ -176,19 +183,27 @@ _CAP_CORRECTION = (
 )
 
 
-def _gate(facts, result) -> TailorResult:
-    """Force the header and run the no-drift + format gates on the face.
+def _gate(facts, result, jd: str | None = None) -> TailorResult:
+    """Force the header, reorder skills by JD emphasis, and run the no-drift +
+    format gates on the face (incl. the JD-summary check when ``jd`` is given).
     Returns the checked (face) result, or raises DriftError / FormatError."""
     face = trim_to_caps(clean_resume_text(
         normalize_header(result.resume_text, facts.name, facts.email, facts.phone)))
+    if jd:
+        face = reorder_skills(face, jd)   # deterministic: JD-emphasized lines first
     checked = TailorResult(resume_text=face, notes=result.notes, raw=result.raw)
     verify_no_drift(checked, facts)
-    verify_format(checked, facts)
+    verify_format(checked, facts, jd)
     return checked
 
 
-def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str) -> int:
-    """Render the PDF + docx, run the PDF gate, print NOTES + page count."""
+def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str,
+           facts=None) -> int:
+    """Render the PDF + docx, run the PDF gate, print NOTES + page count.
+
+    With ``facts`` given, also runs the final-artifact scope check — an unbanked
+    scale qualifier in the RENDERED text raises ScopeDriftError (caller may
+    regenerate once)."""
     console.print("[green]✓ No-drift + format gates passed[/green]")
     face = checked.resume_text
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -228,6 +243,8 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
     except PdfVerifyError as exc:
         console.print(f"[red]PDF verification failed:[/red] {exc}")
         return 1
+    if facts is not None:
+        verify_artifact(pdf_out, facts)   # ScopeDriftError propagates to the caller
     console.print(f"[green]✓ ATS check passed[/green] — sections in order: {', '.join(sections)} "
                   f"([bold]{pages} page{'s' if pages != 1 else ''}[/bold])")
     console.print(f"[bold]PDF:[/bold] {pdf_out}\n[bold]DOCX:[/bold] {docx_path}")
@@ -246,12 +263,12 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         stub = (DEMO_DIR / "demo_response.txt").read_text()
         result = tailor_resume(facts, jd, megaprompt=_megaprompt(), stub_response=stub)
         try:
-            checked = _gate(facts, result)
+            checked = _gate(facts, result, jd)
         except (DriftError, ScopeDriftError, FormatError) as exc:
             console.print(f"[red]Gate FAILED — refusing to write PDF:[/red]\n{exc}")
             return 1
         filename = _resume_filename(facts.name.split()[0], facts.role, "Demo")
-        return _write(console, checked, out_dir, filename)
+        return _write(console, checked, out_dir, filename, facts)
 
     # real run
     if not args.job:
@@ -294,7 +311,7 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
     for attempt in (1, 2):
         result = tailor_resume(facts, jd, settings=settings, extra_instruction=correction)
         try:
-            checked = _gate(facts, result)
+            checked = _gate(facts, result, jd)
             break
         except DriftError as exc:  # fabrication — never retry, fail loudly
             console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
@@ -306,7 +323,21 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
             console.print(f"[yellow]Gate issue, retrying once:[/yellow] {exc}")
             correction = (f"{_CAP_CORRECTION}\nYour previous draft was REJECTED by an "
                           f"automated check:\n{exc}\nRegenerate and fix exactly this.")
-    return _write(console, checked, out_dir, filename)
+    try:
+        return _write(console, checked, out_dir, filename, facts)
+    except ScopeDriftError as exc:
+        # An unbanked scale qualifier survived to the RENDERED artifact —
+        # regenerate once with the violation as a correction, then give up loudly.
+        console.print(f"[yellow]Artifact scope check failed, regenerating once:[/yellow] {exc}")
+        result = tailor_resume(facts, jd, settings=settings,
+                               extra_instruction=f"Your previous draft was REJECTED:\n{exc}\n"
+                                                 "Remove the unsupported scale wording.")
+        try:
+            checked = _gate(facts, result, jd)
+            return _write(console, checked, out_dir, filename, facts)
+        except (DriftError, ScopeDriftError, FormatError) as exc2:
+            console.print(f"[red]Gate FAILED after artifact retry — refusing to write PDF:[/red]\n{exc2}")
+            return 1
 
 
 # --------------------------------------------------------------------------- #

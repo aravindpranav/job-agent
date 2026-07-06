@@ -48,10 +48,35 @@ _BRACKET = re.compile(r"\[[^\]]*\]")
 _SEP_LINE = re.compile(r"^[\-_.=|*·•\s]+$")
 
 
-def verify_format(result: TailorResult, facts: CareerFacts) -> None:
-    """Enforce the clean-résumé rules on the face. Raises :class:`FormatError`."""
+def _summary_text(face: str) -> str:
+    """The text between PROFESSIONAL SUMMARY and the next section heading."""
+    match = re.search(r"(?is)PROFESSIONAL SUMMARY\s*(.+?)\s*(?:TECHNICAL SKILLS|"
+                      r"PROFESSIONAL EXPERIENCE|EDUCATION)", face)
+    return match.group(1) if match else ""
+
+
+#: Minimum JD themes the summary must touch to count as JD-driven.
+SUMMARY_THEME_MIN = 2
+
+
+def verify_format(result: TailorResult, facts: CareerFacts, jd: str | None = None) -> None:
+    """Enforce the clean-résumé rules on the face. Raises :class:`FormatError`.
+
+    With ``jd`` given, also requires the Professional Summary to engage the
+    JD's key themes — a generic summary that ignores the JD fails review.
+    """
     face = result.resume_text
     problems: list[str] = []
+
+    if jd:
+        from job_agent.tailor.tailor import jd_themes  # local: avoid import cycle at module load
+        themes = jd_themes(jd)
+        summary = _summary_text(face).lower()
+        hits = [t for t in themes if re.search(rf"(?<![a-z0-9]){re.escape(t)}(?![a-z0-9])", summary)]
+        if len(hits) < SUMMARY_THEME_MIN:
+            problems.append(
+                f"Professional Summary ignores the JD: it touches {len(hits)} of the JD's "
+                f"key themes ({', '.join(themes[:8])}...) — lead with the JD's top requirements.")
 
     if brackets := _BRACKET.findall(face):
         problems.append(f"Placeholder/bracket on the résumé face: {brackets[:3]}")
@@ -348,6 +373,16 @@ def verify_no_drift(result: TailorResult, facts: CareerFacts) -> VerifyReport:
         placeholders_missing_from_notes=missing,
         warnings=warnings,
     )
+
+
+def verify_artifact(pdf_path: str | Path, facts: CareerFacts) -> None:
+    """Final-artifact honesty check: the RENDERED text carries no unbanked
+    scope qualifier. Belt-and-suspenders over the face gate — whatever ends up
+    in the PDF is what a recruiter reads. Raises :class:`ScopeDriftError`."""
+    if scope := unbanked_scope_words(extract_pdf_text(pdf_path), facts):
+        raise ScopeDriftError(
+            "Final artifact contains scope qualifier(s) not supported by career facts: "
+            + ", ".join(repr(s) for s in scope))
 
 
 def extract_pdf_text(pdf_path: str | Path) -> str:

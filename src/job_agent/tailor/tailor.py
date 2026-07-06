@@ -35,6 +35,9 @@ FORMAT:
 - PROFESSIONAL EXPERIENCE: each role has Role:, Company:, Project Description:, Duration:, then Responsibilities: bullets and Achievements: bullets, each bullet starting with a real bullet character. Write each company name and title EXACTLY as given in my career facts.
 - Project Description describes the PROJECT, not the company. The Company: line already names the employer, so the Project Description must NOT restate or describe the company (never write "<Company> is a ..." or a company blurb). Write 1-2 sentences on the actual project/system: what was built, the domain/problem it solved, and the scale/environment — drawn only from my real responsibilities. Reweight it toward what THIS JD cares about. Do not invent a project or add scope I did not work on.
 - STRICT JD ADHERENCE: parse the JD's core responsibilities, required/preferred tools, domain signals, and outcomes, and reweight the Summary, Technical Skills, Responsibilities, and Achievements to foreground what THIS JD asks for. Mirror the JD's exact vocabulary ONLY where my real experience backs it. Never add a skill, tool, or claim just because the JD wants it — if it is not in my career facts it does not go on the resume; flag it in NOTES as a gap instead. Two different JDs must produce visibly different resumes from the same facts.
+- SUMMARY LEADS WITH THE JD: the FIRST line of the Professional Summary must directly address the JD's top requirements (see JD KEY THEMES in the user message), naming the JD's domain and its most-emphasized tools where my real experience backs them. A generic summary that ignores the JD's themes is REJECTED by an automated check.
+- SKILLS ORDERED BY THE JD: within TECHNICAL SKILLS, put the categories and tools this JD emphasizes FIRST; JD-peripheral categories go last or are dropped. Never add a skill that is not in my career facts.
+- BULLETS ORDERED BY JD RELEVANCE: within each role, order Responsibilities most-JD-relevant FIRST (any trimming to fit 2 pages removes from the END, so the last bullet must always be the least JD-relevant). A bullet with no connection to any JD theme should be dropped in favor of a relevant one; every role is kept, only its emphasis changes.
 - Do NOT use em-dashes or en-dashes anywhere. Use commas, periods, or parentheses. Dates use "Mon YYYY - Mon YYYY" or "Mon YYYY - Present".
 - Do NOT output separator lines (e.g. "- --", "----"). Separate sections with a blank line only.
 - Bullets are factual statements of what was built or done. Do NOT editorialize or add flattery: never write phrases like "directly applicable to <product>", "mirroring the <company> philosophy", "demonstrating the <X> required", or "matching the role's <Y>". State the work, not why it fits.
@@ -124,11 +127,78 @@ def build_facts_block(facts: CareerFacts) -> str:
     return "\n".join(lines)
 
 
+# Words that carry no JD signal (job-ad boilerplate + English stopwords).
+_THEME_NOISE = frozenset("""
+a an and are as at be been build building by can do end etc experience for from
+had has have in into is it its of on or our over per role s such team teams that
+the their this to we will with without work working year years you your ability
+strong looking hands skills including required preferred plus responsibilities
+about across more most other own need new large modern production productionize
+""".split())
+
+_WORD = re.compile(r"[A-Za-z][A-Za-z0-9+#./-]{1,}")
+
+
+def jd_themes(jd_text: str, top: int = 12) -> list[str]:
+    """The JD's most salient terms, most-emphasized first (frequency-ranked).
+
+    Deterministic and dependency-free: tokenize, drop boilerplate/stopwords,
+    rank by count (ties keep first-appearance order). These drive the summary
+    check and the skills reordering — nothing here adds content.
+    """
+    counts: dict[str, int] = {}
+    order: dict[str, int] = {}
+    for i, tok in enumerate(_WORD.findall(jd_text or "")):
+        w = tok.lower().strip("./-")
+        if len(w) < 2 or w in _THEME_NOISE:
+            continue
+        counts[w] = counts.get(w, 0) + 1
+        order.setdefault(w, i)
+    ranked = sorted(counts, key=lambda w: (-counts[w], order[w]))
+    return ranked[:top]
+
+
+def reorder_skills(resume_text: str, jd_text: str) -> str:
+    """Reorder TECHNICAL SKILLS category lines by JD emphasis (most hits first).
+
+    Pure line reordering within the section — no line is added, removed, or
+    edited, so the no-drift/format gates are unaffected.
+    """
+    themes = jd_themes(jd_text, top=20)
+    lines = resume_text.splitlines()
+    start = end = None
+    for i, ln in enumerate(lines):
+        s = ln.strip().upper()
+        if s == "TECHNICAL SKILLS":
+            start = i + 1
+        elif start is not None and s in ("PROFESSIONAL EXPERIENCE", "EDUCATION",
+                                         "PROFESSIONAL SUMMARY", "CERTIFICATIONS"):
+            end = i
+            break
+    if start is None or end is None:
+        return resume_text
+    block = lines[start:end]
+    skill_idx = [i for i, ln in enumerate(block) if ":" in ln and ln.strip()]
+    if len(skill_idx) < 2:
+        return resume_text
+
+    def score(line: str) -> int:
+        low = line.lower()
+        return sum(low.count(t) for t in themes)
+
+    reordered = sorted((block[i] for i in skill_idx), key=score, reverse=True)  # stable
+    for i, new_line in zip(skill_idx, reordered):
+        block[i] = new_line
+    return "\n".join(lines[:start] + block + lines[end:])
+
+
 def build_user_message(facts: CareerFacts, jd_text: str) -> str:
+    themes = ", ".join(jd_themes(jd_text))
     return (
         f"{build_facts_block(facts)}\n\n"
         "=== TARGET JOB DESCRIPTION ===\n"
         f"{jd_text.strip()}\n\n"
+        f"=== JD KEY THEMES (extracted; most-emphasized first) ===\n{themes}\n\n"
         "Produce the tailored resume in the strict format, then the separate NOTES block."
     )
 
