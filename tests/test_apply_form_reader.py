@@ -43,6 +43,26 @@ def test_aria_combobox_and_listbox_are_comboboxes():
     assert classify_control("listbox", "", "Office") == FieldType.COMBOBOX
 
 
+def test_button_pair_is_a_toggle():
+    assert classify_control("buttonpair", "", "Will you require sponsorship?") \
+        == FieldType.TOGGLE
+
+
+def test_read_form_emits_toggle_field_from_a_yes_no_button_pair():
+    from job_agent.apply.form_reader import read_form
+    page = _FakePage([{
+        "tag": "buttonpair", "type": "", "name": "",
+        "label": "Do you now or in the future require visa sponsorship?",
+        "groupLabel": "", "required": False, "maxlength": None,
+        "options": ["Yes", "No"], "selector": '[data-ja-toggle="1"]',
+    }])
+    (f,) = read_form(page)
+    assert f.field_type == FieldType.TOGGLE
+    assert f.options == ("Yes", "No")
+    assert f.label == "Do you now or in the future require visa sponsorship?"
+    assert f.selector == '[data-ja-toggle="1"]'
+
+
 def test_read_form_emits_combobox_fields_with_scanned_options():
     from job_agent.apply.form_reader import read_form
     page = _FakePage([{

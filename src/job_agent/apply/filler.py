@@ -185,7 +185,11 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
     if "whatsapp" in hay:
         picked = _match_option(f.options, bank.whatsapp_optin) if f.options else bank.whatsapp_optin
         return (picked, "answer_bank.whatsapp_optin") if picked else None
-    if _word(hay, "employer") or "current company" in hay or "recent company" in hay:
+    # "Current/Last Company", "Current Employer", "Most recent company", ... —
+    # the word "company"/"employer" needs a recency cue; a bare "Company name"
+    # is ambiguous (could ask about a referral's company) and pauses.
+    if _word(hay, "employer") or (_word(hay, "company") and any(
+            cue in hay for cue in ("current", "last", "recent"))):
         return (contact.employer, "career_facts.employer") if contact.employer else None
     if _word(hay, "title") and ("job" in hay or "current" in hay or "recent" in hay
                                 or "position" in hay):
@@ -366,6 +370,9 @@ def apply_plan(page, plan: FillPlan) -> None:
             locator.set_input_files(pf.value)
         elif f.field_type == FieldType.COMBOBOX:
             click_select(page, locator, pf.value)
+        elif f.field_type == FieldType.TOGGLE:
+            # Yes/No button pair: click the one button whose text is the answer
+            locator.get_by_role("button", name=pf.value, exact=True).first.click()
         elif f.field_type in (FieldType.SELECT, FieldType.EEO) and f.options:
             try:
                 locator.select_option(label=pf.value)

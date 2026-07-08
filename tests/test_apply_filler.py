@@ -406,6 +406,83 @@ def test_countries_anticipate_working_maps_to_country():
     assert _sources(plan)["#cw"] == "answer_bank.country"
 
 
+# --- Current/Last Company label variants (the Plaid/Ashby gap) -------------------
+
+@pytest.mark.parametrize("label", [
+    "Current/Last Company",
+    "Current Employer",
+    "Most recent company",
+])
+def test_current_last_company_variants_map_to_recent_employer(label):
+    plan = _plan_for([_f("#co", FieldType.TEXT, label)])
+    assert _value(plan, "#co") == "Acme Analytics"
+    assert _sources(plan)["#co"] == "career_facts.employer"
+
+
+def test_company_without_a_recency_cue_still_pauses():
+    # A bare "Company name" is ambiguous (could ask about a referral's company).
+    plan = _plan_for([_f("#co", FieldType.TEXT, "Company name")])
+    assert plan.planned == ()
+
+
+def test_empty_employer_in_facts_pauses_instead_of_guessing():
+    contact = CONTACT.model_copy(update={"employer": ""})
+    plan = build_fill_plan((_f("#co", FieldType.TEXT, "Current/Last Company"),),
+                           BANK, contact, None)
+    assert plan.planned == ()
+
+
+# --- Yes/No button pairs (Ashby toggles) ------------------------------------------
+
+def test_sponsorship_toggle_maps_to_the_no_button():
+    plan = _plan_for([
+        _f('[data-ja-toggle="1"]', FieldType.TOGGLE,
+           "Do you now or will you in the future require sponsorship for "
+           "employment visa status?", options=["Yes", "No"]),
+    ])
+    assert _value(plan, '[data-ja-toggle="1"]') == "No"    # requires_sponsorship False
+    assert _sources(plan)['[data-ja-toggle="1"]'] == "answer_bank.requires_sponsorship"
+
+
+def test_previously_employed_toggle_maps_to_the_no_button():
+    plan = _plan_for([
+        _f('[data-ja-toggle="2"]', FieldType.TOGGLE,
+           "Have you previously been employed by Plaid?", options=["Yes", "No"]),
+    ])
+    assert _value(plan, '[data-ja-toggle="2"]') == "No"
+    assert _sources(plan)['[data-ja-toggle="2"]'] == "answer_bank.previously_employed_here"
+
+
+def test_unmatched_toggle_still_pauses():
+    plan = _plan_for([
+        _f('[data-ja-toggle="3"]', FieldType.TOGGLE,
+           "Have you used our API before?", options=["Yes", "No"]),
+    ])
+    assert plan.planned == ()
+
+
+def test_consent_toggle_still_pauses():
+    plan = _plan_for([
+        _f('[data-ja-toggle="4"]', FieldType.TOGGLE,
+           "Do you consent to the privacy policy?", options=["Yes", "No"]),
+    ])
+    assert plan.planned == ()
+    assert "never auto-filled" in plan.unfilled[0].reason
+
+
+# --- Plaid human-input questions must KEEP pausing --------------------------------
+
+def test_plaid_interest_checkboxes_and_ai_rating_still_pause():
+    plan = _plan_for([
+        _f("#why", FieldType.CHECKBOX, "Why are you interested in working at Plaid?",
+           options=["The products", "The people", "The mission"]),
+        _f("#rate", FieldType.RADIO, "How would you rate Plaid's AI products?",
+           options=["1", "2", "3", "4", "5"]),
+    ])
+    assert plan.planned == ()               # both pause for the human
+    assert {u.field.selector for u in plan.unfilled} == {"#why", "#rate"}
+
+
 # --- top-level EEO keys + decline variants ---------------------------------------
 
 def test_top_level_eeo_keys_are_accepted_not_extra_forbidden():
@@ -566,6 +643,18 @@ class _FakeLocator:
     def click(self):
         self.sink.append(("click", self.selector, None))
 
+    def get_by_role(self, role, name=None, exact=False):
+        sink, selector = self.sink, self.selector
+
+        class _Btn:
+            @property
+            def first(self):
+                return self
+
+            def click(self, timeout=None):
+                sink.append((f"{role}-click", selector, name))
+        return _Btn()
+
 
 class _FakePage:
     def __init__(self):
@@ -639,6 +728,17 @@ def test_apply_plan_routes_combobox_through_click_select():
     apply_plan(page, plan)
     assert ("option-click", "United States", None) in page.calls
     assert not any(c[0] == "select" for c in page.calls)   # no native select_option
+
+
+def test_apply_plan_clicks_the_matching_toggle_button():
+    plan = _plan_for([
+        _f('[data-ja-toggle="1"]', FieldType.TOGGLE,
+           "Will you require visa sponsorship?", options=["Yes", "No"]),
+    ])
+    page = _FakePage()
+    apply_plan(page, plan)
+    assert ("button-click", '[data-ja-toggle="1"]', "No") in page.calls
+    assert not any(c[0] == "fill" for c in page.calls)   # a toggle is never typed into
 
 
 def test_apply_plan_only_touches_planned_fields():

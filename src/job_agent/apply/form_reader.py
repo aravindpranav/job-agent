@@ -32,6 +32,11 @@ def classify_control(tag: str, input_type: str, label: str = "", name: str = "",
         # ARIA widget (React select) — selected by clicking its option, and its
         # option list may be empty at scan time (popup renders on open).
         return FieldType.COMBOBOX
+    if tag == "buttonpair":
+        # Yes/No button pair (Ashby toggle) — answered by clicking one button.
+        # Deliberately never EEO: an EEO-worded pair falls through the filler's
+        # text matchers unmatched and pauses, rather than risk a mis-click.
+        return FieldType.TOGGLE
     if input_type == "password":
         return FieldType.CREDENTIAL
     if input_type == "file":
@@ -140,6 +145,37 @@ _SCAN_JS = r"""
       options: opts,
       selector: el.id ? '#' + CSS.escape(el.id)
                       : roleSelector(el, el.getAttribute('role').toLowerCase()),
+    });
+  });
+  // Yes/No BUTTON pairs (Ashby toggles): the question renders as two sibling
+  // <button>s reading "Yes" / "No" — no input element at all, so the passes
+  // above never see it. A container whose button children are exactly one
+  // "Yes" and one "No" is one question; its label resolves like any field's.
+  // The container is stamped with data-ja-toggle so the filler can address it
+  // (these widgets typically carry no id or name).
+  let toggleIdx = 0;
+  const pairSeen = new Set();
+  document.querySelectorAll('button').forEach((btn) => {
+    const parent = btn.parentElement;
+    if (!parent || pairSeen.has(parent)) return;
+    if (btn.offsetParent === null) return;
+    const btns = Array.from(parent.children).filter((c) => c.tagName === 'BUTTON');
+    const texts = btns.map((b) => b.innerText.trim());
+    const lower = texts.map((t) => t.toLowerCase());
+    if (btns.length !== 2 || !lower.includes('yes') || !lower.includes('no')) return;
+    pairSeen.add(parent);
+    toggleIdx += 1;
+    parent.setAttribute('data-ja-toggle', String(toggleIdx));
+    out.push({
+      tag: 'buttonpair',
+      type: '',
+      name: parent.id || '',
+      label: labelFor(parent),
+      groupLabel: '',
+      required: parent.getAttribute('aria-required') === 'true',
+      maxlength: null,
+      options: texts,
+      selector: `[data-ja-toggle="${toggleIdx}"]`,
     });
   });
   return out;

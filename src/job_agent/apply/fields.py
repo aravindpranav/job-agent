@@ -27,6 +27,7 @@ class FieldType(str, Enum):
     COMBOBOX = "combobox"  # ARIA widget (role=combobox/listbox) — filled by CLICK
     CHECKBOX = "checkbox"
     RADIO = "radio"
+    TOGGLE = "toggle"      # Yes/No button pair (Ashby) — filled by CLICKING a button
     FILE = "file"          # resume / document upload
     EEO = "eeo"            # self-identification (gender/race/veteran/disability)
     CREDENTIAL = "credential"  # password / account creation — NEVER auto-filled
