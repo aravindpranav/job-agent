@@ -151,8 +151,10 @@ _SCAN_JS = r"""
   // <button>s reading "Yes" / "No" — no input element at all, so the passes
   // above never see it. A container whose button children are exactly one
   // "Yes" and one "No" is one question; its label resolves like any field's.
-  // The container is stamped with data-ja-toggle so the filler can address it
-  // (these widgets typically carry no id or name).
+  // Selector durability matters here: Ashby re-renders the whole form after a
+  // resume upload, recreating these nodes. Anchor to Ashby's own
+  // data-field-path (its stable field key, verified to survive the re-render)
+  // or an id; a stamped attribute is the LAST resort — a re-render wipes it.
   let toggleIdx = 0;
   const pairSeen = new Set();
   document.querySelectorAll('button').forEach((btn) => {
@@ -164,8 +166,17 @@ _SCAN_JS = r"""
     const lower = texts.map((t) => t.toLowerCase());
     if (btns.length !== 2 || !lower.includes('yes') || !lower.includes('no')) return;
     pairSeen.add(parent);
-    toggleIdx += 1;
-    parent.setAttribute('data-ja-toggle', String(toggleIdx));
+    const entry = parent.closest('[data-field-path]');
+    let selector;
+    if (entry) {
+      selector = `[data-field-path="${entry.getAttribute('data-field-path')}"]`;
+    } else if (parent.id) {
+      selector = '#' + CSS.escape(parent.id);
+    } else {
+      toggleIdx += 1;
+      parent.setAttribute('data-ja-toggle', String(toggleIdx));
+      selector = `[data-ja-toggle="${toggleIdx}"]`;
+    }
     out.push({
       tag: 'buttonpair',
       type: '',
@@ -175,7 +186,7 @@ _SCAN_JS = r"""
       required: parent.getAttribute('aria-required') === 'true',
       maxlength: null,
       options: texts,
-      selector: `[data-ja-toggle="${toggleIdx}"]`,
+      selector,
     });
   });
   return out;

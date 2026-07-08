@@ -97,3 +97,30 @@ class FillPlan:
             planned=planned + (PlannedFill(field=target, value=value, source=source),),
             unfilled=unfilled,
         )
+
+    def edits_since(self, baseline: "FillPlan") -> "FillPlan":
+        """Return a plan holding only fills that are new or changed vs ``baseline``.
+
+        Used after the review gate to re-apply ONLY human edits: re-clicking an
+        already-selected stateful widget (an Ashby Yes/No toggle button)
+        DESELECTS it, so unchanged fills must never be applied twice.
+        """
+        base = {(p.field.selector, p.value) for p in baseline.planned}
+        return FillPlan(planned=tuple(
+            p for p in self.planned if (p.field.selector, p.value) not in base))
+
+    def demote(self, selector: str, reason: str) -> "FillPlan":
+        """Return a new plan with ``selector`` moved from planned to unfilled.
+
+        Used when a planned fill FAILS on the live page (e.g. the element was
+        re-rendered away): the field goes back to pausing for the human — and
+        back to blocking approval if required — instead of silently vanishing.
+        Immutable — the original plan is untouched.
+        """
+        target = next((p.field for p in self.planned if p.field.selector == selector), None)
+        if target is None:
+            raise KeyError(f"No planned field with selector {selector!r} in this plan.")
+        return FillPlan(
+            planned=tuple(p for p in self.planned if p.field.selector != selector),
+            unfilled=self.unfilled + (Unfilled(field=target, reason=reason),),
+        )

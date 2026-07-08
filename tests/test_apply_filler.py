@@ -741,6 +741,77 @@ def test_apply_plan_clicks_the_matching_toggle_button():
     assert not any(c[0] == "fill" for c in page.calls)   # a toggle is never typed into
 
 
+def test_a_vanished_toggle_never_aborts_the_run():
+    # The real Plaid failure: Ashby re-rendered after resume upload, the toggle
+    # locator timed out, and the WHOLE run crashed. A failed fill must be
+    # returned (to pause on), never raised, and later fields still fill.
+    plan = _plan_for([
+        _f("#email", FieldType.TEXT, "Email"),
+        _f('[data-ja-toggle="1"]', FieldType.TOGGLE,
+           "Will you require visa sponsorship?", options=["Yes", "No"]),
+        _f("#phone", FieldType.TEXT, "Phone"),
+    ])
+    page = _FakePage()
+
+    class _Vanished:
+        @property
+        def first(self):
+            return self
+
+        def click(self, timeout=None):
+            raise TimeoutError("locator timed out — element re-rendered away")
+
+    real_locator = page.locator
+    def locator(selector):
+        loc = real_locator(selector)
+        if "data-ja-toggle" in selector:
+            loc.get_by_role = lambda role, name=None, exact=False: _Vanished()
+        return loc
+    page.locator = locator
+
+    failed = apply_plan(page, plan)
+    assert [pf.field.selector for pf in failed] == ['[data-ja-toggle="1"]']
+    filled = {sel for kind, sel, _ in page.calls if kind == "fill"}
+    assert {"#email", "#phone"} <= filled       # the run carried on past the failure
+
+
+def test_apply_plan_returns_no_failures_when_all_fills_land():
+    plan = _plan_for([_f("#email", FieldType.TEXT, "Email")])
+    assert apply_plan(_FakePage(), plan) == ()
+
+
+def test_demote_moves_a_planned_field_to_unfilled():
+    plan = _plan_for([
+        _f("#email", FieldType.TEXT, "Email"),
+        _f('[data-ja-toggle="1"]', FieldType.TOGGLE,
+           "Will you require visa sponsorship?", required=True, options=["Yes", "No"]),
+    ])
+    demoted = plan.demote('[data-ja-toggle="1"]', "element vanished at fill time")
+    assert [p.field.selector for p in demoted.planned] == ["#email"]
+    assert [u.field.selector for u in demoted.unfilled] == ['[data-ja-toggle="1"]']
+    assert demoted.unfilled[0].reason == "element vanished at fill time"
+    assert demoted.missing_required()           # required again -> blocks approval
+    assert len(plan.planned) == 2               # original untouched (immutable)
+
+
+def test_edits_since_returns_only_new_or_changed_fills():
+    # After approval the runner must re-apply ONLY what the human edited:
+    # re-clicking an already-selected Ashby Yes/No button DESELECTS it
+    # (verified live on the Plaid form), so unchanged fills must not re-apply.
+    plan = _plan_for([
+        _f("#email", FieldType.TEXT, "Email"),
+        _f('[data-field-path="abc"]', FieldType.TOGGLE,
+           "Will you require visa sponsorship?", options=["Yes", "No"]),
+    ])
+    unchanged = plan.edits_since(plan)
+    assert unchanged.planned == ()              # nothing edited -> nothing re-applied
+
+    edited = plan.with_value("#email", "new@example.com")
+    delta = edited.edits_since(plan)
+    assert [(p.field.selector, p.value) for p in delta.planned] == \
+        [("#email", "new@example.com")]         # only the edit, never the toggle
+
+
 def test_apply_plan_only_touches_planned_fields():
     plan = _plan_for([
         _f("#email", FieldType.TEXT, "Email"),

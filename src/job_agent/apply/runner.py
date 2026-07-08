@@ -89,11 +89,22 @@ def run_apply(cfg: ApplyConfig, io: PromptIO | None = None) -> SubmitResult:
             drafted = len(plan.planned) - before
             if drafted:
                 io.write(f"→ Drafted {drafted} screening answer(s) for your review.")
-        apply_plan(page, plan)
+        for pf in apply_plan(page, plan):
+            # a fill that failed on the live page pauses like any unknown —
+            # one lost field must never abort (or silently drop out of) the run
+            io.write(f"! Could not fill on the page: {pf.field.describe()} — left for you.")
+            plan = plan.demote(pf.field.selector,
+                               "could not be filled on the live page (element "
+                               "changed) — complete it in the browser yourself")
 
         outcome = request_approval(plan, io, auto_approve=cfg.auto_approve)
         if outcome.decision == Decision.APPROVE:
-            apply_plan(page, outcome.plan)   # sync any edited values before submit
+            # sync ONLY values edited during review — re-applying an unchanged
+            # fill re-clicks stateful widgets (Ashby Yes/No toggles) and
+            # DESELECTS them. Anything that still fails is reported by hand.
+            for pf in apply_plan(page, outcome.plan.edits_since(plan)):
+                io.write(f"! Still could not fill: {pf.field.describe()} — "
+                         f"set it in the browser before the form submits.")
             if cfg.answer_cache is not None:
                 # persist only human-approved AI answers (re-reviewed next time)
                 store_approved_answers(cfg.answer_cache, cfg.company or cfg.job_label,

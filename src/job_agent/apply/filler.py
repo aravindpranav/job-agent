@@ -357,38 +357,57 @@ def click_select(page, locator, value: str) -> bool:
     return False
 
 
-def apply_plan(page, plan: FillPlan) -> None:
+#: Timeout for a single toggle-button click. Short on purpose: the container
+#: either exists or was re-rendered away — waiting 30s just stalls the run.
+_TOGGLE_CLICK_TIMEOUT_MS = 3000
+
+
+def _apply_one(page, pf: PlannedFill) -> None:
+    """Enter one planned value on the live page (interaction picked by type)."""
+    f = pf.field
+    locator = page.locator(f.selector).first
+    if f.field_type == FieldType.FILE:
+        locator.set_input_files(pf.value)
+    elif f.field_type == FieldType.COMBOBOX:
+        click_select(page, locator, pf.value)
+    elif f.field_type == FieldType.TOGGLE:
+        # Yes/No button pair: click the one button whose text is the answer
+        locator.get_by_role("button", name=pf.value, exact=True).first.click(
+            timeout=_TOGGLE_CLICK_TIMEOUT_MS)
+    elif f.field_type in (FieldType.SELECT, FieldType.EEO) and f.options:
+        try:
+            locator.select_option(label=pf.value)
+        except Exception:
+            try:
+                locator.select_option(pf.value)
+            except Exception:
+                # React select misclassified as native — click path fallback
+                click_select(page, locator, pf.value)
+    elif f.field_type in (FieldType.CHECKBOX, FieldType.RADIO) and f.options:
+        # grouped picker: check exactly the ONE box whose label was picked
+        page.get_by_label(pf.value).first.check()
+    elif f.field_type == FieldType.CHECKBOX:
+        if pf.value.strip().lower() in {"yes", "true", "on"}:
+            locator.check()
+    elif f.field_type == FieldType.RADIO:
+        page.get_by_label(pf.value).first.check()
+    else:
+        locator.fill(pf.value)
+
+
+def apply_plan(page, plan: FillPlan) -> tuple[PlannedFill, ...]:
     """Drive Playwright to enter each planned value on the live page.
 
     Fills only what's in ``plan.planned`` — unfilled fields are never touched.
-    Uses the field type to choose the right interaction.
+    Returns the fills that FAILED to apply (element re-rendered away, no
+    match on the live DOM, ...). A single failed field never aborts the run:
+    it is returned so the caller can demote it to unfilled and pause on it,
+    while every other planned value still lands.
     """
+    failed: list[PlannedFill] = []
     for pf in plan.planned:
-        f = pf.field
-        locator = page.locator(f.selector).first
-        if f.field_type == FieldType.FILE:
-            locator.set_input_files(pf.value)
-        elif f.field_type == FieldType.COMBOBOX:
-            click_select(page, locator, pf.value)
-        elif f.field_type == FieldType.TOGGLE:
-            # Yes/No button pair: click the one button whose text is the answer
-            locator.get_by_role("button", name=pf.value, exact=True).first.click()
-        elif f.field_type in (FieldType.SELECT, FieldType.EEO) and f.options:
-            try:
-                locator.select_option(label=pf.value)
-            except Exception:
-                try:
-                    locator.select_option(pf.value)
-                except Exception:
-                    # React select misclassified as native — click path fallback
-                    click_select(page, locator, pf.value)
-        elif f.field_type in (FieldType.CHECKBOX, FieldType.RADIO) and f.options:
-            # grouped picker: check exactly the ONE box whose label was picked
-            page.get_by_label(pf.value).first.check()
-        elif f.field_type == FieldType.CHECKBOX:
-            if pf.value.strip().lower() in {"yes", "true", "on"}:
-                locator.check()
-        elif f.field_type == FieldType.RADIO:
-            page.get_by_label(pf.value).first.check()
-        else:
-            locator.fill(pf.value)
+        try:
+            _apply_one(page, pf)
+        except Exception:
+            failed.append(pf)
+    return tuple(failed)
