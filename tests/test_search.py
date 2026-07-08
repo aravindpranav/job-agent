@@ -97,6 +97,25 @@ def test_passes_location_infers_country_from_text(location, remote, expected):
     assert passes_location(job, profile()) is expected
 
 
+@pytest.mark.parametrize("location,expected", [
+    # The exact strings that leaked past the US-only stage (2026-07-08 run),
+    # end-to-end: country stamped by the source-level guess, then the stage rule.
+    ("London, UK", False),
+    ("Dublin", False),
+    ("Budapest, BU", False),
+    ("Madrid, MD", False),
+    ("Manchester, SLF", False),
+    ("San Francisco, CA", True),
+    ("Remote US", True),
+    ("Menlo Park, CA-CA", True),
+    ("Springfield", True),                  # unknown either way -> scorer decides
+])
+def test_leaked_foreign_locations_are_dropped_end_to_end(location, expected):
+    from job_agent.sources.base import guess_us_country
+    job = make_job(location=location, country=guess_us_country(location))
+    assert passes_location(job, profile()) is expected
+
+
 def test_is_fresh_uses_posted_at():
     assert is_fresh(make_job(posted_at=NOW - timedelta(hours=3)), NOW, SeenCache("/tmp/_a.json"))
     assert not is_fresh(make_job(posted_at=NOW - timedelta(hours=30)), NOW, SeenCache("/tmp/_b.json"))

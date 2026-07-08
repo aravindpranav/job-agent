@@ -63,6 +63,19 @@ _CITY_COUNTRY: dict[str, tuple[str, ...]] = {
     "Kenya": ("nairobi",),
 }
 
+# --- shared-name metros: foreign UNLESS a US marker disambiguates ------------
+# These names exist as US cities too (Dublin OH/CA, Manchester NH, Paris TX,
+# Berlin CT), so they can't live in _CITY_COUNTRY (which wins unconditionally).
+# Alone — "Dublin", "Manchester, SLF" (SLF = Salford, not a US state) — they
+# read as the world-famous metro and are dropped; any explicit US marker in the
+# string wins, so "Dublin, OH" / "Paris, TX" stay US.
+_SHARED_CITY_COUNTRY: dict[str, tuple[str, ...]] = {
+    "Ireland": ("dublin",),
+    "United Kingdom": ("manchester",),
+    "Germany": ("berlin",),
+    "France": ("paris",),
+}
+
 # --- foreign country names / aliases ----------------------------------------
 _COUNTRY_ALIASES: dict[str, tuple[str, ...]] = {
     "India": ("india",),
@@ -184,8 +197,10 @@ def infer_country(location: str | None) -> str | None:
     Tiers, strongest first:
       1. An unambiguous foreign metro (e.g. "Bengaluru") → that country. This
          wins over a bare abbreviation, so "Bengaluru, IN" reads as India, not
-         Indiana.
-      2. Country names: if a foreign country is named and the US is not, → that
+         Indiana, and "Madrid, MD" reads as Spain, not Maryland.
+      2. A shared-name metro (Dublin, Manchester, Berlin, Paris) → its famous
+         country, UNLESS a US marker disambiguates ("Dublin, OH" → US).
+      3. Country names: if a foreign country is named and the US is not, → that
          country; if the US is named (state, abbrev, or "US"), → "US" (so
          "US or India" is kept as US).
     """
@@ -197,8 +212,12 @@ def infer_country(location: str | None) -> str | None:
     if city_country is not None:
         return city_country
 
-    foreign = _first_match(low, _COUNTRY_ALIASES)
     us = _has_us_marker(location)
+    shared = _first_match(low, _SHARED_CITY_COUNTRY)
+    if shared is not None and not us:
+        return shared
+
+    foreign = _first_match(low, _COUNTRY_ALIASES)
     if foreign is not None and not us:
         return foreign
     if us:

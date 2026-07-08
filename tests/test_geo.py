@@ -61,6 +61,44 @@ def test_us_locations_are_recognized_as_us(location):
     assert infer_country(location) == "US"
 
 
+@pytest.mark.parametrize("location,expected", [
+    # Shared-name metros (US namesakes exist): alone they read as the famous
+    # foreign city; an explicit US marker must win (tests below).
+    ("Dublin", "Ireland"),                    # the Stripe leak
+    ("Manchester, SLF", "United Kingdom"),    # Salford region code — not a US state
+    ("Berlin", "Germany"),
+    ("Paris", "France"),
+])
+def test_shared_name_city_without_us_marker_reads_foreign(location, expected):
+    assert infer_country(location) == expected
+
+
+@pytest.mark.parametrize("location", [
+    "Manchester, NH",
+    "Paris, TX",
+    "Berlin, CT",
+    # "Dublin, OH" is covered in the US table above
+])
+def test_shared_name_city_with_us_marker_stays_us(location):
+    assert infer_country(location) == "US"
+
+
+@pytest.mark.parametrize("location,expected", [
+    # The exact strings that leaked past the location stage (2026-07-08 run).
+    ("London, UK", "United Kingdom"),
+    ("Dublin", "Ireland"),
+    ("Budapest, BU", "Hungary"),              # BU is a region code, not a state
+    ("Madrid, MD", "Spain"),                  # MD here is Madrid province, not Maryland
+    ("Manchester, SLF", "United Kingdom"),
+    ("San Francisco, CA", "US"),
+    ("Remote US", "US"),
+    ("Menlo Park, CA-CA", "US"),              # CA next to a US city = California
+    ("Springfield", None),                    # genuinely unknown -> kept for the scorer
+])
+def test_the_leaked_location_strings(location, expected):
+    assert infer_country(location) == expected
+
+
 def test_us_wins_when_both_named():
     # A role open to the US and a foreign country is kept as US.
     assert infer_country("Remote - US or India") == "US"

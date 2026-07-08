@@ -14,6 +14,7 @@ import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 
+from job_agent.geo import infer_country
 from job_agent.models import Job
 
 # Cap description length so scoring stays cheap and within context.
@@ -22,11 +23,6 @@ MAX_DESCRIPTION_CHARS = 2000
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 
-# Loose US signals for boards that don't expose a structured country (Greenhouse).
-_US_SIGNALS = re.compile(
-    r"\b(United States|USA|U\.S\.A?\.?|US|Remote\s*[-,]?\s*US)\b|,\s*[A-Z]{2}\b",
-    re.IGNORECASE,
-)
 
 
 class JobSource(ABC):
@@ -69,10 +65,14 @@ def truncate(text: str, limit: int = MAX_DESCRIPTION_CHARS) -> str:
 
 def guess_us_country(location: str | None) -> str | None:
     """Best-effort: return "US" when a free-text location clearly reads US, else
-    None. Used only where the board has no structured country field."""
-    if location and _US_SIGNALS.search(location):
-        return "US"
-    return None
+    None. Used only where the board has no structured country field.
+
+    Delegates to :func:`job_agent.geo.infer_country` — a former loose regex here
+    (``,\\s*[A-Z]{2}``) read "London, UK" / "Budapest, BU" as US and stamped
+    that as the job's structured country, which BYPASSED the location stage's
+    own (correct) inference. One brain for geography, not two.
+    """
+    return "US" if infer_country(location) == "US" else None
 
 
 def parse_iso(value: str | None) -> datetime | None:

@@ -172,6 +172,20 @@ def test_remoteok_skips_the_legal_element_and_maps_us_location():
     assert all(j.posted_at is not None and j.posted_at.tzinfo is not None for j in jobs)
 
 
+def test_guess_us_country_never_marks_foreign_locations_as_us():
+    # The leak: ",\s*XX" matched ANY two capitals after a comma, so these got
+    # country="US" stamped at the source — which BYPASSED the location stage's
+    # own inference. guess_us_country must agree with geo.infer_country.
+    from job_agent.sources.base import guess_us_country
+    assert guess_us_country("London, UK") is None
+    assert guess_us_country("Budapest, BU") is None
+    assert guess_us_country("Madrid, MD") is None
+    assert guess_us_country("Dublin") is None
+    assert guess_us_country("Austin, TX") == "US"
+    assert guess_us_country("Remote - United States") == "US"
+    assert guess_us_country(None) is None
+
+
 def test_factory_builds_the_cross_company_sources():
     assert isinstance(build_source("sr-search", "ml engineer"), SmartRecruitersSearchSource)
     assert isinstance(build_source("remotive", "ml"), RemotiveSource)
