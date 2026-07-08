@@ -1,0 +1,76 @@
+[
+ {
+  "last_updated": 1783537382,
+  "legal": "API Terms of Service: Please link back (with follow, and without nofollow!) to the URL on Remote OK and mention Remote OK as a source, so we get traffic back from your site. If you do not we'll have to suspend API access.\n\nPlease don't use the Remote OK logo without written permission as it's a registered trademark, please DO use our name Remote OK though."
+ },
+ {
+  "slug": "remote-member-of-technical-staff-applied-ml-recsys-liquid-ai-1131627",
+  "id": "1131627",
+  "epoch": 1779177608,
+  "date": "2026-05-19T08:00:08+00:00",
+  "company": "Liquid AI",
+  "company_logo": "",
+  "position": "Member of Technical Staff Applied ML RecSys",
+  "tags": [
+   "ai",
+   "machine learning",
+   "engineer",
+   "engineering",
+   "data science",
+   "analytics"
+  ],
+  "description": "<h2><strong>About Liquid AI</strong></h2><p style=\"min-height:1.5em\">Spun out of MIT CSAIL, we build general-purpose AI systems that run efficiently across deployment targets, from data center accelerators to on-device hardware, ensuring low latency, minimal memory usage, privacy, and reliability. We partner with enterprises across consumer electronics, automotive, life sciences, and financial services. We are scaling rapidly and need exceptional people to help us get there.</p><p style=\"min-hei",
+  "location": "Cambridge",
+  "apply_url": "https://remoteOK.com/remote-jobs/remote-member-of-technical-staff-applied-ml-recsys-liquid-ai-1131627",
+  "salary_min": 0,
+  "salary_max": 0,
+  "logo": "",
+  "url": "https://remoteOK.com/remote-jobs/remote-member-of-technical-staff-applied-ml-recsys-liquid-ai-1131627"
+ },
+ {
+  "slug": "remote-dont-see-your-role-apply-here-reflection-1131958",
+  "id": "1131958",
+  "epoch": 1779016455,
+  "date": "2026-05-17T11:14:15+00:00",
+  "company": "Reflection",
+  "company_logo": "",
+  "position": "Don't See Your Role Apply Here",
+  "tags": [
+   "ai",
+   "artificial intelligence",
+   "machine learning",
+   "engineer"
+  ],
+  "description": "<strong>Our Mission<br><br></strong>Reflection\u00e2\u0080\u0099s mission is to <strong>build open superintelligence and make it accessible to all</strong>.<br><br>We\u00e2\u0080\u0099re developing open weight models for individuals, agents, enterprises, and even nation states. Our team of AI researchers and company builders come from DeepMind, OpenAI, Google Brain, Meta, Character.AI, Anthropic and beyond.<br><br>We're always open to great people. If you're aligned with our mission but don't see the right role, we'd love to",
+  "location": "London, ",
+  "apply_url": "https://remoteOK.com/remote-jobs/remote-dont-see-your-role-apply-here-reflection-1131958",
+  "salary_min": 0,
+  "salary_max": 0,
+  "logo": "",
+  "url": "https://remoteOK.com/remote-jobs/remote-dont-see-your-role-apply-here-reflection-1131958"
+ },
+ {
+  "slug": "remote-senior-software-engineer-phaidra-1131567",
+  "id": "1131567",
+  "epoch": 1778630419,
+  "date": "2026-05-13T00:00:19+00:00",
+  "company": "Phaidra",
+  "company_logo": "",
+  "position": "Senior Software Engineer",
+  "tags": [
+   "senior",
+   "engineer",
+   "software",
+   "ai",
+   "machine learning",
+   "artificial intelligence"
+  ],
+  "description": "About Phaidra\n\nPhaidra is building the future of industrial automation.\n\nThe world today is filled with static, monolithic infrastructure. Factories, power plants, buildings, etc. operate the same they've operated for decades \u00e2\u0080\u0094 because the controls programming is hard-coded. Thousands of lines of rules and heuristics that define how the machines interact with each other. The result of all this hard-coding is that facilities are frozen in time, unable to adapt to their environment while their p",
+  "location": "Remote - United States",
+  "apply_url": "https://remoteOK.com/remote-jobs/remote-senior-software-engineer-phaidra-1131567",
+  "salary_min": 0,
+  "salary_max": 0,
+  "logo": "",
+  "url": "https://remoteOK.com/remote-jobs/remote-senior-software-engineer-phaidra-1131567"
+ }
+]

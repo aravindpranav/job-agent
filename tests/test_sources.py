@@ -6,7 +6,16 @@ import httpx
 import respx
 
 from helpers import load_fixture
-from job_agent.sources import AshbySource, GreenhouseSource, LeverSource, SmartRecruitersSource
+from job_agent.sources import (
+    AshbySource,
+    GreenhouseSource,
+    LeverSource,
+    RemoteOKSource,
+    RemotiveSource,
+    SmartRecruitersSearchSource,
+    SmartRecruitersSource,
+    build_source,
+)
 
 
 @respx.mock
@@ -89,3 +98,81 @@ def test_smartrecruiters_fetch_is_light_then_enrich_fills_description():
     assert enriched.description                 # detail endpoint filled it in
     assert enriched.id == light.id              # same job, new immutable copy
     assert light.description == ""              # original unchanged (immutability)
+
+
+# --- cross-company sources (fixtures captured live, 2026-07-08) -----------------
+
+@respx.mock
+def test_sr_search_returns_jobs_across_companies():
+    route = respx.route(
+        method="GET", url__regex=r"https://jobs\.smartrecruiters\.com/sr-jobs/search.*"
+    ).mock(return_value=httpx.Response(200, json=load_fixture("sr_search.json")))
+    src = SmartRecruitersSearchSource("machine learning engineer")
+    jobs = src.fetch()
+    assert len(jobs) == 3
+    assert {j.company for j in jobs} == {"Freshworks", "Bosch-HomeComfort"}  # cross-company
+    assert "keyword=machine+learning+engineer" in str(route.calls[0].request.url)
+    job = jobs[0]
+    assert job.source == "sr-search"
+    assert job.title == "Staff Engineer - Machine Learning"
+    assert job.country == "us"                  # structured -> US filter works
+    assert job.posted_at is not None and job.posted_at.tzinfo is not None
+    assert job.url.startswith("https://jobs.smartrecruiters.com/Freshworks/")
+    assert job.description == ""                # list carries no description
+
+
+@respx.mock
+def test_sr_search_enrich_uses_the_actions_details_url():
+    # The detail posting id (actions.details) is NOT the search-result id, so
+    # enrich must call the URL the search response itself provided.
+    detail = respx.route(
+        method="GET",
+        url="https://api.smartrecruiters.com/v1/companies/Freshworks/postings/12674298410",
+    ).mock(return_value=httpx.Response(200, json=load_fixture("smartrecruiters_detail.json")))
+    respx.route(
+        method="GET", url__regex=r"https://jobs\.smartrecruiters\.com/sr-jobs/search.*"
+    ).mock(return_value=httpx.Response(200, json=load_fixture("sr_search.json")))
+    src = SmartRecruitersSearchSource("machine learning engineer")
+    job = src.fetch()[0]
+    enriched = src.enrich(job)
+    assert detail.called
+    assert enriched.description
+    assert job.description == ""                # immutability
+
+
+@respx.mock
+def test_remotive_parses_real_shape_as_remote_jobs():
+    route = respx.route(
+        method="GET", url__regex=r"https://remotive\.com/api/remote-jobs.*"
+    ).mock(return_value=httpx.Response(200, json=load_fixture("remotive.json")))
+    jobs = RemotiveSource("machine learning").fetch()
+    assert len(jobs) == 3
+    assert "search=machine+learning" in str(route.calls[0].request.url)
+    ai = next(j for j in jobs if j.title == "Senior AI Engineer")
+    assert ai.source == "remotive"
+    assert ai.company == "Lemon.io"
+    assert ai.remote is True                    # remote-only board
+    assert ai.country is None                   # "Northern America, LATAM, …" -> unknown
+    assert ai.posted_at is not None and ai.posted_at.tzinfo is not None
+    assert ai.description and "<" not in ai.description   # HTML stripped
+
+
+@respx.mock
+def test_remoteok_skips_the_legal_element_and_maps_us_location():
+    respx.route(method="GET", url__regex=r"https://remoteok\.com/api.*").mock(
+        return_value=httpx.Response(200, json=load_fixture("remoteok.json"))
+    )
+    jobs = RemoteOKSource("machine-learning").fetch()
+    assert len(jobs) == 3                       # the leading legal element is not a job
+    assert all(j.source == "remoteok" and j.remote is True for j in jobs)
+    us = next(j for j in jobs if j.location == "Remote - United States")
+    assert us.country == "US"                   # loose US signal recognized
+    cambridge = next(j for j in jobs if j.location == "Cambridge")
+    assert cambridge.country is None            # ambiguous stays unknown
+    assert all(j.posted_at is not None and j.posted_at.tzinfo is not None for j in jobs)
+
+
+def test_factory_builds_the_cross_company_sources():
+    assert isinstance(build_source("sr-search", "ml engineer"), SmartRecruitersSearchSource)
+    assert isinstance(build_source("remotive", "ml"), RemotiveSource)
+    assert isinstance(build_source("remoteok", "machine-learning"), RemoteOKSource)

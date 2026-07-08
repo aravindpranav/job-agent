@@ -1,0 +1,95 @@
+{
+ "offset": 0,
+ "limit": 100,
+ "totalFound": 307,
+ "content": [
+  {
+   "id": "744000136541299",
+   "name": "Staff Engineer - Machine Learning",
+   "company": {
+    "identifier": "Freshworks",
+    "name": "Freshworks",
+    "logo": "https://c.smartrecruiters.com/sr-company-logo-prod-aws-dc5/618bb323ecabb24fc9913fcd?r=s3-eu-central-1&_1638192708896"
+   },
+   "releasedDate": "2026-07-08T17:52:24.608Z",
+   "location": {
+    "city": "San Mateo",
+    "region": "CA",
+    "country": "us",
+    "remote": false,
+    "hybrid": true,
+    "hybridDescription": "3x a week onsite Tue-Thur"
+   },
+   "industry": {},
+   "department": {},
+   "function": {},
+   "typeOfEmployment": {},
+   "experienceLevel": {},
+   "customField": [],
+   "actions": {
+    "details": "https://api.smartrecruiters.com/v1/companies/Freshworks/postings/12674298410"
+   },
+   "applyUrl": "https://jobs.smartrecruiters.com/Freshworks/744000136541299-staff-engineer-machine-learning",
+   "shortLocation": "San Mateo, CA",
+   "releasedAgo": "5 hours ago"
+  },
+  {
+   "id": "744000136489179",
+   "name": "Advanced Coil Machine Setup Operator - 2nd shift ",
+   "company": {
+    "identifier": "Bosch-HomeComfort",
+    "name": "Bosch-HomeComfort",
+    "logo": "https://c.smartrecruiters.com/sr-company-logo-prod-aws-dc5/68301bda0b424f0b531aa2fc?r=s3-eu-central-1&_1770735039917"
+   },
+   "releasedDate": "2026-07-08T14:21:58.096Z",
+   "location": {
+    "city": "Wichita",
+    "region": "KS",
+    "country": "us",
+    "remote": false,
+    "hybrid": false
+   },
+   "industry": {},
+   "department": {},
+   "function": {},
+   "typeOfEmployment": {},
+   "experienceLevel": {},
+   "customField": [],
+   "actions": {
+    "details": "https://api.smartrecruiters.com/v1/companies/Bosch-HomeComfort/postings/12539688490"
+   },
+   "applyUrl": "https://jobs.smartrecruiters.com/Bosch-HomeComfort/744000136489179-advanced-coil-machine-setup-operator-2nd-shift-",
+   "shortLocation": "Wichita, KS",
+   "releasedAgo": "8 hours ago"
+  },
+  {
+   "id": "744000136488362",
+   "name": "Tube Machine Setup Operator - 2nd Shift",
+   "company": {
+    "identifier": "Bosch-HomeComfort",
+    "name": "Bosch-HomeComfort",
+    "logo": "https://c.smartrecruiters.com/sr-company-logo-prod-aws-dc5/68301bda0b424f0b531aa2fc?r=s3-eu-central-1&_1770735039917"
+   },
+   "releasedDate": "2026-07-08T14:21:35.144Z",
+   "location": {
+    "city": "Wichita",
+    "region": "KS",
+    "country": "us",
+    "remote": false,
+    "hybrid": false
+   },
+   "industry": {},
+   "department": {},
+   "function": {},
+   "typeOfEmployment": {},
+   "experienceLevel": {},
+   "customField": [],
+   "actions": {
+    "details": "https://api.smartrecruiters.com/v1/companies/Bosch-HomeComfort/postings/12560572970"
+   },
+   "applyUrl": "https://jobs.smartrecruiters.com/Bosch-HomeComfort/744000136488362-tube-machine-setup-operator-2nd-shift",
+   "shortLocation": "Wichita, KS",
+   "releasedAgo": "8 hours ago"
+  }
+ ]
+}

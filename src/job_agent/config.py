@@ -58,7 +58,9 @@ class SearchProfile(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    _KNOWN_ATS = {"greenhouse", "lever", "ashby", "smartrecruiters"}
+    _KNOWN_ATS = {"greenhouse", "lever", "ashby", "smartrecruiters",
+                  # cross-company search sources: board = keyword query / tag
+                  "sr-search", "remotive", "remoteok"}
 
     @field_validator("max_seniority")
     @classmethod

@@ -12,8 +12,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# The ATS a job came from.
-SourceName = Literal["greenhouse", "lever", "ashby", "smartrecruiters", "demo"]
+# The ATS/board a job came from. The last three are cross-company search
+# sources (keyword-driven), not per-company boards.
+SourceName = Literal["greenhouse", "lever", "ashby", "smartrecruiters", "demo",
+                     "sr-search", "remotive", "remoteok"]
 
 # The scorer's verdict. "unscored" is a distinct state used when the LLM output
 # could not be parsed even after one retry (see scoring.py).

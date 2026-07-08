@@ -14,6 +14,16 @@ def _profile(**overrides) -> SearchProfile:
     return SearchProfile.model_validate(data)
 
 
+def test_cross_company_search_ats_names_are_known():
+    prof = _profile(sources=[
+        SourceRef(ats="sr-search", board="machine learning engineer"),
+        SourceRef(ats="remotive", board="machine learning"),
+        SourceRef(ats="remoteok", board="machine-learning"),
+        SourceRef(ats="greenhouse", board="stripe"),
+    ])
+    assert prof.unknown_sources() == []     # none warned about / skipped
+
+
 def test_seniority_and_experience_default_to_off():
     prof = _profile()
     assert prof.max_seniority is None

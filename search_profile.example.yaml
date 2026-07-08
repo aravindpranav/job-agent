@@ -35,8 +35,16 @@ max_seniority: senior
 experience_years: 5
 
 # Boards to fetch. Each entry is {ats, board}. All are public, no auth for GET.
-# Swap these for your own targets; discovery is per-company by design.
 sources:
+  # Cross-company discovery (board = keyword query / tag, NOT a company):
+  # each query returns jobs from many companies, so results vary run to run.
+  # Verified live by scripts/probe_sources.py.
+  - { ats: sr-search, board: "machine learning engineer" }
+  - { ats: sr-search, board: "data scientist" }
+  - { ats: remotive,  board: "machine learning" }
+  - { ats: remoteok,  board: machine-learning }     # tag slug, not free text
+  # Per-company boards (board = company identifier) — one more source,
+  # not the only one:
   - { ats: greenhouse,      board: databricks }
   - { ats: greenhouse,      board: stripe }
   - { ats: lever,           board: palantir }
