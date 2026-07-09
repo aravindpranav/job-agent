@@ -14,18 +14,22 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-#: submitted — the form was really sent; paused — awaiting the human (dry-run,
-#: skipped, or mid-run); failed — the run crashed before completing.
-Status = Literal["submitted", "paused", "failed"]
+#: Run statuses (written by run_apply): submitted — really sent; paused —
+#: awaiting the human (dry-run, skipped, mid-run); failed — the run crashed.
+#: User statuses (set from the dashboard): saved → applied → interviewing →
+#: offer / rejected.
+Status = Literal["submitted", "paused", "failed",
+                 "saved", "applied", "interviewing", "offer", "rejected"]
 
 
 class ApplicationRecord(BaseModel):
-    """One apply attempt as written to the log."""
+    """One tracked job/application as written to the log."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -37,6 +41,9 @@ class ApplicationRecord(BaseModel):
     status: Status
     reason: str = ""             # human-readable outcome context
     attempt_id: str = ""         # unique per attempt; assigned by record_attempt
+    # user-managed state (edited from the dashboard, never by run_apply)
+    notes: str = ""              # recruiter name, why applied, ...
+    follow_up: str = ""          # ISO date to follow up by ("" = none)
 
 
 def load_applications(path: str | Path) -> list[ApplicationRecord]:
@@ -75,3 +82,36 @@ def update_status(path: str | Path, attempt_id: str, status: Status,
         for r in load_applications(path)
     ]
     _write(path, records)
+
+
+def upsert_job_state(path: str | Path, *, job_id: str, company: str = "",
+                     title: str = "", source: str = "", status: Status | None = None,
+                     notes: str | None = None, follow_up: str | None = None,
+                     now: datetime | None = None) -> ApplicationRecord:
+    """Set user-managed state for one job, creating its record if none exists.
+
+    Targets the MOST RECENT record with this ``job_id``; a job never tracked
+    before gets a fresh record (default status "saved"). Only the fields
+    actually passed are changed — None means "leave as is". Immutable style:
+    the file is rewritten with a new records list.
+    """
+    if not job_id:
+        raise ValueError("upsert_job_state needs a non-empty job_id")
+    path = Path(path)
+    records = load_applications(path)
+    idx = next((i for i in range(len(records) - 1, -1, -1)
+                if records[i].job_id == job_id), None)
+    if idx is None:
+        record = ApplicationRecord(
+            company=company or "Unknown", title=title, job_id=job_id,
+            date=(now or datetime.now(timezone.utc)).isoformat(), source=source,
+            status=status or "saved", notes=notes or "", follow_up=follow_up or "",
+            attempt_id=uuid.uuid4().hex)
+        _write(path, records + [record])
+        return record
+    updates = {k: v for k, v in
+               (("status", status), ("notes", notes), ("follow_up", follow_up))
+               if v is not None}
+    record = records[idx].model_copy(update=updates)
+    _write(path, records[:idx] + [record] + records[idx + 1:])
+    return record

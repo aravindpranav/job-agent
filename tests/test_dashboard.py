@@ -56,7 +56,8 @@ def client(tmp_path):
 
 def test_applications_endpoint_returns_records_and_counts(client):
     data = client.get("/api/applications").json()
-    assert data["counts"] == {"total": 3, "submitted": 1, "paused": 1, "failed": 1}
+    assert data["counts"] == {"total": 3, "submitted": 1, "paused": 1, "failed": 1,
+                              "needs_follow_up": 0}
     assert [r["company"] for r in data["records"]] == ["Ramp", "Stripe", "Plaid"]  # newest first
     assert data["records"][1]["status"] == "submitted"
 
@@ -148,6 +149,112 @@ def test_index_serves_the_single_page_ui(client):
     assert "text/html" in resp.headers["content-type"]
     for section in ("Applications", "Search", "Apply"):
         assert section in resp.text
+
+
+# --- feature: editable status / notes / follow-up -------------------------------------
+
+def test_track_endpoint_upserts_status_and_notes_and_persists(tmp_path):
+    _seed_last_search(tmp_path / "last_search.json")
+    app = create_app(data_dir=tmp_path)
+    c = TestClient(app)
+
+    resp = c.post("/api/track", json={"job_id": "j1", "company": "Plaid",
+                                      "title": "ML Engineer", "source": "ashby",
+                                      "status": "interviewing",
+                                      "notes": "recruiter: Sam",
+                                      "follow_up": "2026-07-20"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "interviewing"
+
+    # persisted to the tracker file, not just in memory
+    from job_agent.apply.tracker import load_applications
+    (rec,) = load_applications(tmp_path / "applications.json")
+    assert (rec.status, rec.notes, rec.follow_up) == \
+        ("interviewing", "recruiter: Sam", "2026-07-20")
+
+    # a second update touches the same record
+    c.post("/api/track", json={"job_id": "j1", "status": "offer"})
+    (rec,) = load_applications(tmp_path / "applications.json")
+    assert rec.status == "offer" and rec.notes == "recruiter: Sam"
+
+
+def test_track_endpoint_rejects_unknown_status(tmp_path):
+    app = create_app(data_dir=tmp_path)
+    resp = TestClient(app).post("/api/track", json={"job_id": "j1", "status": "on-fire"})
+    assert resp.status_code == 422
+
+
+def test_applications_endpoint_flags_overdue_follow_ups(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    upsert_job_state(tmp_path / "applications.json", job_id="j1", company="Plaid",
+                     follow_up="2020-01-01")                    # long past
+    upsert_job_state(tmp_path / "applications.json", job_id="j2", company="Stripe",
+                     follow_up="2099-01-01")                    # far future
+    data = TestClient(create_app(data_dir=tmp_path)).get("/api/applications").json()
+    by_id = {r["job_id"]: r for r in data["records"]}
+    assert by_id["j1"]["needs_follow_up"] is True
+    assert by_id["j2"]["needs_follow_up"] is False
+
+
+def test_jobs_endpoint_joins_tracked_state_by_job_id(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    _seed_last_search(tmp_path / "last_search.json")
+    upsert_job_state(tmp_path / "applications.json", job_id="j1", company="Plaid",
+                     status="applied", notes="asked about visa")
+    data = TestClient(create_app(data_dir=tmp_path)).get("/api/jobs").json()
+    j1 = next(j for j in data["jobs"] if j["id"] == "j1")
+    j2 = next(j for j in data["jobs"] if j["id"] == "j2")
+    assert j1["tracked"]["status"] == "applied"
+    assert j1["tracked"]["notes"] == "asked about visa"
+    assert j2["tracked"] is None                    # never touched
+
+
+# --- feature: inline resume preview (served ONLY from the output dir) ------------------
+
+def test_resume_endpoint_serves_the_tailored_pdf(tmp_path):
+    _seed_last_search(tmp_path / "last_search.json")
+    out = tmp_path / "output"
+    out.mkdir(parents=True)
+    # the same filename the tailor pipeline produces for this job
+    (out / "Jordan_ML_Engineer_Plaid.pdf").write_bytes(b"%PDF-1.4 fake")
+    (tmp_path / "career_facts.yaml").write_text(
+        "name: Jordan Rivers\nemail: j@x.com\nphone: '1'\nrole: MLE\n"
+        "employers:\n  - company: Acme\n    title: DE\n    duration: 2y\n"
+        "skills_inventory: {}\neducation: []\n")
+    app = create_app(data_dir=tmp_path)
+    resp = TestClient(app).get("/api/resume/j1")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content.startswith(b"%PDF")
+
+
+def test_resume_endpoint_404s_for_unknown_job_or_missing_pdf(tmp_path):
+    _seed_last_search(tmp_path / "last_search.json")
+    app = create_app(data_dir=tmp_path)
+    c = TestClient(app)
+    assert c.get("/api/resume/not-a-job").status_code == 404      # unknown id
+    assert c.get("/api/resume/j1").status_code == 404             # no PDF yet
+    assert c.get("/api/resume/..%2F..%2Fetc%2Fpasswd").status_code == 404
+
+
+def test_resume_endpoint_never_escapes_the_output_dir(tmp_path):
+    # Even a hostile record (title with path separators) must resolve inside
+    # out_dir: the filename is slugged, and the resolved path is checked.
+    _seed_last_search(tmp_path / "last_search.json")
+    import json as _json
+    data = _json.loads((tmp_path / "last_search.json").read_text())
+    data["jobs"]["evil"] = {**data["jobs"]["j1"], "id": "evil",
+                            "title": "../../secrets", "company": "../x"}
+    (tmp_path / "last_search.json").write_text(_json.dumps(data))
+    (tmp_path / "career_facts.yaml").write_text(
+        "name: Jordan Rivers\nemail: j@x.com\nphone: '1'\nrole: MLE\n"
+        "employers:\n  - company: Acme\n    title: DE\n    duration: 2y\n"
+        "skills_inventory: {}\neducation: []\n")
+    secret = tmp_path / "secrets.pdf"
+    secret.write_bytes(b"%PDF top secret")
+    resp = TestClient(create_app(data_dir=tmp_path)).get("/api/resume/evil")
+    assert resp.status_code == 404
+    assert b"top secret" not in resp.content
 
 
 # --- the preview service itself: read-only over the page ------------------------------

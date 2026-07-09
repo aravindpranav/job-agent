@@ -22,19 +22,34 @@ _VERDICT_RANK = {"strong": 3, "possible": 2, "skip": 1, "unscored": 0}
 
 # --- section 1: application pipeline -------------------------------------------------
 
+def _needs_follow_up(record) -> bool:
+    """True when the record's follow-up date has passed (ISO dates compare
+    lexicographically, so no parsing is needed)."""
+    from datetime import date
+
+    return bool(record.follow_up) and record.follow_up <= date.today().isoformat()
+
+
 def applications_view(log_path: str | Path) -> dict:
     """All tracked applications, newest first, plus summary counts."""
     records = sorted(load_applications(log_path), key=lambda r: r.date, reverse=True)
     counts = {"total": len(records)}
     for status in ("submitted", "paused", "failed"):
         counts[status] = sum(1 for r in records if r.status == status)
-    return {"records": [r.model_dump() for r in records], "counts": counts}
+    counts["needs_follow_up"] = sum(1 for r in records if _needs_follow_up(r))
+    return {
+        "records": [{**r.model_dump(), "needs_follow_up": _needs_follow_up(r)}
+                    for r in records],
+        "counts": counts,
+    }
 
 
 # --- section 2: search + browse -------------------------------------------------------
 
-def jobs_view(last_search_path: str | Path) -> dict:
-    """The latest saved search, ranked exactly like the CLI table."""
+def jobs_view(last_search_path: str | Path,
+              tracker_path: str | Path | None = None) -> dict:
+    """The latest saved search, ranked like the CLI table, with each job's
+    tracked state (status / notes / follow-up) joined in by job id."""
     import json
 
     path = Path(last_search_path)
@@ -48,6 +63,14 @@ def jobs_view(last_search_path: str | Path) -> dict:
     jobs.sort(key=lambda j: (_VERDICT_RANK.get(j.get("verdict"), 0),
                              j.get("score") if j.get("score") is not None else -1),
               reverse=True)
+    tracked: dict[str, dict] = {}
+    if tracker_path is not None:
+        for r in load_applications(tracker_path):     # later records win
+            if r.job_id:
+                tracked[r.job_id] = {**r.model_dump(),
+                                     "needs_follow_up": _needs_follow_up(r)}
+    for j in jobs:
+        j["tracked"] = tracked.get(str(j.get("id")))
     return {"generated_at": data.get("generated_at"), "jobs": jobs}
 
 
@@ -95,6 +118,26 @@ def run_tailor_cli(job_id: str, *, data_dir: Path, facts_path: Path,
         except (FileNotFoundError, ValueError):
             pass
     return result
+
+
+def resume_pdf_path(record: dict, *, facts_path: Path, out_dir: Path) -> Path | None:
+    """The tailored PDF for this job, or None. NEVER escapes ``out_dir``:
+    the filename is derived (slugged) from the stored record — no user path —
+    and the resolved location is verified to sit inside the output directory."""
+    from job_agent.cli import _resume_filename
+    from job_agent.tailor.career_facts import load_career_facts
+
+    try:
+        facts = load_career_facts(facts_path)
+    except (FileNotFoundError, ValueError):
+        return None
+    filename = _resume_filename(facts.name.split()[0],
+                                record.get("title", ""), record.get("company", ""))
+    out_dir = Path(out_dir).resolve()
+    pdf = (out_dir / f"{filename}.pdf").resolve()
+    if pdf.parent != out_dir or not pdf.exists():
+        return None
+    return pdf
 
 
 def build_apply_preview(record: dict, bank, contact, *, resume_path: Path | None,

@@ -462,7 +462,9 @@ def cmd_applications(console: Console, args: argparse.Namespace) -> int:
     table = Table(title=f"Applications ({len(records)})")
     for col in ("Date", "Company", "Role", "Status", "Source", "Job id"):
         table.add_column(col)
-    status_style = {"submitted": "bold green", "paused": "yellow", "failed": "red"}
+    status_style = {"submitted": "bold green", "paused": "yellow", "failed": "red",
+                    "saved": "dim", "applied": "cyan", "interviewing": "magenta",
+                    "offer": "bold green", "rejected": "red"}
     for r in sorted(records, key=lambda r: r.date, reverse=True):
         style = status_style.get(r.status, "white")
         table.add_row(r.date[:16].replace("T", " "), r.company, r.title,

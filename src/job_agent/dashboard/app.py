@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from job_agent.apply.tracker import Status, upsert_job_state
 from job_agent.dashboard import service
 from job_agent.store import load_job_record
 
@@ -26,6 +27,18 @@ class SearchRequest(BaseModel):
 
 class JobRequest(BaseModel):
     job_id: str = Field(min_length=1)
+
+
+class TrackRequest(BaseModel):
+    """User-managed state for one job: status pipeline, notes, follow-up date."""
+
+    job_id: str = Field(min_length=1)
+    company: str = ""
+    title: str = ""
+    source: str = ""
+    status: Status | None = None
+    notes: str | None = None
+    follow_up: str | None = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
 
 
 def create_app(*, data_dir: Path = Path("data"),
@@ -58,13 +71,32 @@ def create_app(*, data_dir: Path = Path("data"),
 
     @app.get("/api/jobs")
     def jobs() -> dict:
-        return service.jobs_view(data_dir / "last_search.json")
+        return service.jobs_view(data_dir / "last_search.json",
+                                 data_dir / "applications.json")
 
     @app.post("/api/search")
     def run_search(req: SearchRequest) -> dict:
         result = searcher(req.days)
         # whatever the run printed, the table shows what's now on disk
-        return {**result, **service.jobs_view(data_dir / "last_search.json")}
+        return {**result, **service.jobs_view(data_dir / "last_search.json",
+                                              data_dir / "applications.json")}
+
+    @app.post("/api/track")
+    def track(req: TrackRequest) -> dict:
+        record = upsert_job_state(
+            data_dir / "applications.json", job_id=req.job_id, company=req.company,
+            title=req.title, source=req.source, status=req.status,
+            notes=req.notes, follow_up=req.follow_up)
+        return {**record.model_dump(),
+                "needs_follow_up": service._needs_follow_up(record)}
+
+    @app.get("/api/resume/{job_id}")
+    def resume(job_id: str) -> FileResponse:
+        record = _require_job(job_id)
+        pdf = service.resume_pdf_path(record, facts_path=facts_path, out_dir=out_dir)
+        if pdf is None:
+            raise HTTPException(404, "no tailored resume for this job — run Tailor first")
+        return FileResponse(pdf, media_type="application/pdf")
 
     @app.post("/api/tailor")
     def run_tailor(req: JobRequest) -> dict:

@@ -3,196 +3,214 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>job-agent — mission control</title>
+<title>Job Agent</title>
 <style>
-  /* ── mission-control terminal: warm charcoal, instrument amber ─────────── */
+  /* ── light neutral, one quiet indigo accent ────────────────────────────── */
   :root {
-    --bg: #16130e;
-    --panel: #1d1913;
-    --panel-2: #232014;
-    --hairline: #2f2a20;
-    --ink: #e9e2d4;
-    --muted: #9d937e;
-    --faint: #6b6252;
-    --amber: #e0a458;
-    --good: #8ec98f;
-    --warn: #e3b962;
-    --bad: #e08078;
-    --dim: #7b7264;
+    --bg: #FAFAFA;
+    --card: #FFFFFF;
+    --border: #E5E7EB;
+    --border-soft: #F0F1F3;
+    --ink: #1F2328;
+    --muted: #6B7280;
+    --faint: #9CA3AF;
+    --accent: #6366F1;
+    --accent-soft: #EEF2FF;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06);
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --serif: "Iowan Old Style", Palatino, Georgia, serif;
   }
   * { box-sizing: border-box; margin: 0; }
   body {
-    background: var(--bg);
-    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, #241e12 0%, transparent 60%);
-    color: var(--ink);
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.55;
-    padding: 0 28px 80px;
-    max-width: 1180px;
-    margin: 0 auto;
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    max-width: 1160px; margin: 0 auto; padding: 0 32px 96px;
   }
 
-  /* header as a status bar */
-  header {
-    display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
-    padding: 26px 0 14px;
-    border-bottom: 1px solid var(--hairline);
-  }
-  header h1 {
-    font-family: var(--serif);
-    font-size: 26px; font-weight: 500; letter-spacing: .5px;
-    color: var(--ink);
-  }
-  header h1 .tick { color: var(--amber); }
-  header .sub { color: var(--faint); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
-  header .spacer { flex: 1; }
-  #clock { color: var(--muted); font-size: 11px; }
+  header { display: flex; align-items: center; gap: 12px; padding: 28px 0 8px; }
+  header h1 { font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+  header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  header .sub { color: var(--faint); font-size: 13px; margin-left: auto; }
 
-  section { margin-top: 42px; }
-  .sec-label {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--amber); margin-bottom: 14px;
-  }
-  .sec-label::before { content: ""; display: inline-block; width: 26px; height: 1px; background: var(--amber); }
-  .sec-label .n { color: var(--faint); letter-spacing: 0; }
+  section { margin-top: 40px; }
+  h2 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; margin-bottom: 4px; }
+  .sec-sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
 
-  /* instrument readouts (stat tiles) */
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
-  .tile {
-    background: var(--panel); border: 1px solid var(--hairline); border-radius: 6px;
-    padding: 14px 16px 12px; position: relative; overflow: hidden;
+  .card {
+    background: var(--card); border: 1px solid var(--border-soft);
+    border-radius: 8px; box-shadow: var(--shadow);
   }
-  .tile::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--tile-edge, var(--hairline)); }
-  .tile .k { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
-  .tile .v { font-size: 30px; font-variant-numeric: tabular-nums; margin-top: 2px; color: var(--tile-ink, var(--ink)); }
-  .tile.total    { --tile-edge: var(--dim); }
-  .tile.submitted{ --tile-edge: var(--good);  --tile-ink: var(--good); }
-  .tile.paused   { --tile-edge: var(--warn);  --tile-ink: var(--warn); }
-  .tile.failed   { --tile-edge: var(--bad);   --tile-ink: var(--bad); }
 
-  /* tables: recessive grid, mono numerals */
+  /* stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { padding: 20px 22px; }
+  .tile .v { font-size: 26px; font-weight: 650; letter-spacing: -.02em; }
+  .tile .k { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .tile .flag { font-size: 12px; margin-top: 6px; }
+
+  /* toolbar: filters & sort */
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar label { color: var(--muted); font-size: 12.5px; }
+  select, input[type="date"], input[type="number"], textarea {
+    font-family: var(--sans); font-size: 13px; color: var(--ink);
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; outline: none;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  input[type="number"] { width: 64px; }
+
+  button {
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  button:hover:not(:disabled) { background: #F9FAFB; }
+  button:disabled { opacity: .5; cursor: wait; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { background: #4F51E0; }
+  button.ghost { border: none; box-shadow: none; background: none; color: var(--muted); padding: 4px 8px; }
+  button.ghost:hover:not(:disabled) { background: var(--border-soft); color: var(--ink); }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
   th {
-    text-align: left; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-    color: var(--faint); font-weight: 400; padding: 6px 10px; border-bottom: 1px solid var(--hairline);
+    text-align: left; font-size: 12px; font-weight: 500; color: var(--faint);
+    padding: 10px 14px; border-bottom: 1px solid var(--border-soft); white-space: nowrap;
   }
-  td { padding: 8px 10px; border-bottom: 1px solid #221e16; vertical-align: top; }
-  tr:hover td { background: #1c1812; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--faint); }
-  a:hover { color: var(--amber); border-bottom-color: var(--amber); }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #FCFCFD; }
+  td.num { text-align: right; font-family: var(--mono); font-size: 13px; }
+  .mono { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  a { color: var(--ink); font-weight: 500; text-decoration: none; }
+  a:hover { color: var(--accent); }
   .co { color: var(--muted); }
-  .loc { color: var(--dim); }
-  .date { color: var(--muted); white-space: nowrap; }
+  .loc, .src { color: var(--faint); font-size: 13px; }
+  .date { color: var(--muted); white-space: nowrap; font-size: 13px; }
 
-  /* status & verdict chips — always text + color, never color alone */
-  .chip {
-    display: inline-block; padding: 1px 8px; border-radius: 999px;
-    font-size: 11px; border: 1px solid currentColor;
+  /* soft pills: tinted bg + darker text (never color alone — text is the label) */
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 12px; font-weight: 500; background: var(--pf, #F3F4F6); color: var(--pc, #374151);
   }
-  .st-submitted { color: var(--good); }
-  .st-paused    { color: var(--warn); }
-  .st-failed    { color: var(--bad); }
-  .vd-strong    { color: var(--good); }
-  .vd-possible  { color: var(--warn); }
-  .vd-skip      { color: var(--dim); }
-  .vd-unscored  { color: var(--bad); }
-  .score { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .p-strong, .p-offer, .p-submitted { --pf: #D1FAE5; --pc: #047857; }
+  .p-possible, .p-interviewing     { --pf: #FEF3C7; --pc: #B45309; }
+  .p-skip, .p-saved                { --pf: #F3F4F6; --pc: #4B5563; }
+  .p-unscored, .p-failed, .p-rejected { --pf: #FEE2E2; --pc: #B91C1C; }
+  .p-paused                        { --pf: #FFF3E5; --pc: #C2410C; }
+  .p-applied                       { --pf: #DBEAFE; --pc: #1D4ED8; }
+  .p-followup                      { --pf: #FDF2F8; --pc: #BE185D; }
 
-  /* buttons */
-  button {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
-    background: var(--panel-2); color: var(--ink);
-    border: 1px solid var(--hairline); border-radius: 4px;
-    padding: 5px 12px; cursor: pointer;
-  }
-  button:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); }
-  button:disabled { opacity: .45; cursor: wait; }
-  button.primary { border-color: var(--amber); color: var(--amber); }
-  .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-  .controls input {
-    width: 56px; background: var(--panel); color: var(--ink); border: 1px solid var(--hairline);
-    border-radius: 4px; padding: 5px 8px; font-family: var(--mono); font-size: 12px;
-  }
-  .hint { color: var(--faint); font-size: 11px; }
+  /* status select styled as a pill */
+  select.status { border-radius: 999px; font-size: 12px; font-weight: 500; padding: 3px 8px; border-color: transparent; }
+  select.status:hover { border-color: var(--border); }
 
-  /* apply-preview panel */
-  #preview { display: none; margin-top: 20px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--panel); }
-  #preview.open { display: block; }
-  #preview .head {
-    display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap;
-    border-bottom: 1px solid var(--hairline);
+  /* notes editor row */
+  tr.editor td { background: #FBFBFC; padding: 14px 16px 16px; }
+  .editor-grid { display: grid; grid-template-columns: 1fr 200px; gap: 12px; align-items: start; }
+  .editor-grid textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .editor-side { display: flex; flex-direction: column; gap: 8px; }
+  .editor-side label { color: var(--muted); font-size: 12px; }
+  .note-preview { color: var(--muted); font-size: 12.5px; max-width: 220px;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* panels: apply preview, resume viewer, pipeline log */
+  .panel { margin-top: 16px; }
+  .panel .head {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 18px; border-bottom: 1px solid var(--border-soft);
   }
-  #preview .head b { font-family: var(--serif); font-size: 15px; font-weight: 500; }
-  #preview .body { padding: 14px 16px; }
-  .plan-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid #221e16; }
-  .plan-row .f { color: var(--muted); overflow-wrap: anywhere; }
-  .plan-row .v { overflow-wrap: anywhere; white-space: pre-wrap; }
-  .tag { font-size: 10px; letter-spacing: .06em; margin-right: 8px; }
-  .tag-bank    { color: var(--good); }
-  .tag-draft   { color: var(--amber); }
-  .tag-needs   { color: var(--warn); }
-  .tag-flagged { color: var(--bad); }
-  .tag-consent { color: var(--bad); }
-  .tag-cred    { color: var(--bad); }
-  .tag-missing { color: var(--dim); }
-  .tag-manual  { color: var(--muted); }
-  .gatebox {
-    margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--amber);
-    border-radius: 6px; color: var(--warn); font-size: 12px;
+  .panel .head b { font-weight: 600; }
+  .panel .head .meta { color: var(--muted); font-size: 13px; }
+  .panel .head .close { margin-left: auto; }
+  .panel .body { padding: 16px 18px; }
+  .plan-row { display: grid; grid-template-columns: 200px 1fr; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
+  .plan-row:last-child { border-bottom: none; }
+  .plan-row .f { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .plan-row .v { overflow-wrap: anywhere; white-space: pre-wrap; font-size: 13px; }
+  .subhead { font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase;
+             letter-spacing: .05em; margin: 14px 0 6px; }
+  .subhead:first-child { margin-top: 0; }
+  .gate {
+    margin-top: 16px; padding: 12px 14px; border-radius: 8px;
+    background: var(--accent-soft); color: #4338CA; font-size: 13px;
   }
-  .gatebox code {
-    display: block; margin-top: 8px; padding: 8px 10px; background: var(--bg);
-    border-radius: 4px; color: var(--ink); user-select: all;
+  .gate code {
+    display: block; margin-top: 8px; padding: 9px 12px; border-radius: 6px;
+    background: #fff; border: 1px solid var(--border); color: var(--ink);
+    font-family: var(--mono); font-size: 12px; user-select: all;
   }
-  .empty { color: var(--faint); padding: 18px 4px; }
+  #resume-frame { width: 100%; height: 640px; border: none; border-radius: 0 0 8px 8px; background: #fff; }
   #searchlog {
-    display: none; white-space: pre-wrap; background: var(--bg); border: 1px solid var(--hairline);
-    border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; color: var(--muted);
-    font-size: 11px; max-height: 220px; overflow: auto;
+    display: none; white-space: pre-wrap; font-family: var(--mono); font-size: 12px;
+    color: var(--muted); padding: 14px 16px; margin-bottom: 14px;
+    max-height: 240px; overflow: auto;
   }
-  .err { color: var(--bad); }
-  @media (max-width: 760px) { .plan-row { grid-template-columns: 1fr; } }
+  .empty { color: var(--faint); padding: 22px 16px; }
+  .err { color: #B91C1C; }
+  .inline-out { font-size: 12px; color: var(--muted); }
+  .hidden { display: none !important; }
+  @media (max-width: 720px) { .plan-row, .editor-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <header>
-  <h1><span class="tick">▮</span> job-agent</h1>
-  <span class="sub">mission control — localhost only</span>
-  <span class="spacer"></span>
-  <span id="clock"></span>
+  <span class="dot"></span>
+  <h1>Job Agent</h1>
+  <span class="sub">local dashboard · 127.0.0.1 only</span>
 </header>
 
-<!-- ── 1 · APPLICATION PIPELINE ─────────────────────────────────────────── -->
+<!-- ── Applications ─────────────────────────────────────────────────────── -->
 <section id="sec-apps">
-  <div class="sec-label"><span class="n">01</span> Applications</div>
+  <h2>Applications</h2>
+  <div class="sec-sub">Everything you've tracked or applied to.</div>
   <div class="tiles" id="tiles"></div>
-  <div id="apps-table"></div>
-</section>
-
-<!-- ── 2 · SEARCH + BROWSE ──────────────────────────────────────────────── -->
-<section id="sec-search">
-  <div class="sec-label"><span class="n">02</span> Search</div>
-  <div class="controls">
-    <button class="primary" id="btn-search">▶ run fresh search</button>
-    <label class="hint">window <input id="days" type="number" min="1" max="90" value="7"> days</label>
-    <span class="hint" id="gen-at"></span>
+  <div class="toolbar">
+    <label>Status <select id="af-status"><option value="">all</option></select></label>
+    <label>Source <select id="af-source"><option value="">all</option></select></label>
+    <label>Sort <select id="af-sort">
+      <option value="date">newest</option><option value="company">company</option>
+    </select></label>
   </div>
-  <div id="searchlog"></div>
-  <div id="jobs-table"></div>
+  <div class="card tablewrap"><div id="apps-table"></div></div>
 </section>
 
-<!-- ── 3 · APPLY PREVIEW (human gate preserved) ─────────────────────────── -->
-<section id="sec-apply">
-  <div class="sec-label"><span class="n">03</span> Apply — review plan</div>
-  <p class="hint">“Apply” shows the fill plan the agent WOULD use — nothing is filled or
-     submitted from here. Real submission keeps its human gate in the terminal.</p>
-  <div id="preview"></div>
+<!-- ── Jobs ─────────────────────────────────────────────────────────────── -->
+<section id="sec-jobs">
+  <h2>Jobs</h2>
+  <div class="sec-sub" id="gen-at">Latest search results, ranked by fit.</div>
+  <div class="toolbar">
+    <button class="primary" id="btn-search">Run fresh search</button>
+    <label>window <input id="days" type="number" min="1" max="90" value="7"> days</label>
+    <span style="flex:1"></span>
+    <label>Status <select id="jf-status"><option value="">all</option></select></label>
+    <label>Source <select id="jf-source"><option value="">all</option></select></label>
+    <label>Score ≥ <input id="jf-score" type="number" min="0" max="100" placeholder="0"></label>
+    <label>Sort <select id="jf-sort">
+      <option value="score">score</option><option value="company">company</option>
+    </select></label>
+  </div>
+  <div class="card" id="searchlog"></div>
+  <div class="card tablewrap"><div id="jobs-table"></div></div>
+
+  <div class="card panel hidden" id="resume-panel">
+    <div class="head"><b>Resume</b><span class="meta" id="resume-meta"></span>
+      <button class="ghost close" onclick="closePanel('resume-panel')">✕ close</button></div>
+    <iframe id="resume-frame" title="tailored resume"></iframe>
+  </div>
+
+  <div class="card panel hidden" id="preview"></div>
+</section>
+
+<!-- ── Pipeline ─────────────────────────────────────────────────────────── -->
+<section id="sec-pipeline">
+  <h2>Pipeline</h2>
+  <div class="sec-sub">Applying never auto-submits: “Apply” previews the fill plan;
+    real submission keeps its review-and-approve gate in the terminal.</div>
 </section>
 
 <script>
@@ -200,157 +218,293 @@
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g,
   (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const USER_STATUSES = ["saved", "applied", "interviewing", "offer", "rejected"];
+const ALL_STATUSES = ["submitted", "paused", "failed", ...USER_STATUSES];
+
+let APPS = [];   // /api/applications records
+let JOBS = [];   // /api/jobs jobs
 
 async function api(path, opts) {
   const resp = await fetch(path, opts);
   if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).detail || resp.statusText);
   return resp.json();
 }
+const post = (path, body) => api(path, {
+  method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
 
-/* ── 1 · applications ─────────────────────────────────────────────────── */
-async function loadApplications() {
-  const data = await api("/api/applications");
-  const c = data.counts;
-  $("#tiles").innerHTML = ["total", "submitted", "paused", "failed"].map((k) =>
-    `<div class="tile ${k}"><div class="k">${k}</div><div class="v">${c[k]}</div></div>`).join("");
-  if (!data.records.length) {
-    $("#apps-table").innerHTML = `<div class="empty">No applications logged yet — apply to something.</div>`;
+const pill = (v, extra = "") => v
+  ? `<span class="pill p-${esc(v)}">${esc(v)}</span>${extra}` : `<span class="loc">—</span>`;
+const followFlag = (r) => r && r.needs_follow_up
+  ? ` <span class="pill p-followup">needs follow-up</span>` : "";
+
+function statusSelect(jobId, current, meta) {
+  const opts = ["<option value=''>—</option>"].concat(ALL_STATUSES.map((s) =>
+    `<option value="${s}" ${s === current ? "selected" : ""}>${s}</option>`));
+  return `<select class="status" data-status-for="${esc(jobId)}"
+            data-meta='${esc(JSON.stringify(meta))}'>${opts.join("")}</select>`;
+}
+
+/* ── Applications ─────────────────────────────────────────────────────── */
+function renderTiles() {
+  const c = {total: APPS.length};
+  for (const s of ["submitted", "paused", "failed"])
+    c[s] = APPS.filter((r) => r.status === s).length;
+  const overdue = APPS.filter((r) => r.needs_follow_up).length;
+  $("#tiles").innerHTML = ["total", "submitted", "paused", "failed"].map((k) => `
+    <div class="card tile"><div class="v">${c[k]}</div><div class="k">${k}</div>
+      ${k === "total" && overdue ? `<div class="flag"><span class="pill p-followup">${overdue} need follow-up</span></div>` : ""}
+    </div>`).join("");
+}
+
+function renderApps() {
+  renderTiles();
+  const st = $("#af-status").value, src = $("#af-source").value, sort = $("#af-sort").value;
+  let rows = APPS.filter((r) => (!st || r.status === st) && (!src || r.source === src));
+  rows = rows.slice().sort((a, b) => sort === "company"
+    ? a.company.localeCompare(b.company) : b.date.localeCompare(a.date));
+  if (!rows.length) {
+    $("#apps-table").innerHTML = `<div class="empty">Nothing here yet — save or apply to a job below.</div>`;
     return;
   }
-  const rows = data.records.map((r) => `
+  const body = rows.map((r) => {
+    const meta = {company: r.company, title: r.title, source: r.source};
+    return `
     <tr>
-      <td class="date">${esc((r.date || "").slice(0, 16).replace("T", " "))}</td>
+      <td class="date">${esc((r.date || "").slice(0, 10))}</td>
       <td>${esc(r.company)}</td>
       <td class="co">${esc(r.title)}</td>
-      <td><span class="chip st-${esc(r.status)}">${esc(r.status)}</span></td>
-      <td class="loc">${esc(r.source)}</td>
-    </tr>`).join("");
+      <td>${statusSelect(r.job_id, r.status, meta)}${followFlag(r)}</td>
+      <td class="src">${esc(r.source)}</td>
+      <td class="date">${esc(r.follow_up) || "<span class='loc'>—</span>"}</td>
+      <td><span class="note-preview">${esc(r.notes)}</span></td>
+      <td><button class="ghost" data-edit="${esc(r.job_id)}">Edit</button></td>
+    </tr>
+    <tr class="editor hidden" data-editor="${esc(r.job_id)}"><td colspan="8">
+      ${editorHtml(r.job_id, r, meta)}</td></tr>`;
+  }).join("");
   $("#apps-table").innerHTML =
-    `<table><thead><tr><th>date</th><th>company</th><th>role</th><th>status</th><th>source</th></tr></thead>
-     <tbody>${rows}</tbody></table>`;
+    `<table><thead><tr><th>Date</th><th>Company</th><th>Role</th><th>Status</th>
+     <th>Source</th><th>Follow-up</th><th>Notes</th><th></th></tr></thead>
+     <tbody>${body}</tbody></table>`;
 }
 
-/* ── 2 · jobs ─────────────────────────────────────────────────────────── */
-function renderJobs(data) {
-  $("#gen-at").textContent = data.generated_at
-    ? `last search: ${data.generated_at.slice(0, 16).replace("T", " ")} UTC` : "no saved search yet";
-  if (!data.jobs.length) {
-    $("#jobs-table").innerHTML = `<div class="empty">No results — run a fresh search.</div>`;
+function editorHtml(jobId, r, meta) {
+  return `<div class="editor-grid">
+    <div>
+      <label style="color:var(--muted);font-size:12px">Notes — recruiter, why applied, next steps</label>
+      <textarea data-notes="${esc(jobId)}">${esc(r?.notes || "")}</textarea>
+    </div>
+    <div class="editor-side">
+      <label>Follow up by</label>
+      <input type="date" data-followup="${esc(jobId)}" value="${esc(r?.follow_up || "")}">
+      <button class="primary" data-save="${esc(jobId)}" data-meta='${esc(JSON.stringify(meta))}'>Save</button>
+      <span class="inline-out" data-saveout="${esc(jobId)}"></span>
+    </div>
+  </div>`;
+}
+
+async function loadApps() {
+  APPS = (await api("/api/applications")).records;
+  fillFilter($("#af-status"), APPS.map((r) => r.status));
+  fillFilter($("#af-source"), APPS.map((r) => r.source));
+  renderApps();
+}
+
+function fillFilter(sel, values) {
+  const current = sel.value;
+  const uniq = [...new Set(values.filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">all</option>` +
+    uniq.map((v) => `<option ${v === current ? "selected" : ""}>${esc(v)}</option>`).join("");
+}
+
+/* ── Jobs ─────────────────────────────────────────────────────────────── */
+function renderJobsMeta(generatedAt) {
+  $("#gen-at").textContent = generatedAt
+    ? `Latest search: ${generatedAt.slice(0, 16).replace("T", " ")} UTC`
+    : "No saved search yet — run one.";
+}
+
+function renderJobs() {
+  const st = $("#jf-status").value, src = $("#jf-source").value;
+  const minScore = Number($("#jf-score").value) || 0;
+  const sort = $("#jf-sort").value;
+  let rows = JOBS.filter((j) =>
+    (!st || (j.tracked && j.tracked.status === st)) &&
+    (!src || j.source === src) &&
+    ((j.score ?? -1) >= minScore || !minScore));
+  rows = rows.slice().sort((a, b) => sort === "company"
+    ? a.company.localeCompare(b.company) : (b.score ?? -1) - (a.score ?? -1));
+  if (!rows.length) {
+    $("#jobs-table").innerHTML = `<div class="empty">No jobs match — loosen the filters or run a search.</div>`;
     return;
   }
-  const rows = data.jobs.map((j) => `
+  const body = rows.map((j) => {
+    const t = j.tracked, meta = {company: j.company, title: j.title, source: j.source};
+    return `
     <tr>
-      <td class="num score">${j.score ?? "—"}</td>
-      <td><span class="chip vd-${esc(j.verdict || "unscored")}">${esc(j.verdict || "unscored")}</span></td>
-      <td>${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noreferrer">${esc(j.title)}</a>` : esc(j.title)}</td>
+      <td class="num">${j.score ?? "—"}</td>
+      <td>${pill(j.verdict || "unscored")}</td>
+      <td>${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noreferrer">${esc(j.title)}</a>` : esc(j.title)}
+        <div class="mono">${esc(j.id)}</div></td>
       <td class="co">${esc(j.company)}</td>
       <td class="loc">${esc(j.location)}</td>
-      <td class="loc">${esc(j.source)}</td>
+      <td class="src">${esc(j.source)}</td>
+      <td>${statusSelect(j.id, t?.status || "", meta)}${followFlag(t)}</td>
       <td style="white-space:nowrap">
-        <button data-tailor="${esc(j.id)}">tailor</button>
-        <button data-apply="${esc(j.id)}">apply…</button>
-        <span class="hint" data-out="${esc(j.id)}"></span>
+        <button class="ghost" data-tailor="${esc(j.id)}">Tailor</button>
+        <button class="ghost" data-resume="${esc(j.id)}" data-title="${esc(j.company)} — ${esc(j.title)}">Resume</button>
+        <button class="ghost" data-apply="${esc(j.id)}">Apply…</button>
+        <button class="ghost" data-edit="${esc(j.id)}">Notes</button>
+        <div class="inline-out" data-out="${esc(j.id)}"></div>
       </td>
-    </tr>`).join("");
+    </tr>
+    <tr class="editor hidden" data-editor="${esc(j.id)}"><td colspan="8">
+      ${editorHtml(j.id, t, meta)}</td></tr>`;
+  }).join("");
   $("#jobs-table").innerHTML =
-    `<table><thead><tr><th style="text-align:right">score</th><th>verdict</th><th>title</th>
-     <th>company</th><th>location</th><th>src</th><th>actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+    `<table><thead><tr><th style="text-align:right">Score</th><th>Verdict</th><th>Title</th>
+     <th>Company</th><th>Location</th><th>Source</th><th>Status</th><th>Actions</th></tr></thead>
+     <tbody>${body}</tbody></table>`;
 }
 
-async function loadJobs() { renderJobs(await api("/api/jobs")); }
+async function loadJobs() {
+  const data = await api("/api/jobs");
+  JOBS = data.jobs;
+  renderJobsMeta(data.generated_at);
+  fillFilter($("#jf-source"), JOBS.map((j) => j.source));
+  fillFilter($("#jf-status"), JOBS.map((j) => j.tracked?.status));
+  renderJobs();
+}
 
 async function runSearch() {
   const btn = $("#btn-search");
-  btn.disabled = true; btn.textContent = "◌ searching… (fetch + LLM scoring, may take minutes)";
+  btn.disabled = true; btn.textContent = "Searching… (fetch + scoring, takes minutes)";
   const log = $("#searchlog");
-  log.style.display = "block"; log.textContent = "running the search pipeline…";
+  log.style.display = "block"; log.textContent = "Running the search pipeline…";
   try {
-    const data = await api("/api/search", {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({days: Number($("#days").value) || 7}),
-    });
+    const data = await post("/api/search", {days: Number($("#days").value) || 7});
     log.textContent = data.output || "";
     log.classList.toggle("err", !data.ok);
-    renderJobs(data);
+    JOBS = data.jobs;
+    renderJobsMeta(data.generated_at);
+    fillFilter($("#jf-source"), JOBS.map((j) => j.source));
+    renderJobs();
   } catch (e) {
-    log.classList.add("err"); log.textContent = "search failed: " + e.message;
+    log.classList.add("err"); log.textContent = "Search failed: " + e.message;
   } finally {
-    btn.disabled = false; btn.textContent = "▶ run fresh search";
+    btn.disabled = false; btn.textContent = "Run fresh search";
   }
 }
 
-/* ── 3 · tailor + apply preview ───────────────────────────────────────── */
-async function runTailor(id, out) {
-  out.textContent = "tailoring…";
-  out.classList.remove("err");
+/* ── track: status / notes / follow-up ────────────────────────────────── */
+async function saveTrack(jobId, fields, meta, outEl) {
   try {
-    const data = await api("/api/tailor", {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({job_id: id}),
-    });
+    const rec = await post("/api/track", {job_id: jobId, ...meta, ...fields});
+    // reflect into local state without a refetch
+    const i = APPS.findIndex((r) => r.job_id === jobId);
+    if (i >= 0) APPS[i] = rec; else APPS.unshift(rec);
+    const j = JOBS.find((x) => String(x.id) === String(jobId));
+    if (j) j.tracked = rec;
+    renderApps(); renderJobs();
+    if (outEl) outEl.textContent = "Saved ✓";
+  } catch (e) {
+    if (outEl) { outEl.textContent = "✗ " + e.message; outEl.classList.add("err"); }
+  }
+}
+
+/* ── per-job actions ──────────────────────────────────────────────────── */
+async function runTailor(id, out) {
+  out.textContent = "Tailoring…"; out.classList.remove("err");
+  try {
+    const data = await post("/api/tailor", {job_id: id});
     out.textContent = data.ok ? `✓ ${data.pdf || "done"}` : "✗ gate failed — see server log";
     out.classList.toggle("err", !data.ok);
   } catch (e) { out.classList.add("err"); out.textContent = "✗ " + e.message; }
 }
 
-const TAG_CLASS = {
-  "[FROM ANSWER_BANK]": "tag-bank", "[AI-DRAFT]": "tag-draft",
-  "[NEEDS-INPUT]": "tag-needs", "[GATE-FLAGGED]": "tag-flagged",
-  "[PAUSED: consent]": "tag-consent", "[PAUSED: credential]": "tag-cred",
-  "[MISSING]": "tag-missing", "[MANUAL]": "tag-manual",
+function showResume(id, title) {
+  $("#resume-meta").textContent = title;
+  $("#resume-frame").src = `/api/resume/${encodeURIComponent(id)}`;
+  $("#resume-panel").classList.remove("hidden");
+  $("#resume-panel").scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+function closePanel(id) { $("#" + id).classList.add("hidden"); }
+
+const TAGS = {
+  "[FROM ANSWER_BANK]": "p-offer", "[AI-DRAFT]": "p-possible",
+  "[NEEDS-INPUT]": "p-paused", "[GATE-FLAGGED]": "p-failed",
+  "[PAUSED: consent]": "p-failed", "[PAUSED: credential]": "p-failed",
+  "[MISSING]": "p-skip", "[MANUAL]": "p-skip",
 };
-const tagHtml = (t) => `<span class="tag ${TAG_CLASS[t] || "tag-manual"}">${esc(t)}</span>`;
+const tagPill = (t) => `<span class="pill ${TAGS[t] || "p-skip"}" style="margin-right:8px">${esc(t)}</span>`;
 
 async function previewApply(id, out) {
-  out.textContent = "reading the form…";
-  out.classList.remove("err");
+  out.textContent = "Reading the form…"; out.classList.remove("err");
   const panel = $("#preview");
-  panel.classList.add("open");
-  panel.innerHTML = `<div class="body empty">opening ${esc(id)} headless and reading its form…</div>`;
+  panel.classList.remove("hidden");
+  panel.innerHTML = `<div class="body empty">Opening the form headless and reading it…</div>`;
   panel.scrollIntoView({behavior: "smooth", block: "nearest"});
   try {
-    const p = await api("/api/apply/preview", {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({job_id: id}),
-    });
+    const p = await post("/api/apply/preview", {job_id: id});
     out.textContent = "";
-    const planned = p.planned.map((f) => `
-      <div class="plan-row">
-        <div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
-        <div class="v">${tagHtml(f.tag)}${esc(f.value)}</div>
-      </div>`).join("") || `<div class="empty">nothing auto-fillable</div>`;
-    const unfilled = p.unfilled.map((f) => `
-      <div class="plan-row">
-        <div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
-        <div class="v">${tagHtml(f.tag)}<span class="hint">${esc(f.reason)}</span></div>
-      </div>`).join("") || `<div class="empty">nothing paused</div>`;
+    const row = (f, v) => `<div class="plan-row"><div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
+      <div class="v">${tagPill(f.tag)}${v}</div></div>`;
+    const planned = p.planned.map((f) => row(f, esc(f.value))).join("")
+      || `<div class="empty">Nothing auto-fillable.</div>`;
+    const unfilled = p.unfilled.map((f) => row(f, `<span class="loc">${esc(f.reason)}</span>`)).join("")
+      || `<div class="empty">Nothing paused.</div>`;
     panel.innerHTML = `
       <div class="head"><b>${esc(p.job.company)} — ${esc(p.job.title)}</b>
-        <span class="hint">${p.planned.length} will fill · ${p.unfilled.length} paused
-        · ${p.missing_required} required missing</span></div>
+        <span class="meta">${p.planned.length} will fill · ${p.unfilled.length} paused
+          · ${p.missing_required} required missing</span>
+        <button class="ghost close" onclick="closePanel('preview')">✕ close</button></div>
       <div class="body">
-        <div class="sec-label">will fill (${p.planned.length})</div>${planned}
-        <div class="sec-label" style="margin-top:18px">left empty — never guessed (${p.unfilled.length})</div>${unfilled}
-        <div class="gatebox">⚠ Nothing was filled or submitted. To actually apply — with the same
-          review + explicit approval gate — run this in your terminal:
+        <div class="subhead">Will fill (${p.planned.length})</div>${planned}
+        <div class="subhead">Left empty — never guessed (${p.unfilled.length})</div>${unfilled}
+        <div class="gate">Nothing was filled or submitted. To actually apply — with the same
+          review and explicit approval — run this in your terminal:
           <code>${esc(p.submit_command)}</code></div>
       </div>`;
   } catch (e) {
     out.textContent = "";
-    panel.innerHTML = `<div class="body err" style="padding:14px 16px">preview failed: ${esc(e.message)}</div>`;
+    panel.innerHTML = `<div class="body err">Preview failed: ${esc(e.message)}</div>`;
   }
 }
 
+/* ── wiring ───────────────────────────────────────────────────────────── */
 document.addEventListener("click", (ev) => {
   const t = ev.target;
-  if (t.dataset.tailor) runTailor(t.dataset.tailor, document.querySelector(`[data-out="${t.dataset.tailor}"]`));
-  if (t.dataset.apply) previewApply(t.dataset.apply, document.querySelector(`[data-out="${t.dataset.apply}"]`));
+  const out = (id) => document.querySelector(`[data-out="${id}"]`);
+  if (t.dataset.tailor) runTailor(t.dataset.tailor, out(t.dataset.tailor));
+  if (t.dataset.apply) previewApply(t.dataset.apply, out(t.dataset.apply));
+  if (t.dataset.resume) showResume(t.dataset.resume, t.dataset.title);
+  if (t.dataset.edit) {
+    // the Edit/Notes button toggles the editor row nearest to the clicked row
+    const row = t.closest("tr");
+    let ed = row.nextElementSibling;
+    if (ed && ed.dataset.editor === t.dataset.edit) ed.classList.toggle("hidden");
+  }
+  if (t.dataset.save) {
+    const id = t.dataset.save;
+    saveTrack(id, {
+      notes: document.querySelector(`[data-notes="${id}"]`).value,
+      follow_up: document.querySelector(`[data-followup="${id}"]`).value || "",
+    }, JSON.parse(t.dataset.meta || "{}"),
+       document.querySelector(`[data-saveout="${id}"]`));
+  }
 });
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (t.dataset.statusFor && t.value)
+    saveTrack(t.dataset.statusFor, {status: t.value}, JSON.parse(t.dataset.meta || "{}"), null);
+});
+["af-status", "af-source", "af-sort"].forEach((id) => $("#" + id).addEventListener("change", renderApps));
+["jf-status", "jf-source", "jf-sort"].forEach((id) => $("#" + id).addEventListener("change", renderJobs));
+$("#jf-score").addEventListener("input", renderJobs);
 $("#btn-search").addEventListener("click", runSearch);
-setInterval(() => { $("#clock").textContent = new Date().toISOString().slice(0, 19).replace("T", " ") + "Z"; }, 1000);
 
-loadApplications().catch((e) => $("#apps-table").innerHTML = `<div class="err">${esc(e.message)}</div>`);
-loadJobs().catch((e) => $("#jobs-table").innerHTML = `<div class="err">${esc(e.message)}</div>`);
+loadApps().catch((e) => $("#apps-table").innerHTML = `<div class="err empty">${esc(e.message)}</div>`);
+loadJobs().catch((e) => $("#jobs-table").innerHTML = `<div class="err empty">${esc(e.message)}</div>`);
 </script>
 </body>
 </html>

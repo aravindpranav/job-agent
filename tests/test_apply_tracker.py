@@ -65,6 +65,53 @@ def test_record_status_is_validated():
         _record(status="on-fire")
 
 
+# --- user-managed state: status pipeline, notes, follow-up --------------------------
+
+def test_user_statuses_are_valid_alongside_run_statuses():
+    for status in ("saved", "applied", "interviewing", "offer", "rejected"):
+        assert _record(status=status).status == status
+
+
+def test_upsert_creates_a_saved_record_for_a_new_job(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    log = tmp_path / "applications.json"
+    rec = upsert_job_state(log, job_id="j9", company="Figma", title="DS",
+                           source="greenhouse", notes="met recruiter Sam")
+    assert rec.status == "saved"                    # default for a fresh save
+    assert rec.notes == "met recruiter Sam"
+    (loaded,) = load_applications(log)
+    assert loaded.job_id == "j9" and loaded.date    # stamped
+
+
+def test_upsert_updates_the_existing_record_not_a_duplicate(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="j1", status="paused"))
+    rec = upsert_job_state(log, job_id="j1", status="interviewing",
+                           follow_up="2026-07-20")
+    records = load_applications(log)
+    assert len(records) == 1                        # updated in place, no dup
+    assert records[0].status == "interviewing"
+    assert records[0].follow_up == "2026-07-20"
+    assert records[0].company == "Plaid"            # untouched fields preserved
+    assert rec.status == "interviewing"
+
+
+def test_upsert_leaves_unspecified_fields_alone(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    log = tmp_path / "applications.json"
+    upsert_job_state(log, job_id="j1", company="Plaid", notes="note A")
+    upsert_job_state(log, job_id="j1", status="applied")     # no notes given
+    (rec,) = load_applications(log)
+    assert rec.notes == "note A" and rec.status == "applied"
+
+
+def test_upsert_requires_a_job_id(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    with pytest.raises(ValueError):
+        upsert_job_state(tmp_path / "a.json", job_id="", status="saved")
+
+
 # --- runner integration -------------------------------------------------------------
 
 class _Page:
