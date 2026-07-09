@@ -140,6 +140,30 @@ def resume_pdf_path(record: dict, *, facts_path: Path, out_dir: Path) -> Path | 
     return pdf
 
 
+def serialize_plan(plan) -> dict:
+    """A FillPlan as JSON for the UI, tagged exactly like the CLI review."""
+    from job_agent.apply.review import _unfilled_tag, source_tag
+
+    def name_of(field) -> str:
+        return field.label or field.name or field.selector
+
+    return {
+        "planned": [
+            {"label": name_of(p.field), "selector": p.field.selector,
+             "value": p.value, "source": p.source, "tag": source_tag(p.source),
+             "required": p.field.required}
+            for p in plan.planned
+        ],
+        "unfilled": [
+            {"label": name_of(u.field), "selector": u.field.selector,
+             "reason": u.reason, "tag": _unfilled_tag(u.reason),
+             "required": u.field.required}
+            for u in plan.unfilled
+        ],
+        "missing_required": len(plan.missing_required()),
+    }
+
+
 def build_apply_preview(record: dict, bank, contact, *, resume_path: Path | None,
                         drafter, browser_factory=None) -> dict:
     """Read the live form and return the tagged fill plan — WITHOUT filling it.
@@ -152,7 +176,6 @@ def build_apply_preview(record: dict, bank, contact, *, resume_path: Path | None
     from job_agent.apply.browser import open_browser
     from job_agent.apply.filler import build_fill_plan
     from job_agent.apply.form_reader import read_form
-    from job_agent.apply.review import _unfilled_tag, source_tag
     from job_agent.apply.screening import apply_drafts
 
     factory = browser_factory or open_browser
@@ -164,30 +187,18 @@ def build_apply_preview(record: dict, bank, contact, *, resume_path: Path | None
     if drafter is not None:
         plan = apply_drafts(plan, drafter)
 
-    def name_of(field) -> str:
-        return field.label or field.name or field.selector
-
     return {
         "job": {"id": record.get("id"), "title": record.get("title"),
                 "company": record.get("company")},
-        "planned": [
-            {"label": name_of(p.field), "value": p.value, "source": p.source,
-             "tag": source_tag(p.source), "required": p.field.required}
-            for p in plan.planned
-        ],
-        "unfilled": [
-            {"label": name_of(u.field), "reason": u.reason,
-             "tag": _unfilled_tag(u.reason), "required": u.field.required}
-            for u in plan.unfilled
-        ],
-        "missing_required": len(plan.missing_required()),
+        **serialize_plan(plan),
         "submit_command": f"python -m job_agent apply --job {record.get('id')} --submit",
     }
 
 
-def run_apply_preview(job_id: str, *, data_dir: Path, facts_path: Path,
-                      out_dir: Path) -> dict:
-    """Assemble the real inputs (record, bank, facts, resume, drafter) and preview."""
+def _assemble_apply_inputs(job_id: str, *, data_dir: Path, facts_path: Path,
+                           out_dir: Path) -> dict:
+    """The real inputs every apply flavour needs: record, bank, contact,
+    tailored resume, and (with an API key) the grounded screening drafter."""
     from job_agent.apply.answer_bank import load_answer_bank, resolve_contact
     from job_agent.cli import _find_tailored_resume
     from job_agent.config import load_settings
@@ -210,6 +221,26 @@ def run_apply_preview(job_id: str, *, data_dir: Path, facts_path: Path,
             make_llm_generate(settings), facts, bank,
             jd=record.get("description") or "", company=record.get("company", ""),
             cache_path=data_dir / "answers_cache.json")
+    return {"record": record, "bank": bank, "contact": contact,
+            "resume_path": resume, "drafter": drafter}
 
-    return build_apply_preview(record, bank, contact, resume_path=resume,
-                               drafter=drafter)
+
+def run_apply_preview(job_id: str, *, data_dir: Path, facts_path: Path,
+                      out_dir: Path) -> dict:
+    """Assemble the real inputs (record, bank, facts, resume, drafter) and preview."""
+    inputs = _assemble_apply_inputs(job_id, data_dir=data_dir,
+                                    facts_path=facts_path, out_dir=out_dir)
+    record = inputs.pop("record")
+    return build_apply_preview(record, inputs.pop("bank"), inputs.pop("contact"),
+                               **inputs)
+
+
+def start_apply_session(job_id: str, *, data_dir: Path, facts_path: Path,
+                        out_dir: Path):
+    """Build a live, human-gated apply session (visible browser) for one job."""
+    from job_agent.dashboard.apply_session import ApplySession
+
+    inputs = _assemble_apply_inputs(job_id, data_dir=data_dir,
+                                    facts_path=facts_path, out_dir=out_dir)
+    return ApplySession(tracker_path=data_dir / "applications.json",
+                        out_dir=data_dir / "apply", **inputs)

@@ -149,6 +149,10 @@
     color: var(--muted); padding: 14px 16px; margin-bottom: 14px;
     max-height: 240px; overflow: auto;
   }
+  .row-actions { margin-left: 8px; }
+  .editbox { display: inline-flex; gap: 6px; margin-left: 8px; }
+  .editbox input { width: 260px; padding: 4px 8px; font-size: 12.5px;
+                   border: 1px solid var(--border); border-radius: 6px; font-family: var(--sans); }
   .empty { color: var(--faint); padding: 22px 16px; }
   .err { color: #B91C1C; }
   .inline-out { font-size: 12px; color: var(--muted); }
@@ -209,8 +213,10 @@
 <!-- ── Pipeline ─────────────────────────────────────────────────────────── -->
 <section id="sec-pipeline">
   <h2>Pipeline</h2>
-  <div class="sec-sub">Applying never auto-submits: “Apply” previews the fill plan;
-    real submission keeps its review-and-approve gate in the terminal.</div>
+  <div class="sec-sub">“Apply” opens the real form in a visible browser and fills the
+    safe fields. Consent and legal boxes are never auto-filled — you complete those in
+    the window. Nothing is ever sent until you review the plan and click
+    “Submit application”.</div>
 </section>
 
 <script>
@@ -438,37 +444,108 @@ const TAGS = {
 };
 const tagPill = (t) => `<span class="pill ${TAGS[t] || "p-skip"}" style="margin-right:8px">${esc(t)}</span>`;
 
-async function previewApply(id, out) {
-  out.textContent = "Reading the form…"; out.classList.remove("err");
+/* ── live apply session: real fill + in-UI review gate ─────────────────── */
+let SESSION = null;   // {id} while a visible-browser apply session is open
+
+const sPost = (path, body) => post(path, {session_id: SESSION.id, ...body});
+
+function planRow(f, valueHtml, actionsHtml) {
+  return `<div class="plan-row"><div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
+    <div class="v">${tagPill(f.tag)}${valueHtml}
+      <span class="row-actions">${actionsHtml || ""}</span>
+      <span class="editbox hidden" data-editbox="${esc(f.selector)}">
+        <input type="text" data-editval="${esc(f.selector)}" placeholder="new value">
+        <button class="ghost" data-sfill="${esc(f.selector)}">Save</button>
+      </span></div></div>`;
+}
+
+function renderSession(state) {
   const panel = $("#preview");
   panel.classList.remove("hidden");
-  panel.innerHTML = `<div class="body empty">Opening the form headless and reading it…</div>`;
+  if (state.result) {   // submitted / cancelled — terminal state
+    const r = state.result;
+    panel.innerHTML = `<div class="body">
+      <div class="subhead">${r.status === "submitted" ? "Submitted ✓" : "Session " + esc(r.status)}</div>
+      <p>${esc(r.reason || "")}</p>
+      ${r.screenshot ? `<p class="loc">confirmation screenshot: ${esc(r.screenshot)}</p>` : ""}
+      <button class="ghost" onclick="closePanel('preview')">Close</button></div>`;
+    SESSION = null;
+    loadApps();
+    return;
+  }
+  const unreadable = !state.form_readable ? `
+    <div class="gate">${esc(state.message)}
+      <div style="margin-top:10px"><button data-srescan="1">Re-read form</button></div>
+    </div>` : "";
+  const warnings = (state.warnings || []).map((w) =>
+    `<div class="err" style="font-size:12.5px">⚠ ${esc(w)}</div>`).join("");
+  const planned = (state.planned || []).map((f) =>
+    planRow(f, esc(f.value), `<button class="ghost" data-sedit="${esc(f.selector)}">Edit</button>`))
+    .join("") || `<div class="empty">Nothing auto-fillable on this page.</div>`;
+  const unfilled = (state.unfilled || []).map((f) => {
+    const consent = f.tag.startsWith("[PAUSED");
+    const hint = consent
+      ? `<span class="loc">complete this yourself in the browser window, then mark it done — it is never auto-filled</span>`
+      : `<span class="loc">${esc(f.reason)}</span>`;
+    const actions = consent
+      ? `<button class="ghost" data-sdone="${esc(f.selector)}">Mark done</button>`
+      : `<button class="ghost" data-sedit="${esc(f.selector)}">Fill…</button>
+         <button class="ghost" data-sdone="${esc(f.selector)}">Done in browser</button>`;
+    return planRow(f, hint, actions);
+  }).join("") || `<div class="empty">Nothing paused.</div>`;
+  const blocked = state.missing_required > 0;
+  panel.innerHTML = `
+    <div class="head"><b>${esc(state.job.company)} — ${esc(state.job.title)}</b>
+      <span class="meta">a visible browser window is open with this form ·
+        ${(state.planned || []).length} filled · ${(state.unfilled || []).length} paused
+        · ${state.missing_required} required missing</span>
+      <button class="ghost close" data-scancel="1">✕ Cancel — nothing submitted</button></div>
+    <div class="body">
+      ${unreadable}${warnings}
+      <div class="subhead">Filled on the form (${(state.planned || []).length})</div>${planned}
+      <div class="subhead">Left empty — never guessed (${(state.unfilled || []).length})</div>${unfilled}
+      <div class="gate">
+        Review the form in the browser window. Nothing is sent until you click Submit.
+        <div style="margin-top:10px; display:flex; gap:10px; align-items:center">
+          <button class="primary" data-ssubmit="1" ${blocked ? "disabled" : ""}>Submit application</button>
+          ${blocked ? `<span>${state.missing_required} required field(s) must be edited or marked done first</span>` : ""}
+          <button data-srescan="1">Re-read form</button>
+        </div>
+      </div>
+    </div>`;
+  panel.scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+
+async function startApply(id, out) {
+  if (SESSION) { out.textContent = "finish or cancel the open apply session first"; return; }
+  out.textContent = "Opening a visible browser…"; out.classList.remove("err");
+  const panel = $("#preview");
+  panel.classList.remove("hidden");
+  panel.innerHTML = `<div class="body empty">Opening the application in a visible browser window and filling it…</div>`;
   panel.scrollIntoView({behavior: "smooth", block: "nearest"});
   try {
-    const p = await post("/api/apply/preview", {job_id: id});
+    const state = await post("/api/apply/start", {job_id: id});
+    SESSION = {id: state.session_id};
     out.textContent = "";
-    const row = (f, v) => `<div class="plan-row"><div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
-      <div class="v">${tagPill(f.tag)}${v}</div></div>`;
-    const planned = p.planned.map((f) => row(f, esc(f.value))).join("")
-      || `<div class="empty">Nothing auto-fillable.</div>`;
-    const unfilled = p.unfilled.map((f) => row(f, `<span class="loc">${esc(f.reason)}</span>`)).join("")
-      || `<div class="empty">Nothing paused.</div>`;
-    panel.innerHTML = `
-      <div class="head"><b>${esc(p.job.company)} — ${esc(p.job.title)}</b>
-        <span class="meta">${p.planned.length} will fill · ${p.unfilled.length} paused
-          · ${p.missing_required} required missing</span>
-        <button class="ghost close" onclick="closePanel('preview')">✕ close</button></div>
-      <div class="body">
-        <div class="subhead">Will fill (${p.planned.length})</div>${planned}
-        <div class="subhead">Left empty — never guessed (${p.unfilled.length})</div>${unfilled}
-        <div class="gate">Nothing was filled or submitted. To actually apply — with the same
-          review and explicit approval — run this in your terminal:
-          <code>${esc(p.submit_command)}</code></div>
-      </div>`;
+    renderSession(state);
   } catch (e) {
     out.textContent = "";
-    panel.innerHTML = `<div class="body err">Preview failed: ${esc(e.message)}</div>`;
+    panel.innerHTML = `<div class="body err">Apply failed to start: ${esc(e.message)}</div>`;
   }
+}
+
+async function sessionAction(fn) {
+  try { renderSession(await fn()); }
+  catch (e) { alertBar(e.message); }
+}
+
+function alertBar(msg) {
+  const panel = $("#preview");
+  const bar = document.createElement("div");
+  bar.className = "err"; bar.style.cssText = "padding:8px 18px;font-size:12.5px";
+  bar.textContent = "⚠ " + msg;
+  panel.prepend(bar);
+  setTimeout(() => bar.remove(), 6000);
 }
 
 /* ── wiring ───────────────────────────────────────────────────────────── */
@@ -476,8 +553,23 @@ document.addEventListener("click", (ev) => {
   const t = ev.target;
   const out = (id) => document.querySelector(`[data-out="${id}"]`);
   if (t.dataset.tailor) runTailor(t.dataset.tailor, out(t.dataset.tailor));
-  if (t.dataset.apply) previewApply(t.dataset.apply, out(t.dataset.apply));
+  if (t.dataset.apply) startApply(t.dataset.apply, out(t.dataset.apply));
   if (t.dataset.resume) showResume(t.dataset.resume, t.dataset.title);
+  // live apply session actions
+  if (t.dataset.sedit) {
+    const box = document.querySelector(`[data-editbox="${t.dataset.sedit}"]`);
+    if (box) { box.classList.toggle("hidden"); box.querySelector("input").focus(); }
+  }
+  if (t.dataset.sfill) {
+    const val = document.querySelector(`[data-editval="${t.dataset.sfill}"]`).value;
+    sessionAction(() => sPost("/api/apply/edit", {selector: t.dataset.sfill, value: val}));
+  }
+  if (t.dataset.sdone)
+    sessionAction(() => sPost("/api/apply/edit", {selector: t.dataset.sdone,
+      value: "(completed in the browser)", mark_done: true}));
+  if (t.dataset.srescan) sessionAction(() => sPost("/api/apply/rescan", {}));
+  if (t.dataset.ssubmit) sessionAction(() => sPost("/api/apply/submit", {}));
+  if (t.dataset.scancel) sessionAction(() => sPost("/api/apply/cancel", {}));
   if (t.dataset.edit) {
     // the Edit/Notes button toggles the editor row nearest to the clicked row
     const row = t.closest("tr");

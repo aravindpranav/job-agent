@@ -29,6 +29,16 @@ class JobRequest(BaseModel):
     job_id: str = Field(min_length=1)
 
 
+class SessionRequest(BaseModel):
+    session_id: str = Field(min_length=1)
+
+
+class EditRequest(SessionRequest):
+    selector: str = Field(min_length=1)
+    value: str
+    mark_done: bool = False
+
+
 class TrackRequest(BaseModel):
     """User-managed state for one job: status pipeline, notes, follow-up date."""
 
@@ -45,9 +55,11 @@ def create_app(*, data_dir: Path = Path("data"),
                profile_path: Path = Path("search_profile.yaml"),
                facts_path: Path | None = None,
                out_dir: Path | None = None,
-               searcher=None, tailorer=None, previewer=None) -> FastAPI:
-    """Build the app. ``searcher``/``tailorer``/``previewer`` are injectable for
-    tests; the defaults call the real service functions (i.e. the CLI paths)."""
+               searcher=None, tailorer=None, previewer=None,
+               apply_session_factory=None) -> FastAPI:
+    """Build the app. ``searcher``/``tailorer``/``previewer``/
+    ``apply_session_factory`` are injectable for tests; the defaults call the
+    real service functions (i.e. the CLI paths)."""
     data_dir = Path(data_dir)
     facts_path = Path(facts_path or data_dir / "career_facts.yaml")
     out_dir = Path(out_dir or data_dir / "output")
@@ -56,8 +68,12 @@ def create_app(*, data_dir: Path = Path("data"),
         job_id, data_dir=data_dir, facts_path=facts_path, out_dir=out_dir))
     previewer = previewer or (lambda job_id: service.run_apply_preview(
         job_id, data_dir=data_dir, facts_path=facts_path, out_dir=out_dir))
+    apply_session_factory = apply_session_factory or (
+        lambda job_id: service.start_apply_session(
+            job_id, data_dir=data_dir, facts_path=facts_path, out_dir=out_dir))
 
     app = FastAPI(title="job-agent dashboard", docs_url=None, redoc_url=None)
+    sessions: dict[str, object] = {}   # live apply sessions, one browser each
 
     def _require_job(job_id: str) -> dict:
         record = load_job_record(data_dir / "last_search.json", job_id)
@@ -107,6 +123,58 @@ def create_app(*, data_dir: Path = Path("data"),
     def apply_preview(req: JobRequest) -> dict:
         _require_job(req.job_id)
         return previewer(req.job_id)
+
+    # --- live apply sessions: the CLI's review gate, in the UI -------------
+
+    def _session(session_id: str):
+        session = sessions.get(session_id)
+        if session is None:
+            raise HTTPException(404, "no such apply session (it may have finished)")
+        return session
+
+    @app.post("/api/apply/start")
+    def apply_start(req: JobRequest) -> dict:
+        from uuid import uuid4
+
+        _require_job(req.job_id)
+        session = apply_session_factory(req.job_id)
+        session_id = uuid4().hex
+        sessions[session_id] = session
+        try:
+            state = session.start()
+        except Exception:
+            sessions.pop(session_id, None)
+            raise
+        return {"session_id": session_id, **state}
+
+    @app.post("/api/apply/rescan")
+    def apply_rescan(req: SessionRequest) -> dict:
+        return {"session_id": req.session_id, **_session(req.session_id).rescan()}
+
+    @app.post("/api/apply/edit")
+    def apply_edit(req: EditRequest) -> dict:
+        state = _session(req.session_id).edit(req.selector, req.value,
+                                              mark_done=req.mark_done)
+        return {"session_id": req.session_id, **state}
+
+    @app.post("/api/apply/submit")
+    def apply_submit(req: SessionRequest) -> dict:
+        from job_agent.dashboard.apply_session import SubmitBlocked
+
+        session = _session(req.session_id)
+        try:
+            result = session.submit()      # the ONLY path to a real submission
+        except SubmitBlocked as exc:
+            raise HTTPException(409, str(exc)) from exc
+        sessions.pop(req.session_id, None)
+        return result
+
+    @app.post("/api/apply/cancel")
+    def apply_cancel(req: SessionRequest) -> dict:
+        session = sessions.pop(req.session_id, None)
+        if session is None:
+            raise HTTPException(404, "no such apply session (it may have finished)")
+        return session.cancel()
 
     @app.get("/")
     def index() -> FileResponse:
