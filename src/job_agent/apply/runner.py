@@ -17,6 +17,7 @@ pauses for the human rather than guessing.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 from job_agent.apply.answer_bank import AnswerBank, Contact
@@ -29,6 +30,7 @@ from job_agent.apply.prompt_io import PromptIO
 from job_agent.apply.review import Decision, request_approval
 from job_agent.apply.screening import Drafter, apply_drafts, store_approved_answers
 from job_agent.apply.submit import SubmitResult, log_result, run_submit
+from job_agent.apply.tracker import ApplicationRecord, record_attempt, update_status
 
 _SUBMIT_SELECTOR = "button[type='submit'], input[type='submit'], button#submit"
 
@@ -51,6 +53,11 @@ class ApplyConfig:
     drafter: Drafter | None = None
     answer_cache: Path | None = None  # gitignored approved-answer cache
     company: str = ""                 # cache key namespace
+    # Application-tracking metadata (see tracker.py). The log is gitignored.
+    job_id: str = ""
+    job_title: str = ""
+    source: str = ""                  # ATS the job came from
+    applications_log: Path = field(default_factory=lambda: Path("data/applications.json"))
 
 
 def _clear_blockers(page, io: PromptIO) -> bool:
@@ -65,9 +72,34 @@ def _clear_blockers(page, io: PromptIO) -> bool:
     return True
 
 
+#: SubmitResult.status -> the tracker's status. Dry-run and skip both mean the
+#: application is still with the human ("paused"); only a real send counts.
+_TRACK_STATUS = {"submitted": "submitted", "dry_run": "paused", "skipped": "paused"}
+
+
 def run_apply(cfg: ApplyConfig, io: PromptIO | None = None) -> SubmitResult:
-    """Run the full assisted-apply flow for a single job."""
-    io = io or PromptIO()
+    """Run the full assisted-apply flow for a single job, tracking the attempt.
+
+    Every attempt is logged to ``cfg.applications_log`` up front and resolved
+    to submitted / paused / failed when the run completes (or crashes).
+    """
+    attempt_id = record_attempt(cfg.applications_log, ApplicationRecord(
+        company=cfg.company or cfg.job_label, title=cfg.job_title,
+        job_id=cfg.job_id, date=datetime.now(timezone.utc).isoformat(),
+        source=cfg.source, status="paused", reason="run in progress"))
+    try:
+        result = _run_flow(cfg, io or PromptIO())
+    except Exception:
+        update_status(cfg.applications_log, attempt_id, "failed",
+                      "run crashed before completing — see terminal output")
+        raise
+    update_status(cfg.applications_log, attempt_id,
+                  _TRACK_STATUS.get(result.status, "paused"), result.reason)
+    return result
+
+
+def _run_flow(cfg: ApplyConfig, io: PromptIO) -> SubmitResult:
+    """The browser flow proper (open → fill → review → submit → log)."""
     out_dir = Path(cfg.out_dir)
     log_path = out_dir / "apply_log.jsonl"
 

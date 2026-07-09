@@ -1,0 +1,187 @@
+"""Application tracking: the gitignored data/applications.json log + CLI table."""
+
+from __future__ import annotations
+
+from argparse import Namespace
+from contextlib import contextmanager
+from pathlib import Path
+
+import pytest
+from rich.console import Console
+
+from job_agent.apply.answer_bank import AnswerBank, Contact
+from job_agent.apply.prompt_io import ScriptedIO
+from job_agent.apply.tracker import (
+    ApplicationRecord,
+    load_applications,
+    record_attempt,
+    update_status,
+)
+
+BANK = AnswerBank.model_validate({"authorized_us": True, "requires_sponsorship": False})
+CONTACT = Contact(name="Jordan Rivers", email="j@example.com", phone="1")
+
+
+def _record(**kw) -> ApplicationRecord:
+    base = dict(company="Plaid", title="ML Engineer", job_id="j1",
+                date="2026-07-08T12:00:00+00:00", source="ashby", status="paused")
+    base.update(kw)
+    return ApplicationRecord(**base)
+
+
+# --- the log file -----------------------------------------------------------------
+
+def test_record_attempt_appends_and_round_trips(tmp_path):
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record())
+    record_attempt(log, _record(company="Stripe", job_id="j2", status="submitted"))
+    records = load_applications(log)
+    assert [r.company for r in records] == ["Plaid", "Stripe"]
+    assert records[1].status == "submitted"
+    assert records[0].source == "ashby"
+
+
+def test_update_status_touches_only_that_attempt(tmp_path):
+    log = tmp_path / "applications.json"
+    first = record_attempt(log, _record(job_id="j1"))
+    second = record_attempt(log, _record(company="Stripe", job_id="j2"))
+    update_status(log, second, "failed", "browser crashed")
+    records = load_applications(log)
+    assert records[0].status == "paused"            # untouched
+    assert records[1].status == "failed"
+    assert records[1].reason == "browser crashed"
+    assert first != second                          # attempt ids are distinct
+
+
+def test_missing_or_corrupt_log_reads_as_empty(tmp_path):
+    assert load_applications(tmp_path / "nope.json") == []
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json")
+    assert load_applications(bad) == []
+
+
+def test_record_status_is_validated():
+    with pytest.raises(ValueError):
+        _record(status="on-fire")
+
+
+# --- runner integration -------------------------------------------------------------
+
+class _Page:
+    """A page with no form and no blockers — the minimal happy path."""
+
+    def goto(self, url, wait_until=None):
+        pass
+
+    def inner_text(self, selector):
+        return ""
+
+    def evaluate(self, js):
+        return []
+
+
+def _config(tmp_path, **kw):
+    from job_agent.apply.runner import ApplyConfig
+    base = dict(
+        apply_url="http://example.test/apply", bank=BANK, contact=CONTACT,
+        out_dir=tmp_path / "apply", auto_approve=True,
+        job_label="Plaid — ML Engineer", company="Plaid",
+        job_id="j-123", source="ashby", job_title="ML Engineer",
+        applications_log=tmp_path / "applications.json",
+    )
+    base.update(kw)
+    return ApplyConfig(**base)
+
+
+@contextmanager
+def _fake_browser(headless=False):
+    yield _Page()
+
+
+def test_apply_run_appends_a_tracked_record(tmp_path, monkeypatch):
+    import job_agent.apply.runner as runner
+    monkeypatch.setattr(runner, "open_browser", _fake_browser)
+    result = runner.run_apply(_config(tmp_path), io=ScriptedIO(answers=[]).as_io())
+    assert result.status == "dry_run"               # approved, but no --submit
+    (rec,) = load_applications(tmp_path / "applications.json")
+    assert (rec.company, rec.title, rec.job_id, rec.source) == \
+        ("Plaid", "ML Engineer", "j-123", "ashby")
+    assert rec.status == "paused"                   # dry-run: nothing was sent
+    assert rec.date                                 # stamped
+
+
+def test_submitted_run_is_tracked_as_submitted(tmp_path, monkeypatch):
+    import job_agent.apply.runner as runner
+
+    class _SubmitPage(_Page):
+        def locator(self, sel):
+            page = self
+
+            class _Loc:
+                def count(self):
+                    return 1
+
+                @property
+                def first(self):
+                    return self
+
+                def click(self):
+                    pass
+            return _Loc()
+
+        def wait_for_timeout(self, ms):
+            pass
+
+        def screenshot(self, path):
+            Path(path).write_bytes(b"png")
+
+    @contextmanager
+    def browser(headless=False):
+        yield _SubmitPage()
+    monkeypatch.setattr(runner, "open_browser", browser)
+    result = runner.run_apply(_config(tmp_path, submit_flag=True),
+                              io=ScriptedIO(answers=[]).as_io())
+    assert result.status == "submitted"
+    (rec,) = load_applications(tmp_path / "applications.json")
+    assert rec.status == "submitted"
+
+
+def test_crashed_run_is_tracked_as_failed(tmp_path, monkeypatch):
+    import job_agent.apply.runner as runner
+
+    class _BoomPage(_Page):
+        def evaluate(self, js):
+            raise RuntimeError("browser died")
+
+    @contextmanager
+    def browser(headless=False):
+        yield _BoomPage()
+    monkeypatch.setattr(runner, "open_browser", browser)
+    with pytest.raises(RuntimeError):
+        runner.run_apply(_config(tmp_path), io=ScriptedIO(answers=[]).as_io())
+    (rec,) = load_applications(tmp_path / "applications.json")
+    assert rec.status == "failed"
+
+
+# --- CLI: `job_agent applications` ---------------------------------------------------
+
+def test_applications_command_renders_the_table_most_recent_first(tmp_path):
+    from job_agent.cli import cmd_applications
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(company="Plaid", date="2026-07-07T10:00:00+00:00"))
+    record_attempt(log, _record(company="Stripe", title="AI Engineer", job_id="j2",
+                                source="greenhouse", status="submitted",
+                                date="2026-07-08T09:00:00+00:00"))
+    console = Console(record=True, width=120)
+    assert cmd_applications(console, Namespace(log=str(log))) == 0
+    out = console.export_text()
+    assert "Plaid" in out and "Stripe" in out
+    assert "submitted" in out and "paused" in out
+    assert out.index("Stripe") < out.index("Plaid")     # most recent first
+
+
+def test_applications_command_with_empty_log_says_so(tmp_path):
+    from job_agent.cli import cmd_applications
+    console = Console(record=True, width=120)
+    assert cmd_applications(console, Namespace(log=str(tmp_path / "none.json"))) == 0
+    assert "No applications" in console.export_text()

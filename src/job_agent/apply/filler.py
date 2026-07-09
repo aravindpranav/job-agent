@@ -17,6 +17,7 @@ import re
 from pathlib import Path
 
 from job_agent.apply.answer_bank import DECLINE_TO_STATE, AnswerBank, Contact
+from job_agent.apply.form_reader import _is_eeo
 from job_agent.geo import infer_country
 from job_agent.apply.fields import (
     FieldType,
@@ -124,12 +125,14 @@ def _match_decline(options: tuple[str, ...]) -> str | None:
     return None
 
 
-def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str]:
-    """(value, source) for a self-identification field.
+def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str] | None:
+    """(value, source) for a self-identification field, or None to pause.
 
     Deterministic from the answer bank (top-level key, else the eeo block) —
     never LLM-drafted, never guessed: an absent key resolves to the form's own
     decline option ("Decline To Self Identify" / "Prefer not to answer" / ...).
+    When the form lists options and NEITHER the banked value nor any decline
+    variant matches, returns None — a wrong demographic answer is never picked.
     """
     hay = _haystack(f)
     # Hispanic/Latino is checked FIRST: forms often title it "Ethnicity: Are you
@@ -142,7 +145,10 @@ def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str]:
            else "disability_status" if "disab" in hay else "")
     value = bank.eeo_answer(key) if key else DECLINE_TO_STATE
     if f.options:
-        value = _match_option(f.options, value) or _match_decline(f.options) or value
+        picked = _match_option(f.options, value) or _match_decline(f.options)
+        if picked is None:
+            return None
+        value = picked
     return value, f"answer_bank.eeo.{key or 'decline'}"
 
 
@@ -304,9 +310,16 @@ def _resolve(f: FormField, bank: AnswerBank, contact: Contact,
             return Unfilled(f, "no tailored resume provided (pass --resume)")
         return PlannedFill(f, str(resume_path), "resume (tailored PDF)")
 
-    if f.field_type == FieldType.EEO:
-        value, source = _eeo_value(f, bank)
-        return PlannedFill(f, value, source)
+    # EEO routes by QUESTION WORDING, not just control type: Greenhouse renders
+    # its EEO section as radio groups / React comboboxes, which classify as
+    # RADIO/COMBOBOX and used to bypass this resolver entirely ([MISSING]
+    # despite banked answers). Same deterministic resolution either way.
+    if f.field_type == FieldType.EEO or _is_eeo(f.label, f.name):
+        hit = _eeo_value(f, bank)
+        if hit is None:
+            return Unfilled(f, "self-identification — no option matches the banked "
+                               "answer and the form has no decline option (pause)")
+        return PlannedFill(f, hit[0], hit[1])
 
     if f.field_type == FieldType.TEXTAREA:
         hay = _haystack(f)

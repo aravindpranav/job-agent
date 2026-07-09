@@ -29,6 +29,7 @@ def run_demo(io: PromptIO | None = None, *, out_dir: Path | None = None,
     bank = load_answer_bank(DEMO_ANSWERS)
     contact = resolve_contact(facts, bank)
 
+    demo_out = out_dir or Path("data/apply/demo")
     cfg = ApplyConfig(
         apply_url=FORM_HTML.resolve().as_uri(),
         bank=bank,
@@ -36,8 +37,11 @@ def run_demo(io: PromptIO | None = None, *, out_dir: Path | None = None,
         resume_path=DEMO_RESUME,
         submit_flag=True,          # safe: the local demo form submits client-side only
         headless=headless,
-        out_dir=out_dir or Path("data/apply/demo"),
+        out_dir=demo_out,
         job_label="Demo Co — Data Engineer (LOCAL DEMO)",
         auto_approve=True,         # simulated approval — no real employer involved
+        company="Demo Co", job_title="Data Engineer (LOCAL DEMO)", source="demo",
+        # tracked under the demo out-dir — never the real application history
+        applications_log=demo_out / "applications.json",
     )
     return run_apply(cfg, io=io)

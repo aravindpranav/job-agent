@@ -61,7 +61,7 @@ from job_agent.tailor.verify import (
     verify_pdf,
 )
 
-SUBCOMMANDS = {"search", "tailor", "apply"}
+SUBCOMMANDS = {"search", "tailor", "apply", "applications"}
 DEMO_DIR = Path(__file__).resolve().parent / "tailor" / "demo"
 
 _VERDICT_STYLE = {"strong": "bold green", "possible": "yellow", "skip": "dim", "unscored": "red"}
@@ -435,6 +435,10 @@ def cmd_apply(console: Console, args: argparse.Namespace) -> int:
             drafter=drafter,
             answer_cache=settings.data_dir / "answers_cache.json",
             company=record.get("company", ""),
+            job_id=record.get("id", ""),
+            job_title=record.get("title", ""),
+            source=record.get("source", ""),
+            applications_log=settings.data_dir / "applications.json",
         )
         result = run_apply(cfg, io=io)
         _print_apply_result(console, result)
@@ -442,6 +446,29 @@ def cmd_apply(console: Console, args: argparse.Namespace) -> int:
     except PlaywrightNotInstalled as exc:
         console.print(f"[red]{exc}[/red]")
         return 1
+
+
+# --------------------------------------------------------------------------- #
+#  applications  (the gitignored apply-attempt log, as a table)
+# --------------------------------------------------------------------------- #
+
+def cmd_applications(console: Console, args: argparse.Namespace) -> int:
+    from job_agent.apply.tracker import load_applications
+
+    records = load_applications(Path(args.log))
+    if not records:
+        console.print("[dim]No applications logged yet — run `job_agent apply`.[/dim]")
+        return 0
+    table = Table(title=f"Applications ({len(records)})")
+    for col in ("Date", "Company", "Role", "Status", "Source", "Job id"):
+        table.add_column(col)
+    status_style = {"submitted": "bold green", "paused": "yellow", "failed": "red"}
+    for r in sorted(records, key=lambda r: r.date, reverse=True):
+        style = status_style.get(r.status, "white")
+        table.add_row(r.date[:16].replace("T", " "), r.company, r.title,
+                      f"[{style}]{r.status}[/{style}]", r.source, r.job_id)
+    console.print(table)
+    return 0
 
 
 # --------------------------------------------------------------------------- #
@@ -482,6 +509,10 @@ def _build_parser() -> argparse.ArgumentParser:
     a.add_argument("--out-dir", default="data/apply", help="Where to write logs/screenshots.")
     a.add_argument("--headed", action="store_true",
                    help="Demo only: show the browser window (demo defaults to headless).")
+
+    ap = sub.add_parser("applications", help="Show the log of every apply attempt.")
+    ap.add_argument("--log", default="data/applications.json",
+                    help="Path to the (gitignored) applications log.")
     return parser
 
 
@@ -492,7 +523,8 @@ def main(argv: list[str] | None = None) -> int:
         argv = ["search"] + argv
     args = _build_parser().parse_args(argv)
     console = Console()
-    dispatch = {"tailor": cmd_tailor, "apply": cmd_apply}
+    dispatch = {"tailor": cmd_tailor, "apply": cmd_apply,
+                "applications": cmd_applications}
     handler = dispatch.get(args.command, cmd_search)
     try:
         return handler(console, args)

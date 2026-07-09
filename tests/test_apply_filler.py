@@ -218,7 +218,12 @@ def test_word_boundaries_keep_state_out_of_statement_and_city_out_of_ethnicity()
         _f("#essay", FieldType.TEXTAREA, "Personal statement"),
         _f("#eth", FieldType.TEXT, "What is your ethnicity capacity limit?"),  # contrived
     ])
-    assert plan.planned == ()   # neither gets a location value
+    # Neither gets a LOCATION value ('state' inside 'statement', 'city' inside
+    # 'ethnicity'). The #eth field routes to the EEO resolver by wording — the
+    # point here is only that no city/state answer can land in it.
+    assert not any(p.field.selector == "#essay" for p in plan.planned)
+    assert all("Santa Clara" not in p.value and "California" not in p.value
+               for p in plan.planned)
 
 
 # --- office-location options: pause, never city/work_mode --------------------
@@ -571,6 +576,89 @@ def test_consent_still_pauses_regardless_of_eeo_keys():
     ), bank, CONTACT, None)
     assert plan.planned == ()
     assert "consent" in plan.unfilled[0].reason
+
+
+# --- Greenhouse EEO: real labels, radio/combobox controls -------------------------
+
+GH_EEO_BANK = AnswerBank.model_validate({
+    "authorized_us": True, "requires_sponsorship": False,
+    "gender": "Male", "hispanic_latino": "No",
+    "veteran_status": "I am not a protected veteran",
+    "disability_status": "No, I do not have a disability",
+})
+
+_GH_VETERAN_OPTIONS = (
+    "I am not a protected veteran",
+    "I identify as one or more of the classifications of a protected veteran",
+    "I don't wish to answer",
+)
+_GH_DISABILITY_OPTIONS = (
+    "Yes, I have a disability, or have had one in the past",
+    "No, I do not have a disability and have not had one in the past",
+    "I don't wish to answer",
+)
+
+
+def test_greenhouse_eeo_radio_groups_fill_from_the_bank():
+    # The reported bug: Greenhouse renders its EEO section as radio groups, so
+    # the fields classified as RADIO (not EEO) and bypassed the EEO resolver —
+    # all four showed [MISSING] despite banked answers. Real GH label strings.
+    plan = build_fill_plan((
+        _f("#g", FieldType.RADIO, "Gender",
+           options=["Male", "Female", "Decline To Self Identify"]),
+        _f("#h", FieldType.RADIO, "Are you Hispanic/Latino?",
+           options=["Yes", "No", "Decline To Self Identify"]),
+        _f("#v", FieldType.RADIO, "Veteran Status", options=_GH_VETERAN_OPTIONS),
+        _f("#d", FieldType.RADIO, "Disability Status", options=_GH_DISABILITY_OPTIONS),
+    ), GH_EEO_BANK, CONTACT, None)
+    assert _value(plan, "#g") == "Male"
+    assert _value(plan, "#h") == "No"
+    assert _value(plan, "#v") == "I am not a protected veteran"
+    assert _value(plan, "#d") == "No, I do not have a disability and have not had one in the past"
+    assert all(src.startswith("answer_bank.eeo") for src in _sources(plan).values())
+
+
+def test_greenhouse_eeo_combobox_fills_from_the_bank():
+    # New Greenhouse boards render EEO as React comboboxes — same bypass.
+    plan = build_fill_plan((
+        _f("#g", FieldType.COMBOBOX, "Gender",
+           options=["Male", "Female", "Decline To Self Identify"]),
+        _f("#v", FieldType.COMBOBOX, "Veteran Status", options=_GH_VETERAN_OPTIONS),
+    ), GH_EEO_BANK, CONTACT, None)
+    assert _value(plan, "#g") == "Male"
+    assert _value(plan, "#v") == "I am not a protected veteran"
+
+
+def test_unmatched_eeo_value_takes_the_decline_option_never_a_guess():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "gender": "Non-binary",     # not among this form's options
+    })
+    plan = build_fill_plan((
+        _f("#g", FieldType.RADIO, "Gender",
+           options=["Male", "Female", "Decline To Self Identify"]),
+    ), bank, CONTACT, None)
+    assert _value(plan, "#g") == "Decline To Self Identify"
+
+
+def test_eeo_with_no_match_and_no_decline_option_pauses():
+    bank = AnswerBank.model_validate({
+        "authorized_us": True, "requires_sponsorship": False,
+        "gender": "Non-binary",
+    })
+    plan = build_fill_plan((
+        _f("#g", FieldType.RADIO, "Gender", options=["Male", "Female"]),
+    ), bank, CONTACT, None)
+    assert plan.planned == ()               # never pick a wrong demographic answer
+
+
+def test_eeo_worded_consent_still_pauses_even_as_a_radio_group():
+    plan = build_fill_plan((
+        _f("#c", FieldType.RADIO, "Do you consent to processing of gender data?",
+           options=["Yes", "No"]),
+    ), GH_EEO_BANK, CONTACT, None)
+    assert plan.planned == ()
+    assert "never auto-filled" in plan.unfilled[0].reason
 
 
 # --- Hispanic/Latino vs race ---------------------------------------------------
