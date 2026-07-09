@@ -41,6 +41,9 @@ total_years_experience: 5
 # --- Common yes/no screeners (defaults shown; override if different) ----------
 previously_employed_here: "No"   # "Have you previously worked for this company?"
 whatsapp_optin: "No"             # "Receive application updates via WhatsApp?"
+# "How did you hear about this job?" — a plain generic source; never a
+# specific person (that would invent a referrer).
+how_heard: "LinkedIn"
 
 # --- Apply-specific links (contact proper comes from career_facts.yaml) ------
 # Employer / job title / school / degree are NOT here — they auto-fill from

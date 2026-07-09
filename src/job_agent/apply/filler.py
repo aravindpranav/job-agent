@@ -185,6 +185,14 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
     if "whatsapp" in hay:
         picked = _match_option(f.options, bank.whatsapp_optin) if f.options else bank.whatsapp_optin
         return (picked, "answer_bank.whatsapp_optin") if picked else None
+    # "How/where did you hear about this job?" — a plain source from the bank,
+    # answered deterministically so the LLM drafter never writes an essay for it.
+    if (_word(hay, "hear") or _word(hay, "heard")) and any(
+            w in hay for w in ("how", "where", "about")):
+        if not bank.how_heard:
+            return None
+        picked = _match_option(f.options, bank.how_heard) if f.options else bank.how_heard
+        return (picked, "answer_bank.how_heard") if picked else None
     # "Current/Last Company", "Current Employer", "Most recent company", ... —
     # the word "company"/"employer" needs a recency cue; a bare "Company name"
     # is ambiguous (could ask about a referral's company) and pauses.

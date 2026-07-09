@@ -20,6 +20,7 @@ from job_agent.apply.screening import (
     NEEDS_INPUT_MARKER,
     apply_drafts,
     build_draft_prompt,
+    classify_free_text,
     classify_question,
     make_drafter,
     store_approved_answers,
@@ -62,6 +63,84 @@ def test_router_consent_wins_over_everything():
     assert classify_question(_f("#e", FieldType.EEO, "Gender")) == "consent"
     assert classify_question(
         _f("#sms", FieldType.CHECKBOX, "I agree to receive SMS messages")) == "consent"
+
+
+def test_free_text_subtype_routing():
+    assert classify_free_text(
+        _f("#h", FieldType.TEXT, "How did you hear about this job?")) == "short_factual"
+    assert classify_free_text(
+        _f("#n", FieldType.TEXTAREA, "What is your notice period?")) == "short_factual"
+    assert classify_free_text(
+        _f("#w", FieldType.TEXTAREA, "Why do you want to work at Plaid?")) == "motivation"
+    assert classify_free_text(
+        _f("#i", FieldType.TEXTAREA, "What interests you about this role?")) == "motivation"
+    assert classify_free_text(
+        _f("#e", FieldType.TEXTAREA, "Describe a time you led a project")) == "experience"
+    assert classify_free_text(
+        _f("#p", FieldType.TEXTAREA, "Tell us about a project you are proud of")) == "experience"
+    assert classify_free_text(
+        _f("#g", FieldType.TEXTAREA, "Anything else we should know?")) == "general"
+
+
+# --- question-type-appropriate answers -------------------------------------------
+
+def test_how_did_you_hear_gets_a_short_plain_answer_no_llm():
+    # Deterministic from the bank (default "LinkedIn") — never an essay, never
+    # praise, never a specific invented referrer, and never an LLM call.
+    plan = build_fill_plan(
+        (_f("#hear", FieldType.TEXT, "How did you hear about this job?"),),
+        BANK, CONTACT, None)
+    (fill,) = plan.planned
+    assert fill.value == "LinkedIn"
+    assert fill.source == "answer_bank.how_heard"
+    assert len(fill.value.split()) < 15
+    for praise in ("excited", "passionate", "thrilled", "mission", "love", "admire"):
+        assert praise not in fill.value.lower()
+
+
+def test_how_did_you_hear_variants_map_and_never_reach_the_drafter():
+    called = []
+
+    def spy(field):
+        called.append(field.selector)
+        return None
+    plan = build_fill_plan((
+        _f("#h1", FieldType.TEXT, "How did you hear about us?"),
+        _f("#h2", FieldType.TEXTAREA, "Where did you hear about this position?"),
+    ), BANK, CONTACT, None)
+    apply_drafts(plan, spy)
+    assert {p.value for p in plan.planned} == {"LinkedIn"}
+    assert called == []                       # deterministic — the LLM never sees it
+
+
+def test_why_company_is_always_flagged_needs_input():
+    # Genuine per-company motivation isn't in the data: even a clean grounded
+    # draft (no marker from the model) must surface as NEEDS-INPUT.
+    drafter, calls = _drafter([GOOD])
+    fill = drafter(_f("#why", FieldType.TEXTAREA, "Why do you want to work at Plaid?"))
+    assert source_tag(fill.source) == "[NEEDS-INPUT]"
+    assert NEEDS_INPUT_MARKER in fill.value   # the flag line is added for the human
+    assert "MOTIVATION" in calls[0]           # type-specific instruction in the prompt
+
+
+def test_experience_question_is_star_prompted_and_stays_grounded():
+    drafter, calls = _drafter([GOOD])
+    fill = drafter(_f("#exp", FieldType.TEXTAREA,
+                      "Describe a time you improved a data pipeline"))
+    assert "STAR" in calls[0]                 # type-specific instruction
+    assert source_tag(fill.source) == "[AI-DRAFT]"     # clean grounded draft
+    # the no-fabrication gate is unchanged for experience answers:
+    drafter2, _ = _drafter([BAD, BAD])
+    fill2 = drafter2(_f("#exp2", FieldType.TEXTAREA, "Describe a time you cut costs"))
+    assert "GATE-FLAGGED" in fill2.source
+
+
+def test_short_factual_question_is_prompted_for_one_plain_answer():
+    drafter, calls = _drafter(["2 weeks"])
+    fill = drafter(_f("#np", FieldType.TEXTAREA, "What is your notice period?"))
+    assert "ONE short factual" in calls[0]
+    assert "flattery" in calls[0] or "enthusiasm" in calls[0]
+    assert fill.value == "2 weeks"
 
 
 # --- no-fabrication gate --------------------------------------------------------
@@ -116,7 +195,7 @@ def _drafter(responses, cache_path=None):
 def test_violating_draft_is_regenerated_then_clean():
     drafter, calls = _drafter([BAD, GOOD])
     fill = drafter(_f("#q", FieldType.TEXTAREA, "Why Plaid?"))
-    assert fill.value == GOOD
+    assert fill.value.startswith(GOOD)     # motivation appends its NEEDS-INPUT line
     assert fill.source.startswith("ai-draft")
     assert "GATE-FLAGGED" not in fill.source
     assert len(calls) == 2 and "REGENERATE" in calls[1]
@@ -192,7 +271,8 @@ def _integration_plan():
 def test_integration_tags_from_answer_bank_ai_draft_and_paused_consent():
     text = render_review(_integration_plan())
     assert "[FROM ANSWER_BANK]" in text and "$160k" in text
-    assert "[AI-DRAFT]" in text and GOOD in text
+    # A "why <company>" draft is a motivation answer -> always [NEEDS-INPUT].
+    assert "[NEEDS-INPUT]" in text and GOOD in text
     assert "[PAUSED: consent]" in text
     assert "AI-DRAFTED answers above" in text     # the read-before-approving banner
 
@@ -230,6 +310,6 @@ def test_cache_round_trip_re_reviews_as_ai_draft(tmp_path):
     store_approved_answers(cache, "Plaid", plan)          # simulate post-approval save
     drafter, calls = _drafter([], cache_path=cache)       # NO responses: must not call LLM
     fill = drafter(_f("#why2", FieldType.TEXTAREA, "Why do you want to work at Plaid?"))
-    assert fill.value == GOOD                             # pre-populated from cache
+    assert fill.value.startswith(GOOD)                    # pre-populated from cache
     assert calls == []                                    # no LLM call
     assert source_tag(fill.source) == "[AI-DRAFT]"        # still reviewed, never auto

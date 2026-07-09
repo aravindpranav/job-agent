@@ -64,6 +64,37 @@ def classify_question(field: FormField, reason: str = "") -> str:
     return "factual"
 
 
+# Sub-typing of free-text questions, so each gets a fitting ANSWER FORMAT
+# instead of one generic essay style. Checked in order: a factual cue wins
+# (short answer, no essay), then a story cue, then a motivation cue.
+_SHORT_FACTUAL_CUES = (
+    "hear about", "hear of", "heard about", "heard of", "notice period",
+    "start date", "earliest start", "referral source", "timezone", "time zone",
+)
+_EXPERIENCE_CUES = (
+    "describe a", "describe your", "tell us about a", "tell me about a",
+    "share an example", "walk us through", "give an example", "a time when",
+    "a time you",
+)
+_MOTIVATION_CUES = (
+    "why", "what interests", "what excites", "motivat", "interested in",
+    "want to work", "want to join",
+)
+
+
+def classify_free_text(field: FormField) -> str:
+    """Sub-route a free-text question:
+    'short_factual' | 'experience' | 'motivation' | 'general'."""
+    hay = f"{field.label} {field.name}".lower()
+    if any(cue in hay for cue in _SHORT_FACTUAL_CUES):
+        return "short_factual"
+    if any(cue in hay for cue in _EXPERIENCE_CUES):
+        return "experience"
+    if any(cue in hay for cue in _MOTIVATION_CUES):
+        return "motivation"
+    return "general"
+
+
 # --- no-fabrication gate -------------------------------------------------------
 
 # Past-employment phrasings only: "worked at X", "my time at X", "while at X".
@@ -133,9 +164,35 @@ _STRICTER_NUDGE = (
 )
 
 
+# Per-subtype answer-format instructions. Grounding rules are unchanged — these
+# only shape the FORM of the answer (length, structure, register).
+_TYPE_INSTRUCTIONS = {
+    "short_factual": (
+        "This is a SHORT FACTUAL question. Reply with ONE short factual "
+        "phrase or sentence — no essay, no flattery or enthusiasm about the "
+        "company, no restating the question. If the fact is not in the data, "
+        f"answer plainly with what is known and add a {NEEDS_INPUT_MARKER} line."
+    ),
+    "experience": (
+        "This is an EXPERIENCE question. Answer as ONE concise STAR story "
+        "(Situation, Task, Action, Result) using the single most relevant REAL "
+        "project from the employment history above — never a composite or "
+        "hypothetical."
+    ),
+    "motivation": (
+        "This is a MOTIVATION question. Write a short grounded paragraph "
+        "connecting the candidate's real experience to this job's stated work — "
+        "no generic praise of the company. The candidate's genuine personal "
+        "motivation is NOT in the data, so end with a line starting with "
+        f"'{NEEDS_INPUT_MARKER}' asking them to add it."
+    ),
+    "general": "",
+}
+
+
 def build_draft_prompt(field: FormField, facts: CareerFacts, bank: AnswerBank,
-                       jd: str, company: str) -> str:
-    """The grounded per-question prompt."""
+                       jd: str, company: str, qtype: str = "general") -> str:
+    """The grounded per-question prompt (``qtype`` shapes the answer format)."""
     skills = "; ".join(f"{k}: {', '.join(v)}" for k, v in facts.skills_inventory.items())
     banked = [m for e in facts.employers for m in e.real_metrics]
     history = "\n".join(
@@ -143,9 +200,12 @@ def build_draft_prompt(field: FormField, facts: CareerFacts, bank: AnswerBank,
         for e in facts.employers)
     limit = (f"\nHARD LENGTH LIMIT: {field.max_length} characters."
              if field.max_length else "")
+    type_note = _TYPE_INSTRUCTIONS.get(qtype, "")
+    type_block = f"{type_note}\n\n" if type_note else ""
     return (
         f"QUESTION (from {company or 'the employer'}'s application form):\n"
         f"{field.label or field.name}\n\n"
+        f"{type_block}"
         f"CANDIDATE CAREER FACTS (the ONLY employment history that exists):\n{history}\n"
         f"Education: {'; '.join(facts.education)}\n"
         f"Certifications: {'; '.join(c.name for c in facts.certifications)}\n"
@@ -183,7 +243,8 @@ def make_drafter(generate: Callable[[str], str], facts: CareerFacts, bank: Answe
         if cached:
             return PlannedFill(field, trim_to_limit(cached["answer"], field.max_length),
                                "ai-draft (cached — you approved this before; re-review)")
-        prompt = build_draft_prompt(field, facts, bank, jd, company)
+        qtype = classify_free_text(field)
+        prompt = build_draft_prompt(field, facts, bank, jd, company, qtype)
         try:
             text = generate(prompt).strip()
         except Exception:
@@ -195,10 +256,15 @@ def make_drafter(generate: Callable[[str], str], facts: CareerFacts, bank: Answe
             except Exception:
                 return None
             violations = verify_answer(text, facts, company)
+        # Genuine per-company motivation is never in the data: guarantee the
+        # flag in code, whether or not the model remembered to add it.
+        if qtype == "motivation" and NEEDS_INPUT_MARKER not in text:
+            text = (f"{text}\n{NEEDS_INPUT_MARKER} add your genuine reason for "
+                    f"wanting to work at {company or 'this company'}.")
         text = trim_to_limit(text, field.max_length)
         if violations:
             source = "ai-draft GATE-FLAGGED: " + "; ".join(violations)
-        elif NEEDS_INPUT_MARKER in text:
+        elif qtype == "motivation" or NEEDS_INPUT_MARKER in text:
             source = "ai-draft NEEDS-INPUT (see the flag line — add what's missing)"
         else:
             source = "ai-draft (grounded in career facts + JD; review before approving)"

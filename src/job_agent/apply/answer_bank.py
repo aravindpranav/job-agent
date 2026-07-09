@@ -98,6 +98,9 @@ class AnswerBank(BaseModel):
     # --- common yes/no screeners (sensible defaults, overridable) ------------
     previously_employed_here: str = "No"   # "Have you previously worked here?"
     whatsapp_optin: str = "No"             # "Receive updates via WhatsApp?"
+    # "How did you hear about this job?" — a plain generic source, deliberately
+    # never a specific referrer (that would be inventing a person). Overridable.
+    how_heard: str = "LinkedIn"
 
     # --- EEO / demographic, top-level (optional; overrides the eeo block) ----
     # Resolved deterministically — never LLM-drafted, never guessed. An absent
