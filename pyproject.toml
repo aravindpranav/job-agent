@@ -32,6 +32,12 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "respx>=0.21",
+    "fastapi>=0.110",
+]
+# Local web dashboard (`python -m job_agent dashboard`).
+dashboard = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 
 [project.scripts]

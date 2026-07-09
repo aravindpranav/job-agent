@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>job-agent — mission control</title>
+<style>
+  /* ── mission-control terminal: warm charcoal, instrument amber ─────────── */
+  :root {
+    --bg: #16130e;
+    --panel: #1d1913;
+    --panel-2: #232014;
+    --hairline: #2f2a20;
+    --ink: #e9e2d4;
+    --muted: #9d937e;
+    --faint: #6b6252;
+    --amber: #e0a458;
+    --good: #8ec98f;
+    --warn: #e3b962;
+    --bad: #e08078;
+    --dim: #7b7264;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, #241e12 0%, transparent 60%);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    padding: 0 28px 80px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  /* header as a status bar */
+  header {
+    display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+    padding: 26px 0 14px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  header h1 {
+    font-family: var(--serif);
+    font-size: 26px; font-weight: 500; letter-spacing: .5px;
+    color: var(--ink);
+  }
+  header h1 .tick { color: var(--amber); }
+  header .sub { color: var(--faint); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  header .spacer { flex: 1; }
+  #clock { color: var(--muted); font-size: 11px; }
+
+  section { margin-top: 42px; }
+  .sec-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 14px;
+  }
+  .sec-label::before { content: ""; display: inline-block; width: 26px; height: 1px; background: var(--amber); }
+  .sec-label .n { color: var(--faint); letter-spacing: 0; }
+
+  /* instrument readouts (stat tiles) */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .tile {
+    background: var(--panel); border: 1px solid var(--hairline); border-radius: 6px;
+    padding: 14px 16px 12px; position: relative; overflow: hidden;
+  }
+  .tile::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--tile-edge, var(--hairline)); }
+  .tile .k { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-size: 30px; font-variant-numeric: tabular-nums; margin-top: 2px; color: var(--tile-ink, var(--ink)); }
+  .tile.total    { --tile-edge: var(--dim); }
+  .tile.submitted{ --tile-edge: var(--good);  --tile-ink: var(--good); }
+  .tile.paused   { --tile-edge: var(--warn);  --tile-ink: var(--warn); }
+  .tile.failed   { --tile-edge: var(--bad);   --tile-ink: var(--bad); }
+
+  /* tables: recessive grid, mono numerals */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--faint); font-weight: 400; padding: 6px 10px; border-bottom: 1px solid var(--hairline);
+  }
+  td { padding: 8px 10px; border-bottom: 1px solid #221e16; vertical-align: top; }
+  tr:hover td { background: #1c1812; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--faint); }
+  a:hover { color: var(--amber); border-bottom-color: var(--amber); }
+  .co { color: var(--muted); }
+  .loc { color: var(--dim); }
+  .date { color: var(--muted); white-space: nowrap; }
+
+  /* status & verdict chips — always text + color, never color alone */
+  .chip {
+    display: inline-block; padding: 1px 8px; border-radius: 999px;
+    font-size: 11px; border: 1px solid currentColor;
+  }
+  .st-submitted { color: var(--good); }
+  .st-paused    { color: var(--warn); }
+  .st-failed    { color: var(--bad); }
+  .vd-strong    { color: var(--good); }
+  .vd-possible  { color: var(--warn); }
+  .vd-skip      { color: var(--dim); }
+  .vd-unscored  { color: var(--bad); }
+  .score { font-size: 16px; font-variant-numeric: tabular-nums; }
+
+  /* buttons */
+  button {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+    background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--hairline); border-radius: 4px;
+    padding: 5px 12px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); }
+  button:disabled { opacity: .45; cursor: wait; }
+  button.primary { border-color: var(--amber); color: var(--amber); }
+  .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .controls input {
+    width: 56px; background: var(--panel); color: var(--ink); border: 1px solid var(--hairline);
+    border-radius: 4px; padding: 5px 8px; font-family: var(--mono); font-size: 12px;
+  }
+  .hint { color: var(--faint); font-size: 11px; }
+
+  /* apply-preview panel */
+  #preview { display: none; margin-top: 20px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--panel); }
+  #preview.open { display: block; }
+  #preview .head {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--hairline);
+  }
+  #preview .head b { font-family: var(--serif); font-size: 15px; font-weight: 500; }
+  #preview .body { padding: 14px 16px; }
+  .plan-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid #221e16; }
+  .plan-row .f { color: var(--muted); overflow-wrap: anywhere; }
+  .plan-row .v { overflow-wrap: anywhere; white-space: pre-wrap; }
+  .tag { font-size: 10px; letter-spacing: .06em; margin-right: 8px; }
+  .tag-bank    { color: var(--good); }
+  .tag-draft   { color: var(--amber); }
+  .tag-needs   { color: var(--warn); }
+  .tag-flagged { color: var(--bad); }
+  .tag-consent { color: var(--bad); }
+  .tag-cred    { color: var(--bad); }
+  .tag-missing { color: var(--dim); }
+  .tag-manual  { color: var(--muted); }
+  .gatebox {
+    margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--amber);
+    border-radius: 6px; color: var(--warn); font-size: 12px;
+  }
+  .gatebox code {
+    display: block; margin-top: 8px; padding: 8px 10px; background: var(--bg);
+    border-radius: 4px; color: var(--ink); user-select: all;
+  }
+  .empty { color: var(--faint); padding: 18px 4px; }
+  #searchlog {
+    display: none; white-space: pre-wrap; background: var(--bg); border: 1px solid var(--hairline);
+    border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; color: var(--muted);
+    font-size: 11px; max-height: 220px; overflow: auto;
+  }
+  .err { color: var(--bad); }
+  @media (max-width: 760px) { .plan-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="tick">▮</span> job-agent</h1>
+  <span class="sub">mission control — localhost only</span>
+  <span class="spacer"></span>
+  <span id="clock"></span>
+</header>
+
+<!-- ── 1 · APPLICATION PIPELINE ─────────────────────────────────────────── -->
+<section id="sec-apps">
+  <div class="sec-label"><span class="n">01</span> Applications</div>
+  <div class="tiles" id="tiles"></div>
+  <div id="apps-table"></div>
+</section>
+
+<!-- ── 2 · SEARCH + BROWSE ──────────────────────────────────────────────── -->
+<section id="sec-search">
+  <div class="sec-label"><span class="n">02</span> Search</div>
+  <div class="controls">
+    <button class="primary" id="btn-search">▶ run fresh search</button>
+    <label class="hint">window <input id="days" type="number" min="1" max="90" value="7"> days</label>
+    <span class="hint" id="gen-at"></span>
+  </div>
+  <div id="searchlog"></div>
+  <div id="jobs-table"></div>
+</section>
+
+<!-- ── 3 · APPLY PREVIEW (human gate preserved) ─────────────────────────── -->
+<section id="sec-apply">
+  <div class="sec-label"><span class="n">03</span> Apply — review plan</div>
+  <p class="hint">“Apply” shows the fill plan the agent WOULD use — nothing is filled or
+     submitted from here. Real submission keeps its human gate in the terminal.</p>
+  <div id="preview"></div>
+</section>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g,
+  (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function api(path, opts) {
+  const resp = await fetch(path, opts);
+  if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).detail || resp.statusText);
+  return resp.json();
+}
+
+/* ── 1 · applications ─────────────────────────────────────────────────── */
+async function loadApplications() {
+  const data = await api("/api/applications");
+  const c = data.counts;
+  $("#tiles").innerHTML = ["total", "submitted", "paused", "failed"].map((k) =>
+    `<div class="tile ${k}"><div class="k">${k}</div><div class="v">${c[k]}</div></div>`).join("");
+  if (!data.records.length) {
+    $("#apps-table").innerHTML = `<div class="empty">No applications logged yet — apply to something.</div>`;
+    return;
+  }
+  const rows = data.records.map((r) => `
+    <tr>
+      <td class="date">${esc((r.date || "").slice(0, 16).replace("T", " "))}</td>
+      <td>${esc(r.company)}</td>
+      <td class="co">${esc(r.title)}</td>
+      <td><span class="chip st-${esc(r.status)}">${esc(r.status)}</span></td>
+      <td class="loc">${esc(r.source)}</td>
+    </tr>`).join("");
+  $("#apps-table").innerHTML =
+    `<table><thead><tr><th>date</th><th>company</th><th>role</th><th>status</th><th>source</th></tr></thead>
+     <tbody>${rows}</tbody></table>`;
+}
+
+/* ── 2 · jobs ─────────────────────────────────────────────────────────── */
+function renderJobs(data) {
+  $("#gen-at").textContent = data.generated_at
+    ? `last search: ${data.generated_at.slice(0, 16).replace("T", " ")} UTC` : "no saved search yet";
+  if (!data.jobs.length) {
+    $("#jobs-table").innerHTML = `<div class="empty">No results — run a fresh search.</div>`;
+    return;
+  }
+  const rows = data.jobs.map((j) => `
+    <tr>
+      <td class="num score">${j.score ?? "—"}</td>
+      <td><span class="chip vd-${esc(j.verdict || "unscored")}">${esc(j.verdict || "unscored")}</span></td>
+      <td>${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noreferrer">${esc(j.title)}</a>` : esc(j.title)}</td>
+      <td class="co">${esc(j.company)}</td>
+      <td class="loc">${esc(j.location)}</td>
+      <td class="loc">${esc(j.source)}</td>
+      <td style="white-space:nowrap">
+        <button data-tailor="${esc(j.id)}">tailor</button>
+        <button data-apply="${esc(j.id)}">apply…</button>
+        <span class="hint" data-out="${esc(j.id)}"></span>
+      </td>
+    </tr>`).join("");
+  $("#jobs-table").innerHTML =
+    `<table><thead><tr><th style="text-align:right">score</th><th>verdict</th><th>title</th>
+     <th>company</th><th>location</th><th>src</th><th>actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function loadJobs() { renderJobs(await api("/api/jobs")); }
+
+async function runSearch() {
+  const btn = $("#btn-search");
+  btn.disabled = true; btn.textContent = "◌ searching… (fetch + LLM scoring, may take minutes)";
+  const log = $("#searchlog");
+  log.style.display = "block"; log.textContent = "running the search pipeline…";
+  try {
+    const data = await api("/api/search", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({days: Number($("#days").value) || 7}),
+    });
+    log.textContent = data.output || "";
+    log.classList.toggle("err", !data.ok);
+    renderJobs(data);
+  } catch (e) {
+    log.classList.add("err"); log.textContent = "search failed: " + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "▶ run fresh search";
+  }
+}
+
+/* ── 3 · tailor + apply preview ───────────────────────────────────────── */
+async function runTailor(id, out) {
+  out.textContent = "tailoring…";
+  out.classList.remove("err");
+  try {
+    const data = await api("/api/tailor", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({job_id: id}),
+    });
+    out.textContent = data.ok ? `✓ ${data.pdf || "done"}` : "✗ gate failed — see server log";
+    out.classList.toggle("err", !data.ok);
+  } catch (e) { out.classList.add("err"); out.textContent = "✗ " + e.message; }
+}
+
+const TAG_CLASS = {
+  "[FROM ANSWER_BANK]": "tag-bank", "[AI-DRAFT]": "tag-draft",
+  "[NEEDS-INPUT]": "tag-needs", "[GATE-FLAGGED]": "tag-flagged",
+  "[PAUSED: consent]": "tag-consent", "[PAUSED: credential]": "tag-cred",
+  "[MISSING]": "tag-missing", "[MANUAL]": "tag-manual",
+};
+const tagHtml = (t) => `<span class="tag ${TAG_CLASS[t] || "tag-manual"}">${esc(t)}</span>`;
+
+async function previewApply(id, out) {
+  out.textContent = "reading the form…";
+  out.classList.remove("err");
+  const panel = $("#preview");
+  panel.classList.add("open");
+  panel.innerHTML = `<div class="body empty">opening ${esc(id)} headless and reading its form…</div>`;
+  panel.scrollIntoView({behavior: "smooth", block: "nearest"});
+  try {
+    const p = await api("/api/apply/preview", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({job_id: id}),
+    });
+    out.textContent = "";
+    const planned = p.planned.map((f) => `
+      <div class="plan-row">
+        <div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
+        <div class="v">${tagHtml(f.tag)}${esc(f.value)}</div>
+      </div>`).join("") || `<div class="empty">nothing auto-fillable</div>`;
+    const unfilled = p.unfilled.map((f) => `
+      <div class="plan-row">
+        <div class="f">${esc(f.label)}${f.required ? " *" : ""}</div>
+        <div class="v">${tagHtml(f.tag)}<span class="hint">${esc(f.reason)}</span></div>
+      </div>`).join("") || `<div class="empty">nothing paused</div>`;
+    panel.innerHTML = `
+      <div class="head"><b>${esc(p.job.company)} — ${esc(p.job.title)}</b>
+        <span class="hint">${p.planned.length} will fill · ${p.unfilled.length} paused
+        · ${p.missing_required} required missing</span></div>
+      <div class="body">
+        <div class="sec-label">will fill (${p.planned.length})</div>${planned}
+        <div class="sec-label" style="margin-top:18px">left empty — never guessed (${p.unfilled.length})</div>${unfilled}
+        <div class="gatebox">⚠ Nothing was filled or submitted. To actually apply — with the same
+          review + explicit approval gate — run this in your terminal:
+          <code>${esc(p.submit_command)}</code></div>
+      </div>`;
+  } catch (e) {
+    out.textContent = "";
+    panel.innerHTML = `<div class="body err" style="padding:14px 16px">preview failed: ${esc(e.message)}</div>`;
+  }
+}
+
+document.addEventListener("click", (ev) => {
+  const t = ev.target;
+  if (t.dataset.tailor) runTailor(t.dataset.tailor, document.querySelector(`[data-out="${t.dataset.tailor}"]`));
+  if (t.dataset.apply) previewApply(t.dataset.apply, document.querySelector(`[data-out="${t.dataset.apply}"]`));
+});
+$("#btn-search").addEventListener("click", runSearch);
+setInterval(() => { $("#clock").textContent = new Date().toISOString().slice(0, 19).replace("T", " ") + "Z"; }, 1000);
+
+loadApplications().catch((e) => $("#apps-table").innerHTML = `<div class="err">${esc(e.message)}</div>`);
+loadJobs().catch((e) => $("#jobs-table").innerHTML = `<div class="err">${esc(e.message)}</div>`);
+</script>
+</body>
+</html>

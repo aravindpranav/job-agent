@@ -61,7 +61,7 @@ from job_agent.tailor.verify import (
     verify_pdf,
 )
 
-SUBCOMMANDS = {"search", "tailor", "apply", "applications"}
+SUBCOMMANDS = {"search", "tailor", "apply", "applications", "dashboard"}
 DEMO_DIR = Path(__file__).resolve().parent / "tailor" / "demo"
 
 _VERDICT_STYLE = {"strong": "bold green", "possible": "yellow", "skip": "dim", "unscored": "red"}
@@ -472,6 +472,29 @@ def cmd_applications(console: Console, args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------- #
+#  dashboard  (local web UI over the same functions — 127.0.0.1 ONLY)
+# --------------------------------------------------------------------------- #
+
+def cmd_dashboard(console: Console, args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]The dashboard needs fastapi + uvicorn:[/red] "
+                      "pip install 'job-agent[dashboard]' (or pip install fastapi uvicorn)")
+        return 1
+    from job_agent.dashboard.app import create_app
+
+    settings = load_settings()
+    app = create_app(data_dir=settings.data_dir, profile_path=Path(args.profile))
+    console.print(f"[bold cyan]job-agent dashboard[/bold cyan] — "
+                  f"http://127.0.0.1:{args.port}  (local only; Ctrl-C to stop)")
+    # 127.0.0.1 is deliberate and not configurable: this UI serves personal
+    # data (application history, career facts) with no auth layer.
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="job_agent",
@@ -513,6 +536,10 @@ def _build_parser() -> argparse.ArgumentParser:
     ap = sub.add_parser("applications", help="Show the log of every apply attempt.")
     ap.add_argument("--log", default="data/applications.json",
                     help="Path to the (gitignored) applications log.")
+
+    d = sub.add_parser("dashboard", help="Local web dashboard (binds 127.0.0.1 only).")
+    d.add_argument("--port", type=int, default=8642)
+    d.add_argument("--profile", default="search_profile.yaml")
     return parser
 
 
@@ -524,7 +551,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     console = Console()
     dispatch = {"tailor": cmd_tailor, "apply": cmd_apply,
-                "applications": cmd_applications}
+                "applications": cmd_applications, "dashboard": cmd_dashboard}
     handler = dispatch.get(args.command, cmd_search)
     try:
         return handler(console, args)
