@@ -209,6 +209,51 @@ def test_jobs_endpoint_joins_tracked_state_by_job_id(tmp_path):
     assert j2["tracked"] is None                    # never touched
 
 
+def test_setting_applied_on_a_never_tracked_job_creates_and_persists(tmp_path):
+    # The manual-application case: the tool never applied to this job, there is
+    # NO tracker record — picking "applied" in the dropdown must create one on
+    # the spot and it must survive a page refresh (a fresh app over the file).
+    _seed_last_search(tmp_path / "last_search.json")
+    c = TestClient(create_app(data_dir=tmp_path))
+    assert c.get("/api/applications").json()["counts"]["total"] == 0
+
+    resp = c.post("/api/track", json={"job_id": "j2", "company": "Stripe",
+                                      "title": "AI Engineer", "source": "greenhouse",
+                                      "status": "applied"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "applied"
+
+    # "refresh": a brand-new app instance reading the same data dir
+    c2 = TestClient(create_app(data_dir=tmp_path))
+    data = c2.get("/api/applications").json()
+    (rec,) = data["records"]
+    assert (rec["job_id"], rec["status"], rec["company"]) == ("j2", "applied", "Stripe")
+    jobs = c2.get("/api/jobs").json()["jobs"]
+    j2 = next(j for j in jobs if j["id"] == "j2")
+    assert j2["tracked"]["status"] == "applied"        # dropdown state after reload
+
+
+def test_records_without_a_job_id_are_updatable_by_attempt_id(tmp_path):
+    # Old/manual records may have job_id="" — their dropdown must still work,
+    # keyed by attempt_id instead.
+    from job_agent.apply.tracker import record_attempt, ApplicationRecord, load_applications
+    log = tmp_path / "applications.json"
+    attempt = record_attempt(log, ApplicationRecord(
+        company="OldCo", title="DS", job_id="", source="",
+        date="2026-07-01T00:00:00+00:00", status="paused"))
+    c = TestClient(create_app(data_dir=tmp_path))
+    resp = c.post("/api/track", json={"attempt_id": attempt, "status": "interviewing"})
+    assert resp.status_code == 200
+    (rec,) = load_applications(log)
+    assert rec.status == "interviewing"
+    assert len(load_applications(log)) == 1            # updated, not duplicated
+
+
+def test_track_needs_a_job_id_or_attempt_id(tmp_path):
+    c = TestClient(create_app(data_dir=tmp_path))
+    assert c.post("/api/track", json={"status": "applied"}).status_code == 422
+
+
 # --- feature: inline resume preview (served ONLY from the output dir) ------------------
 
 def test_resume_endpoint_serves_the_tailored_pdf(tmp_path):

@@ -84,23 +84,31 @@ def update_status(path: str | Path, attempt_id: str, status: Status,
     _write(path, records)
 
 
-def upsert_job_state(path: str | Path, *, job_id: str, company: str = "",
-                     title: str = "", source: str = "", status: Status | None = None,
-                     notes: str | None = None, follow_up: str | None = None,
+def upsert_job_state(path: str | Path, *, job_id: str = "", attempt_id: str = "",
+                     company: str = "", title: str = "", source: str = "",
+                     status: Status | None = None, notes: str | None = None,
+                     follow_up: str | None = None,
                      now: datetime | None = None) -> ApplicationRecord:
     """Set user-managed state for one job, creating its record if none exists.
 
-    Targets the MOST RECENT record with this ``job_id``; a job never tracked
-    before gets a fresh record (default status "saved"). Only the fields
-    actually passed are changed — None means "leave as is". Immutable style:
-    the file is rewritten with a new records list.
+    Targets the MOST RECENT record with this ``job_id`` — or, for records that
+    carry no job id (old/manual entries), the record with ``attempt_id``. A job
+    never tracked before gets a fresh record (default status "saved"). Only the
+    fields actually passed are changed — None means "leave as is". Immutable
+    style: the file is rewritten with a new records list.
     """
-    if not job_id:
-        raise ValueError("upsert_job_state needs a non-empty job_id")
+    if not job_id and not attempt_id:
+        raise ValueError("upsert_job_state needs a job_id or an attempt_id")
     path = Path(path)
     records = load_applications(path)
-    idx = next((i for i in range(len(records) - 1, -1, -1)
-                if records[i].job_id == job_id), None)
+    if attempt_id and not job_id:
+        idx = next((i for i, r in enumerate(records)
+                    if r.attempt_id == attempt_id), None)
+        if idx is None:
+            raise KeyError(f"no record with attempt_id {attempt_id!r}")
+    else:
+        idx = next((i for i in range(len(records) - 1, -1, -1)
+                    if records[i].job_id == job_id), None)
     if idx is None:
         record = ApplicationRecord(
             company=company or "Unknown", title=title, job_id=job_id,

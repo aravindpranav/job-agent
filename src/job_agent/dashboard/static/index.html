@@ -243,11 +243,30 @@ const pill = (v, extra = "") => v
 const followFlag = (r) => r && r.needs_follow_up
   ? ` <span class="pill p-followup">needs follow-up</span>` : "";
 
-function statusSelect(jobId, current, meta) {
+function statusSelect(jobId, current, meta, attemptId = "") {
+  // Keyed by job_id when we have one (creates the record on first use — a
+  // manually-submitted application needs no prior run); by attempt_id for old
+  // records without a job id. One of the two is always present.
   const opts = ["<option value=''>—</option>"].concat(ALL_STATUSES.map((s) =>
     `<option value="${s}" ${s === current ? "selected" : ""}>${s}</option>`));
-  return `<select class="status" data-status-for="${esc(jobId)}"
+  return `<select class="status" data-status-for="${esc(jobId || attemptId)}"
+            data-ids='${esc(JSON.stringify({job_id: jobId || "", attempt_id: attemptId || ""}))}'
             data-meta='${esc(JSON.stringify(meta))}'>${opts.join("")}</select>`;
+}
+
+function toast(msg) {
+  let el = $("#toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    el.style.cssText = "position:fixed;top:16px;right:16px;z-index:50;background:#B91C1C;" +
+      "color:#fff;padding:10px 14px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);max-width:420px";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = "none"; }, 6000);
 }
 
 /* ── Applications ─────────────────────────────────────────────────────── */
@@ -274,19 +293,21 @@ function renderApps() {
   }
   const body = rows.map((r) => {
     const meta = {company: r.company, title: r.title, source: r.source};
+    const key = r.job_id || r.attempt_id;      // every record is addressable
+    const ids = {job_id: r.job_id || "", attempt_id: r.attempt_id || ""};
     return `
     <tr>
       <td class="date">${esc((r.date || "").slice(0, 10))}</td>
       <td>${esc(r.company)}</td>
       <td class="co">${esc(r.title)}</td>
-      <td>${statusSelect(r.job_id, r.status, meta)}${followFlag(r)}</td>
+      <td>${statusSelect(r.job_id, r.status, meta, r.attempt_id)}${followFlag(r)}</td>
       <td class="src">${esc(r.source)}</td>
       <td class="date">${esc(r.follow_up) || "<span class='loc'>—</span>"}</td>
       <td><span class="note-preview">${esc(r.notes)}</span></td>
-      <td><button class="ghost" data-edit="${esc(r.job_id)}">Edit</button></td>
+      <td><button class="ghost" data-edit="${esc(key)}">Edit</button></td>
     </tr>
-    <tr class="editor hidden" data-editor="${esc(r.job_id)}"><td colspan="8">
-      ${editorHtml(r.job_id, r, meta)}</td></tr>`;
+    <tr class="editor hidden" data-editor="${esc(key)}"><td colspan="8">
+      ${editorHtml(key, r, meta, ids)}</td></tr>`;
   }).join("");
   $("#apps-table").innerHTML =
     `<table><thead><tr><th>Date</th><th>Company</th><th>Role</th><th>Status</th>
@@ -294,17 +315,19 @@ function renderApps() {
      <tbody>${body}</tbody></table>`;
 }
 
-function editorHtml(jobId, r, meta) {
+function editorHtml(key, r, meta, ids = null) {
+  ids = ids || {job_id: key, attempt_id: ""};
   return `<div class="editor-grid">
     <div>
       <label style="color:var(--muted);font-size:12px">Notes — recruiter, why applied, next steps</label>
-      <textarea data-notes="${esc(jobId)}">${esc(r?.notes || "")}</textarea>
+      <textarea data-notes="${esc(key)}">${esc(r?.notes || "")}</textarea>
     </div>
     <div class="editor-side">
       <label>Follow up by</label>
-      <input type="date" data-followup="${esc(jobId)}" value="${esc(r?.follow_up || "")}">
-      <button class="primary" data-save="${esc(jobId)}" data-meta='${esc(JSON.stringify(meta))}'>Save</button>
-      <span class="inline-out" data-saveout="${esc(jobId)}"></span>
+      <input type="date" data-followup="${esc(key)}" value="${esc(r?.follow_up || "")}">
+      <button class="primary" data-save="${esc(key)}" data-ids='${esc(JSON.stringify(ids))}'
+        data-meta='${esc(JSON.stringify(meta))}'>Save</button>
+      <span class="inline-out" data-saveout="${esc(key)}"></span>
     </div>
   </div>`;
 }
@@ -403,18 +426,21 @@ async function runSearch() {
 }
 
 /* ── track: status / notes / follow-up ────────────────────────────────── */
-async function saveTrack(jobId, fields, meta, outEl) {
+async function saveTrack(ids, fields, meta, outEl) {
   try {
-    const rec = await post("/api/track", {job_id: jobId, ...meta, ...fields});
+    const rec = await post("/api/track", {...ids, ...meta, ...fields});
     // reflect into local state without a refetch
-    const i = APPS.findIndex((r) => r.job_id === jobId);
+    const i = APPS.findIndex((r) =>
+      (rec.attempt_id && r.attempt_id === rec.attempt_id) || (rec.job_id && r.job_id === rec.job_id));
     if (i >= 0) APPS[i] = rec; else APPS.unshift(rec);
-    const j = JOBS.find((x) => String(x.id) === String(jobId));
+    const j = JOBS.find((x) => rec.job_id && String(x.id) === String(rec.job_id));
     if (j) j.tracked = rec;
     renderApps(); renderJobs();
     if (outEl) outEl.textContent = "Saved ✓";
   } catch (e) {
+    // never fail silently — a dropdown change has no inline output element
     if (outEl) { outEl.textContent = "✗ " + e.message; outEl.classList.add("err"); }
+    else toast("Could not save status: " + e.message);
   }
 }
 
@@ -578,7 +604,7 @@ document.addEventListener("click", (ev) => {
   }
   if (t.dataset.save) {
     const id = t.dataset.save;
-    saveTrack(id, {
+    saveTrack(JSON.parse(t.dataset.ids || "{}"), {
       notes: document.querySelector(`[data-notes="${id}"]`).value,
       follow_up: document.querySelector(`[data-followup="${id}"]`).value || "",
     }, JSON.parse(t.dataset.meta || "{}"),
@@ -588,7 +614,8 @@ document.addEventListener("click", (ev) => {
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (t.dataset.statusFor && t.value)
-    saveTrack(t.dataset.statusFor, {status: t.value}, JSON.parse(t.dataset.meta || "{}"), null);
+    saveTrack(JSON.parse(t.dataset.ids || "{}"), {status: t.value},
+              JSON.parse(t.dataset.meta || "{}"), null);
 });
 ["af-status", "af-source", "af-sort"].forEach((id) => $("#" + id).addEventListener("change", renderApps));
 ["jf-status", "jf-source", "jf-sort"].forEach((id) => $("#" + id).addEventListener("change", renderJobs));

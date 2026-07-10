@@ -12,7 +12,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from job_agent.apply.tracker import Status, upsert_job_state
 from job_agent.dashboard import service
@@ -40,15 +40,27 @@ class EditRequest(SessionRequest):
 
 
 class TrackRequest(BaseModel):
-    """User-managed state for one job: status pipeline, notes, follow-up date."""
+    """User-managed state for one job: status pipeline, notes, follow-up date.
 
-    job_id: str = Field(min_length=1)
+    Keyed by ``job_id`` (creates the record on first use — a manually-submitted
+    application needs no prior apply run), or by ``attempt_id`` for old records
+    that carry no job id.
+    """
+
+    job_id: str = ""
+    attempt_id: str = ""
     company: str = ""
     title: str = ""
     source: str = ""
     status: Status | None = None
     notes: str | None = None
     follow_up: str | None = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
+
+    @model_validator(mode="after")
+    def _keyed(self) -> "TrackRequest":
+        if not self.job_id and not self.attempt_id:
+            raise ValueError("job_id or attempt_id is required")
+        return self
 
 
 def create_app(*, data_dir: Path = Path("data"),
@@ -99,10 +111,14 @@ def create_app(*, data_dir: Path = Path("data"),
 
     @app.post("/api/track")
     def track(req: TrackRequest) -> dict:
-        record = upsert_job_state(
-            data_dir / "applications.json", job_id=req.job_id, company=req.company,
-            title=req.title, source=req.source, status=req.status,
-            notes=req.notes, follow_up=req.follow_up)
+        try:
+            record = upsert_job_state(
+                data_dir / "applications.json", job_id=req.job_id,
+                attempt_id=req.attempt_id, company=req.company,
+                title=req.title, source=req.source, status=req.status,
+                notes=req.notes, follow_up=req.follow_up)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
         return {**record.model_dump(),
                 "needs_follow_up": service._needs_follow_up(record)}
 
