@@ -172,9 +172,10 @@ def cmd_search(console: Console, args: argparse.Namespace) -> int:
     scored = score_jobs(outcome.jobs, settings, profile, method=args.method)
     saved = save_search(scored, outcome.boards, settings.data_dir / "last_search.json")
     # Hide roles with an in-flight application (everything is still SAVED above;
-    # this is a render-level filter — --include-applied overrides it).
+    # this is a render-level filter — --include-applied overrides it). getattr:
+    # programmatic callers (the dashboard) build their own Namespace.
     shown, hidden = scored, []
-    if not args.include_applied:
+    if not getattr(args, "include_applied", False):
         from job_agent.apply.tracker import applied_markers
         shown, hidden = _split_applied(
             scored, applied_markers(settings.data_dir / "applications.json"))

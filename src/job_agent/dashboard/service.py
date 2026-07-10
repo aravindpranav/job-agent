@@ -98,8 +98,11 @@ def run_search_cli(profile_path: str | Path, days: int = 7) -> dict:
     """Run the real search+score pipeline via the CLI's own command function."""
     from job_agent.cli import cmd_search
 
+    # Must define every attribute cmd_search reads (the dashboard's own
+    # "Hide applied" toggle filters client-side, so the printed table hides too).
     ns = Namespace(demo=False, profile=str(profile_path), days=days,
-                   max_age_hours=None, limit=None, method="structured")
+                   max_age_hours=None, limit=None, method="structured",
+                   include_applied=False)
     return _run_cli(cmd_search, ns)
 
 

@@ -151,6 +151,38 @@ def test_index_serves_the_single_page_ui(client):
         assert section in resp.text
 
 
+def test_run_search_cli_namespace_satisfies_cmd_search(tmp_path, monkeypatch):
+    # Regression: run_search_cli builds its own Namespace; cmd_search grew an
+    # `include_applied` read and crashed with AttributeError on this path.
+    # Stub the pipeline + scorer so the command runs to its LAST line offline.
+    from datetime import datetime, timezone
+
+    import job_agent.cli as cli
+    from job_agent.models import Job, ScoredJob
+    from job_agent.search import SearchOutcome, StageCounts
+    from job_agent.apply.tracker import upsert_job_state
+
+    job = Job(id="s1", title="ML Engineer", company="Snowflake", location="US",
+              url="http://x", source="ashby", posted_at=datetime.now(timezone.utc))
+    monkeypatch.setattr(cli.search, "run", lambda *a, **k: SearchOutcome(
+        jobs=[job], boards=["ashby/snowflake"], counts=StageCounts(fetched=1),
+        per_source={"ashby/snowflake": 1}, warnings=[]))
+    monkeypatch.setattr(cli, "score_jobs",
+                        lambda *a, **k: [ScoredJob(job=job, score=80, verdict="strong")])
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("JOB_AGENT_DATA_DIR", str(tmp_path))
+    profile = tmp_path / "profile.yaml"
+    profile.write_text("keywords: [ml]\nsources:\n  - {ats: ashby, board: snowflake}\n")
+    # this job is already applied -> the filter path must run, not crash
+    upsert_job_state(tmp_path / "applications.json", job_id="s1",
+                     company="Snowflake", title="ML Engineer", status="applied")
+
+    result = service.run_search_cli(profile, days=7)
+    assert result["ok"] is True, result["output"]          # no AttributeError
+    assert "Hid 1 job(s) you already applied to" in result["output"]
+    assert "Snowflake" in result["output"]                 # named in the hid note
+
+
 # --- feature: editable status / notes / follow-up -------------------------------------
 
 def test_track_endpoint_upserts_status_and_notes_and_persists(tmp_path):
