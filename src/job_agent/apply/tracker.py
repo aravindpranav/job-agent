@@ -13,6 +13,7 @@ missing or corrupt log reads as empty — tracking must never break an apply run
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -82,6 +83,43 @@ def update_status(path: str | Path, attempt_id: str, status: Status,
         for r in load_applications(path)
     ]
     _write(path, records)
+
+
+#: A job with one of these statuses has an application in flight — search views
+#: hide it (re-applying would be a duplicate). "rejected"/"saved"/"paused" stay
+#: visible: nothing was successfully applied, or the human may want to retry.
+APPLIED_STATUSES = frozenset({"applied", "submitted", "interviewing", "offer"})
+
+
+def _match_key(text: str) -> str:
+    """Loose identity for cross-run matching: lowercase, alnum words only."""
+    return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
+
+
+def applied_markers(path: str | Path) -> dict:
+    """The identity sets of every in-flight application, for exclusion checks.
+
+    ``ids`` match exactly; ``pairs`` are (company, title) match-keys so the same
+    role is recognized across search runs even when the source re-issues ids
+    (sr-search does).
+    """
+    ids: set[str] = set()
+    pairs: set[tuple[str, str]] = set()
+    for r in load_applications(path):
+        if r.status in APPLIED_STATUSES:
+            if r.job_id:
+                ids.add(str(r.job_id))
+            if r.company and r.title:
+                pairs.add((_match_key(r.company), _match_key(r.title)))
+    return {"ids": ids, "pairs": pairs}
+
+
+def is_already_applied(markers: dict, *, job_id: str, company: str, title: str) -> bool:
+    """True when this job already has an in-flight application (id or re-match)."""
+    if str(job_id) in markers["ids"]:
+        return True
+    return bool(company and title
+                and (_match_key(company), _match_key(title)) in markers["pairs"])
 
 
 def upsert_job_state(path: str | Path, *, job_id: str = "", attempt_id: str = "",

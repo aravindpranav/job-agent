@@ -112,6 +112,64 @@ def test_upsert_requires_a_job_id(tmp_path):
         upsert_job_state(tmp_path / "a.json", job_id="", status="saved")
 
 
+# --- already-applied markers (feeds the search views' exclusion) ---------------------
+
+def test_applied_markers_cover_the_in_flight_statuses_only(tmp_path):
+    from job_agent.apply.tracker import applied_markers, is_already_applied
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="a1", status="applied", company="Plaid",
+                                title="ML Engineer"))
+    record_attempt(log, _record(job_id="a2", status="submitted", company="Snowflake",
+                                title="Senior AI Engineer"))
+    record_attempt(log, _record(job_id="a3", status="paused", company="Stripe",
+                                title="AI Engineer"))
+    record_attempt(log, _record(job_id="a4", status="saved", company="Figma",
+                                title="DS"))
+    markers = applied_markers(log)
+    assert is_already_applied(markers, job_id="a1", company="", title="")
+    assert is_already_applied(markers, job_id="a2", company="", title="")
+    assert not is_already_applied(markers, job_id="a3", company="", title="")   # paused
+    assert not is_already_applied(markers, job_id="a4", company="", title="")   # saved
+
+
+def test_company_title_rematch_catches_a_different_job_id(tmp_path):
+    # sr-search ids can differ across runs — the same role must still be caught.
+    from job_agent.apply.tracker import applied_markers, is_already_applied
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="old-123", status="applied",
+                                company="ServiceNow",
+                                title="Machine Learning Engineer, Agentic Systems"))
+    markers = applied_markers(log)
+    assert is_already_applied(markers, job_id="new-999", company="ServiceNow",
+                              title="Machine  Learning Engineer, Agentic Systems ")
+    assert not is_already_applied(markers, job_id="new-999", company="ServiceNow",
+                                  title="Staff Data Scientist")
+
+
+def test_cli_search_splits_out_applied_jobs_and_flag_includes_them(tmp_path):
+    from job_agent.apply.tracker import applied_markers
+    from job_agent.cli import _build_parser, _split_applied
+    from job_agent.models import Job, ScoredJob
+
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="snow-1", status="submitted",
+                                company="Snowflake", title="Senior AI Engineer"))
+    scored = [
+        ScoredJob(job=Job(id="snow-1", title="Senior AI Engineer", company="Snowflake",
+                          location="US", url="http://x", source="ashby"),
+                  score=80, verdict="strong"),
+        ScoredJob(job=Job(id="new-1", title="Data Scientist", company="Figma",
+                          location="US", url="http://y", source="greenhouse"),
+                  score=70, verdict="possible"),
+    ]
+    fresh, hidden = _split_applied(scored, applied_markers(log))
+    assert [s.job.id for s in fresh] == ["new-1"]
+    assert [s.job.id for s in hidden] == ["snow-1"]      # excluded from the table
+    # the CLI flag exists and defaults to hiding
+    assert _build_parser().parse_args(["search"]).include_applied is False
+    assert _build_parser().parse_args(["search", "--include-applied"]).include_applied is True
+
+
 # --- runner integration -------------------------------------------------------------
 
 class _Page:

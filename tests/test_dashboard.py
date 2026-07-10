@@ -196,6 +196,24 @@ def test_applications_endpoint_flags_overdue_follow_ups(tmp_path):
     assert by_id["j2"]["needs_follow_up"] is False
 
 
+def test_jobs_endpoint_marks_already_applied_by_id_and_by_company_title(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    _seed_last_search(tmp_path / "last_search.json")
+    # j1 applied by exact id; j2's role applied under a DIFFERENT id
+    upsert_job_state(tmp_path / "applications.json", job_id="j1", company="Plaid",
+                     title="ML Engineer", status="submitted")
+    upsert_job_state(tmp_path / "applications.json", job_id="other-run-id",
+                     company="Stripe", title="AI Engineer", status="applied")
+    jobs = TestClient(create_app(data_dir=tmp_path)).get("/api/jobs").json()["jobs"]
+    by_id = {j["id"]: j for j in jobs}
+    assert by_id["j1"]["already_applied"] is True          # id match
+    assert by_id["j2"]["already_applied"] is True          # company+title re-match
+    # a merely saved/paused job is NOT hidden material
+    upsert_job_state(tmp_path / "applications.json", job_id="j1", status="saved")
+    jobs = TestClient(create_app(data_dir=tmp_path)).get("/api/jobs").json()["jobs"]
+    assert next(j for j in jobs if j["id"] == "j1")["already_applied"] is False
+
+
 def test_jobs_endpoint_joins_tracked_state_by_job_id(tmp_path):
     from job_agent.apply.tracker import upsert_job_state
     _seed_last_search(tmp_path / "last_search.json")

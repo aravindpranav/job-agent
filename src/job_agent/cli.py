@@ -122,6 +122,19 @@ def _print_ranked_table(console: Console, scored: list[ScoredJob], limit: int | 
     console.print(table)
 
 
+def _split_applied(scored: list[ScoredJob], markers: dict) -> tuple[list[ScoredJob], list[ScoredJob]]:
+    """(fresh, already_applied): jobs with an in-flight application split out so
+    the table doesn't resurface roles you already applied to."""
+    from job_agent.apply.tracker import is_already_applied
+
+    fresh, hidden = [], []
+    for s in scored:
+        applied = is_already_applied(markers, job_id=s.job.id,
+                                     company=s.job.company, title=s.job.title)
+        (hidden if applied else fresh).append(s)
+    return fresh, hidden
+
+
 def cmd_search(console: Console, args: argparse.Namespace) -> int:
     # --days is the primary recency knob (default 7); --max-age-hours, when
     # given explicitly, overrides it for sub-day windows.
@@ -158,7 +171,19 @@ def cmd_search(console: Console, args: argparse.Namespace) -> int:
     console.print(f"[dim]Scoring {len(outcome.jobs)} job(s) with the LLM…[/dim]")
     scored = score_jobs(outcome.jobs, settings, profile, method=args.method)
     saved = save_search(scored, outcome.boards, settings.data_dir / "last_search.json")
-    _print_ranked_table(console, scored, args.limit)
+    # Hide roles with an in-flight application (everything is still SAVED above;
+    # this is a render-level filter — --include-applied overrides it).
+    shown, hidden = scored, []
+    if not args.include_applied:
+        from job_agent.apply.tracker import applied_markers
+        shown, hidden = _split_applied(
+            scored, applied_markers(settings.data_dir / "applications.json"))
+    _print_ranked_table(console, shown, args.limit)
+    if hidden:
+        console.print(f"[dim]Hid {len(hidden)} job(s) you already applied to "
+                      f"({', '.join(s.job.company for s in hidden[:5])}"
+                      f"{'…' if len(hidden) > 5 else ''}) — use --include-applied "
+                      f"to show them.[/dim]")
     console.print(f"[dim]Saved {len(scored)} job(s) to {saved} (use `tailor --job <ID>`).[/dim]")
     return 0
 
@@ -512,6 +537,8 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Recency window in hours; overrides --days when given.")
     s.add_argument("--limit", type=int, default=None)
     s.add_argument("--method", choices=["structured", "tool"], default="structured")
+    s.add_argument("--include-applied", action="store_true",
+                   help="Also show jobs you already applied to (hidden by default).")
 
     t = sub.add_parser("tailor", help="Tailor your resume to a searched job.")
     t.add_argument("--demo", action="store_true", help="Fake resume + JD end-to-end (no key).")

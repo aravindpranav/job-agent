@@ -197,6 +197,7 @@
     <label>Sort <select id="jf-sort">
       <option value="score">score</option><option value="company">company</option>
     </select></label>
+    <label><input type="checkbox" id="jf-hide-applied" checked> Hide applied</label>
   </div>
   <div class="card" id="searchlog"></div>
   <div class="card tablewrap"><div id="jobs-table"></div></div>
@@ -357,22 +358,30 @@ function renderJobs() {
   const st = $("#jf-status").value, src = $("#jf-source").value;
   const minScore = Number($("#jf-score").value) || 0;
   const sort = $("#jf-sort").value;
+  const hideApplied = $("#jf-hide-applied").checked;
   let rows = JOBS.filter((j) =>
     (!st || (j.tracked && j.tracked.status === st)) &&
     (!src || j.source === src) &&
-    ((j.score ?? -1) >= minScore || !minScore));
+    ((j.score ?? -1) >= minScore || !minScore) &&
+    (!hideApplied || !j.already_applied));
+  const hiddenN = hideApplied ? JOBS.filter((j) => j.already_applied).length : 0;
   rows = rows.slice().sort((a, b) => sort === "company"
     ? a.company.localeCompare(b.company) : (b.score ?? -1) - (a.score ?? -1));
+  const hiddenNote = hiddenN
+    ? `<div class="empty" style="padding:10px 16px">${hiddenN} job(s) you already applied to are hidden — untick “Hide applied” to show them.</div>` : "";
   if (!rows.length) {
-    $("#jobs-table").innerHTML = `<div class="empty">No jobs match — loosen the filters or run a search.</div>`;
+    $("#jobs-table").innerHTML = hiddenNote +
+      `<div class="empty">No jobs match — loosen the filters or run a search.</div>`;
     return;
   }
   const body = rows.map((j) => {
     const t = j.tracked, meta = {company: j.company, title: j.title, source: j.source};
+    const appliedPill = j.already_applied
+      ? ` <span class="pill p-applied">already applied</span>` : "";
     return `
     <tr>
       <td class="num">${j.score ?? "—"}</td>
-      <td>${pill(j.verdict || "unscored")}</td>
+      <td>${pill(j.verdict || "unscored")}${appliedPill}</td>
       <td>${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noreferrer">${esc(j.title)}</a>` : esc(j.title)}
         <div class="mono">${esc(j.id)}</div></td>
       <td class="co">${esc(j.company)}</td>
@@ -390,7 +399,7 @@ function renderJobs() {
     <tr class="editor hidden" data-editor="${esc(j.id)}"><td colspan="8">
       ${editorHtml(j.id, t, meta)}</td></tr>`;
   }).join("");
-  $("#jobs-table").innerHTML =
+  $("#jobs-table").innerHTML = hiddenNote +
     `<table><thead><tr><th style="text-align:right">Score</th><th>Verdict</th><th>Title</th>
      <th>Company</th><th>Location</th><th>Source</th><th>Status</th><th>Actions</th></tr></thead>
      <tbody>${body}</tbody></table>`;
@@ -620,6 +629,7 @@ document.addEventListener("change", (ev) => {
 ["af-status", "af-source", "af-sort"].forEach((id) => $("#" + id).addEventListener("change", renderApps));
 ["jf-status", "jf-source", "jf-sort"].forEach((id) => $("#" + id).addEventListener("change", renderJobs));
 $("#jf-score").addEventListener("input", renderJobs);
+$("#jf-hide-applied").addEventListener("change", renderJobs);
 $("#btn-search").addEventListener("click", runSearch);
 
 loadApps().catch((e) => $("#apps-table").innerHTML = `<div class="err empty">${esc(e.message)}</div>`);

@@ -64,13 +64,22 @@ def jobs_view(last_search_path: str | Path,
                              j.get("score") if j.get("score") is not None else -1),
               reverse=True)
     tracked: dict[str, dict] = {}
+    markers = {"ids": set(), "pairs": set()}
     if tracker_path is not None:
+        from job_agent.apply.tracker import applied_markers
+
         for r in load_applications(tracker_path):     # later records win
             if r.job_id:
                 tracked[r.job_id] = {**r.model_dump(),
                                      "needs_follow_up": _needs_follow_up(r)}
+        markers = applied_markers(tracker_path)
+    from job_agent.apply.tracker import is_already_applied
+
     for j in jobs:
         j["tracked"] = tracked.get(str(j.get("id")))
+        j["already_applied"] = is_already_applied(
+            markers, job_id=str(j.get("id")), company=j.get("company", ""),
+            title=j.get("title", ""))
     return {"generated_at": data.get("generated_at"), "jobs": jobs}
 
 
