@@ -94,7 +94,7 @@ class _Page:
         Path(path).write_bytes(b"png")
 
 
-def _session(tmp_path, page=None, **kw):
+def _session(tmp_path, page=None, record=RECORD, **kw):
     page = page or _Page()
     seen = {}
 
@@ -108,10 +108,54 @@ def _session(tmp_path, page=None, **kw):
             seen["closed"] = True
 
     session = ApplySession(
-        record=RECORD, bank=BANK, contact=CONTACT, resume_path=None, drafter=None,
+        record=record, bank=BANK, contact=CONTACT, resume_path=None, drafter=None,
         tracker_path=tmp_path / "applications.json", out_dir=tmp_path / "apply",
         browser_factory=factory, **kw)
     return session, page, seen
+
+
+# --- navigation: the record's stored apply_url, VERBATIM ------------------------------
+
+# Real sr-search record shape: url is the posting page, apply_url carries the
+# ?oga=true query that routes to the per-job apply flow. Regression pin for the
+# "apply opened the SmartRecruiters company page" report: navigation must start
+# at the stored apply_url byte-for-byte — never a company/board/template URL.
+SR_RECORD = {
+    "id": "744000136873684",
+    "title": "Senior Machine Learning Engineer",
+    "company": "Ginas Tech Jobs",
+    "url": ("https://jobs.smartrecruiters.com/GinasTechJobs/"
+            "744000136873684-senior-machine-learning-engineer"),
+    "apply_url": ("https://jobs.smartrecruiters.com/GinasTechJobs/"
+                  "744000136873684-senior-machine-learning-engineer?oga=true"),
+    "source": "sr-search", "description": "",
+}
+
+
+def test_sr_search_apply_navigates_to_the_stored_apply_url_verbatim(tmp_path):
+    session, page, _ = _session(tmp_path, record=SR_RECORD)
+    session.start()
+    gotos = [(kind, url) for kind, url, _ in page.calls if kind == "goto"]
+    assert gotos == [("goto", SR_RECORD["apply_url"])]
+    session.cancel()
+
+
+def test_resolve_apply_url_prefers_apply_url_then_url_verbatim():
+    from job_agent.store import resolve_apply_url
+
+    assert resolve_apply_url(SR_RECORD) == SR_RECORD["apply_url"]
+    assert resolve_apply_url({"url": "http://x/job?a=1"}) == "http://x/job?a=1"
+    assert resolve_apply_url({"apply_url": "", "url": "http://x"}) == "http://x"
+    assert resolve_apply_url({}) is None
+
+
+def test_apply_navigation_falls_back_to_url_when_apply_url_is_missing(tmp_path):
+    record = {**SR_RECORD}
+    del record["apply_url"]
+    session, page, _ = _session(tmp_path, record=record)
+    session.start()
+    assert ("goto", record["url"], None) in page.calls
+    session.cancel()
 
 
 # --- start: visible browser, plan built, consent untouched ---------------------------

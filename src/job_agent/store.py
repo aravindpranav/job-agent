@@ -36,3 +36,11 @@ def load_job_record(path: str | Path, job_id: str) -> dict | None:
         return None
     data = json.loads(path.read_text())
     return data.get("jobs", {}).get(str(job_id))
+
+
+def resolve_apply_url(record: dict) -> str | None:
+    """The URL an apply flow must open for ``record``: its stored ``apply_url``,
+    else its ``url``, VERBATIM — never a URL derived from the company, board, or
+    a template. Query strings matter (SmartRecruiters' ``?oga=true`` routes to
+    the per-job apply flow); any rewrite lands on the wrong page."""
+    return record.get("apply_url") or record.get("url") or None

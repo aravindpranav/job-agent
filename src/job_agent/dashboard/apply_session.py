@@ -36,6 +36,7 @@ from job_agent.apply.screening import apply_drafts
 from job_agent.apply.submit import log_result, run_submit
 from job_agent.apply.tracker import ApplicationRecord, record_attempt, update_status
 from job_agent.dashboard.service import serialize_plan
+from job_agent.store import resolve_apply_url
 
 _CALL_TIMEOUT_S = 600   # a single step may include slow page loads / an LLM draft
 
@@ -133,8 +134,7 @@ class ApplySession:
             status="paused", reason="in dashboard review"))
         # VISIBLE by definition: the human acts in this window (captcha, consent).
         self._page = stack.enter_context(self._browser_factory(headless=False))
-        self._page.goto(self._record.get("apply_url") or self._record.get("url"),
-                        wait_until="load")
+        self._page.goto(resolve_apply_url(self._record), wait_until="load")
         self._read_and_fill()
         return self._state()
 

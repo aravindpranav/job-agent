@@ -203,6 +203,30 @@ def _fake_browser(headless=False):
     yield _Page()
 
 
+def test_apply_run_opens_the_configured_apply_url_verbatim(tmp_path, monkeypatch):
+    """Regression pin (sr-search): the browser must open cfg.apply_url exactly —
+    query string included — never a company/board-derived URL."""
+    import job_agent.apply.runner as runner
+
+    sr_apply_url = ("https://jobs.smartrecruiters.com/GinasTechJobs/"
+                    "744000136873684-senior-machine-learning-engineer?oga=true")
+    gotos: list[str] = []
+
+    class _NavPage(_Page):
+        def goto(self, url, wait_until=None):
+            gotos.append(url)
+
+    @contextmanager
+    def browser(headless=False):
+        yield _NavPage()
+
+    monkeypatch.setattr(runner, "open_browser", browser)
+    runner.run_apply(_config(tmp_path, apply_url=sr_apply_url, source="sr-search",
+                             company="Ginas Tech Jobs"),
+                     io=ScriptedIO(answers=[]).as_io())
+    assert gotos == [sr_apply_url]
+
+
 def test_apply_run_appends_a_tracked_record(tmp_path, monkeypatch):
     import job_agent.apply.runner as runner
     monkeypatch.setattr(runner, "open_browser", _fake_browser)

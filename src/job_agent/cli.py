@@ -29,7 +29,7 @@ from job_agent.models import Job, ScoredJob
 from job_agent.scoring import score_jobs
 from job_agent.search import SearchOutcome
 from job_agent.seen_cache import SeenCache
-from job_agent.store import load_job_record, save_search
+from job_agent.store import load_job_record, resolve_apply_url, save_search
 from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.jd_fetch import get_full_jd
 from job_agent.tailor.render_pdf import (
@@ -417,7 +417,7 @@ def cmd_apply(console: Console, args: argparse.Namespace) -> int:
             console.print(f"[red]Job id {args.job!r} not found in data/last_search.json.[/red] "
                           "Run a search first.")
             return 1
-        apply_url = record.get("apply_url") or record.get("url")
+        apply_url = resolve_apply_url(record)
         if not apply_url:
             console.print("[red]That job record has no apply/URL to open.[/red]")
             return 1

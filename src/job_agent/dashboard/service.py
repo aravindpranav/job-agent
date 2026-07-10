@@ -16,6 +16,7 @@ from pathlib import Path
 from rich.console import Console
 
 from job_agent.apply.tracker import load_applications
+from job_agent.store import resolve_apply_url
 
 _VERDICT_RANK = {"strong": 3, "possible": 2, "skip": 1, "unscored": 0}
 
@@ -192,7 +193,7 @@ def build_apply_preview(record: dict, bank, contact, *, resume_path: Path | None
 
     factory = browser_factory or open_browser
     with factory(headless=True) as page:
-        page.goto(record.get("apply_url") or record.get("url"), wait_until="load")
+        page.goto(resolve_apply_url(record), wait_until="load")
         fields = read_form(page)
 
     plan = build_fill_plan(fields, bank, contact, resume_path)
