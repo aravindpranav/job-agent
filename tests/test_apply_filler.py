@@ -488,6 +488,138 @@ def test_plaid_interest_checkboxes_and_ai_rating_still_pause():
     assert {u.field.selector for u in plan.unfilled} == {"#why", "#rate"}
 
 
+# --- CRITICAL: a wrong demographic answer must be IMPOSSIBLE --------------------------
+# Live incident: Lever's combined race list + bank {race: Asian, hispanic: No}
+# filled "Hispanic or Latino" — the wrap-label scan absorbed every option's
+# text (mis-routing race -> hispanic_latino), and the substring fallback let
+# "no" match "Lati-no-". EEO resolution must be exact/whole-word or nothing.
+
+# Captured verbatim from the live incident form (jobs.lever.co/employ/...,
+# select[name="eeo[race]"], 2026-07-15) — order and punctuation are the form's.
+# The "Select ..." placeholder is filtered out by the scan before matching.
+LEVER_RACE_OPTIONS = (
+    "Hispanic or Latino",
+    "White (Not Hispanic or Latino)",
+    "Black or African American (Not Hispanic or Latino)",
+    "Native Hawaiian or Other Pacific Islander (Not Hispanic or Latino)",
+    "Asian (Not Hispanic or Latino)",
+    "American Indian or Alaska Native (Not Hispanic or Latino)",
+    "Two or More Races (Not Hispanic or Latino)",
+    "Decline to self-identify",
+)
+# the scanned label on Lever carries the whole option list (captured shape)
+POLLUTED_RACE_LABEL = "Race\nSelect ...\n" + "\n".join(LEVER_RACE_OPTIONS)
+
+
+def _eeo_bank(eeo: dict) -> AnswerBank:
+    return AnswerBank.model_validate(
+        {"authorized_us": True, "requires_sponsorship": False, "eeo": eeo})
+
+
+def test_lever_combined_race_list_resolves_to_the_banked_race():
+    plan = build_fill_plan(
+        (_f("#race", FieldType.EEO, POLLUTED_RACE_LABEL, name="eeo[race]",
+            options=LEVER_RACE_OPTIONS),),
+        _eeo_bank({"hispanic_latino": "No", "race": "Asian"}), CONTACT, None)
+    (p,) = plan.planned
+    assert p.value == "Asian (Not Hispanic or Latino)"
+
+
+def test_hispanic_option_is_unreachable_unless_actually_banked():
+    for eeo in ({"hispanic_latino": "No", "race": "Asian"},
+                {"hispanic_latino": "No"},
+                {"race": "White"},
+                {}):
+        plan = build_fill_plan(
+            (_f("#race", FieldType.EEO, POLLUTED_RACE_LABEL,
+                options=LEVER_RACE_OPTIONS),),
+            _eeo_bank(eeo), CONTACT, None)
+        for p in plan.planned:
+            assert p.value != "Hispanic or Latino", eeo
+
+
+def test_gender_male_never_matches_female():
+    # Option texts as captured from the live Lever form (select[name="eeo[gender]"]),
+    # deliberately reordered Female-first: "male" is a substring of "female",
+    # and this ordering used to pick the wrong gender outright.
+    plan = build_fill_plan(
+        (_f("#g", FieldType.EEO, "Gender",
+            options=("Female", "Male", "Decline to self-identify")),),
+        _eeo_bank({"gender": "Male"}), CONTACT, None)
+    (p,) = plan.planned
+    assert p.value == "Male"
+
+
+# Captured verbatim from the live form: select[name="eeo[veteran]"]
+LEVER_VETERAN_OPTIONS = ("I am a veteran", "I am not a veteran",
+                         "Decline to self-identify")
+
+
+def test_unconfident_veteran_answer_declines_never_guesses():
+    plan = build_fill_plan(
+        (_f("#v", FieldType.EEO, "Veteran status",
+            options=LEVER_VETERAN_OPTIONS),),
+        _eeo_bank({"veteran_status": "No"}), CONTACT, None)   # "No" fits nothing
+    (p,) = plan.planned
+    assert p.value == "Decline to self-identify"
+
+
+def test_unconfident_eeo_with_no_decline_option_pauses():
+    plan = build_fill_plan(
+        (_f("#v", FieldType.EEO, "Veteran status", required=True,
+            options=LEVER_VETERAN_OPTIONS[:2]),),   # no decline offered
+        _eeo_bank({"veteran_status": "No"}), CONTACT, None)
+    assert plan.planned == ()
+    (u,) = plan.unfilled
+    assert "self-identification" in u.reason
+
+
+def test_documented_hispanic_answers_fill_exact_else_decline_never_guess():
+    """DOCUMENTED BEHAVIOR (not a bug fix target — verified, not assumed):
+
+    "Hispanic or Latino" appears whole-word inside EVERY option on Lever's
+    combined race list, so:
+      * the full banked phrase still fills correctly — the EXACT pass runs
+        before the whole-word pass;
+      * a PARTIAL banked answer ("Hispanic") is ambiguous and falls to the
+        form's decline option — an under-fill the user sees at review, never
+        a guessed race;
+      * with no decline option offered, the field pauses as Unfilled.
+    """
+    exact = build_fill_plan(
+        (_f("#race", FieldType.EEO, POLLUTED_RACE_LABEL,
+            options=LEVER_RACE_OPTIONS),),
+        _eeo_bank({"race": "Hispanic or Latino"}), CONTACT, None)
+    (p,) = exact.planned
+    assert p.value == "Hispanic or Latino"          # exact phrase: correct fill
+
+    partial = build_fill_plan(
+        (_f("#race", FieldType.EEO, POLLUTED_RACE_LABEL,
+            options=LEVER_RACE_OPTIONS),),
+        _eeo_bank({"race": "Hispanic"}), CONTACT, None)
+    (p,) = partial.planned
+    assert p.value == "Decline to self-identify"    # ambiguous: declines, never guesses
+
+    no_decline = build_fill_plan(
+        (_f("#race", FieldType.EEO, POLLUTED_RACE_LABEL, required=True,
+            options=LEVER_RACE_OPTIONS[:-1]),),     # decline option absent
+        _eeo_bank({"race": "Hispanic"}), CONTACT, None)
+    assert no_decline.planned == ()
+    (u,) = no_decline.unfilled                      # surfaced, control untouched
+    assert "self-identification" in u.reason
+
+
+def test_disability_no_matches_only_the_no_option():
+    plan = build_fill_plan(
+        (_f("#d", FieldType.EEO, "Disability status",
+            options=("Yes, I have a disability, or have had one in the past",
+                     "No, I do not have a disability and have not had one in "
+                     "the past", "I do not want to answer")),),
+        _eeo_bank({"disability_status": "No"}), CONTACT, None)
+    (p,) = plan.planned
+    assert p.value.startswith("No, I do not")
+
+
 # --- top-level EEO keys + decline variants ---------------------------------------
 
 def test_top_level_eeo_keys_are_accepted_not_extra_forbidden():

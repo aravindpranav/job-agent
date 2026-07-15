@@ -125,6 +125,44 @@ def _match_decline(options: tuple[str, ...]) -> str | None:
     return None
 
 
+def _norm_words(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
+
+
+def _match_eeo_option(options: tuple[str, ...], want: str) -> str | None:
+    """STRICT option pick for self-identification — a wrong demographic answer
+    on a real application is a false factual claim, so anything short of a
+    confident match returns None (the caller then declines or pauses):
+
+      * normalized EXACT equality first;
+      * else the wanted phrase appearing as WHOLE WORDS in exactly ONE option
+        ("asian" → "Asian (Not Hispanic or Latino)");
+      * NEVER a bare substring ("no" must not hit "Lati-no-", "male" must not
+        hit "fe-male-"), never an ambiguous pick.
+    """
+    want_n = _norm_words(want)
+    if not want_n:
+        return None
+    for opt in options:
+        if _norm_words(opt) == want_n:
+            return opt
+    hits = [o for o in options if f" {want_n} " in f" {_norm_words(o)} "]
+    return hits[0] if len(hits) == 1 else None
+
+
+def _eeo_routing_hay(f: FormField) -> str:
+    """The QUESTION text only, for choosing which banked key answers it.
+
+    Option texts are stripped first: wrap-label scans absorb the whole option
+    list (Lever), and "Hispanic or Latino" appearing as an OPTION of the race
+    question must not re-route the question itself to ``hispanic_latino``.
+    """
+    text = f" {f.label} {f.name} ".lower()
+    for opt in f.options:
+        text = text.replace(opt.lower(), " ")
+    return text
+
+
 def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str] | None:
     """(value, source) for a self-identification field, or None to pause.
 
@@ -132,9 +170,10 @@ def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str] | None:
     never LLM-drafted, never guessed: an absent key resolves to the form's own
     decline option ("Decline To Self Identify" / "Prefer not to answer" / ...).
     When the form lists options and NEITHER the banked value nor any decline
-    variant matches, returns None — a wrong demographic answer is never picked.
+    variant CONFIDENTLY matches (see _match_eeo_option), returns None — a
+    wrong demographic answer is never picked.
     """
-    hay = _haystack(f)
+    hay = _eeo_routing_hay(f)
     # Hispanic/Latino is checked FIRST: forms often title it "Ethnicity: Are you
     # Hispanic or Latino?", and "ethnic" alone would otherwise mis-route it to
     # the race value. Race keeps only the separate race/ethnicity question.
@@ -145,7 +184,7 @@ def _eeo_value(f: FormField, bank: AnswerBank) -> tuple[str, str] | None:
            else "disability_status" if "disab" in hay else "")
     value = bank.eeo_answer(key) if key else DECLINE_TO_STATE
     if f.options:
-        picked = _match_option(f.options, value) or _match_decline(f.options)
+        picked = _match_eeo_option(f.options, value) or _match_decline(f.options)
         if picked is None:
             return None
         value = picked
