@@ -171,7 +171,9 @@ def test_gate_catches_target_company_product_claim():
 
 
 def test_gate_allows_aspirational_company_mention():
-    ok = "I'm excited to work at Plaid on data infrastructure."
+    # aspirational wording about the TARGET company is not a fabrication —
+    # ("excited to" itself is now style-banned, so the fixture avoids it)
+    ok = "I want to work at Plaid on data infrastructure."
     assert verify_answer(ok, FACTS, company="Plaid") == []
 
 
@@ -228,6 +230,110 @@ def test_llm_failure_leaves_question_unfilled():
         raise RuntimeError("api down")
     drafter = make_drafter(boom, FACTS, BANK, jd="", company="X")
     assert drafter(_f("#q", FieldType.TEXTAREA, "Why?")) is None
+
+
+def test_transient_llm_failure_is_retried_once():
+    # one flaky API call must not silently kill the draft (live bug: one of
+    # two "please describe" questions drafted, the other paused with the
+    # unrelated answer-bank message)
+    attempts = []
+
+    def flaky(prompt):
+        attempts.append(prompt)
+        if len(attempts) == 1:
+            raise RuntimeError("overloaded")
+        return GOOD
+    drafter = make_drafter(flaky, FACTS, BANK, jd="", company="X")
+    fill = drafter(_f("#q", FieldType.TEXTAREA,
+                      "Please describe the primary focus of your ML experience"))
+    assert fill is not None and GOOD in fill.value
+    assert len(attempts) == 2
+
+
+def test_failed_draft_reason_is_honest_not_the_bank_message():
+    from job_agent.apply.fields import FillPlan, Unfilled
+    from job_agent.apply.screening import apply_drafts
+
+    def boom(prompt):
+        raise RuntimeError("api down")
+    drafter = make_drafter(boom, FACTS, BANK, jd="", company="X")
+    plan = FillPlan(unfilled=(Unfilled(
+        _f("#q", FieldType.TEXTAREA, "Please describe your ML experience"),
+        "free-text question — no prepared answer (pause to answer)"),))
+    out = apply_drafts(plan, drafter)
+    (u,) = out.unfilled
+    assert "draft" in u.reason.lower()          # says drafting was attempted
+    assert "answer bank" not in u.reason.lower()  # not the misleading message
+
+
+# --- absent-experience honesty (the live rec-sys incident) ---------------------------
+# LLM output is nondeterministic, so these assert on the PROMPT construction
+# and on the deterministic gate, not on generated text.
+
+RECSYS_Q = _f("#q", FieldType.TEXTAREA,
+              "Please describe your experience with Recommendation Systems.")
+
+
+def test_experience_prompt_gates_on_topical_match_before_any_project():
+    prompt = build_draft_prompt(RECSYS_Q, FACTS, BANK, jd="", company="X",
+                                qtype="experience")
+    low = prompt.lower()
+    assert "actually asked about" in low          # the topical decision comes first
+    assert "adjacent" in low                      # absent -> nearest work labelled as such
+    assert "first sentence" in low                # the absence goes up front
+    for framing in ("essentially the same as", "closely related to",
+                    "which is a form of"):
+        assert framing in low                     # forbidden framings named explicitly
+    assert "relevance is not a substitute" in low
+    # 'most relevant' only after the match is established
+    assert "only once that topical match is established" in low
+
+
+def test_system_prompt_carries_the_voice_rules():
+    from job_agent.apply.screening import DRAFT_SYSTEM
+    low = DRAFT_SYSTEM.lower()
+    assert "em-dash" in low
+    assert "cover letter" in low                  # "engineer at 11pm, not a cover letter"
+    assert "leverage" in low and "spearheaded" in low
+    assert "restate" in low
+
+
+def test_honest_absent_experience_draft_passes_gate_and_tags_needs_input():
+    honest = ("I have not built recommendation systems in production. "
+              "The closest work is churn modeling at Acme Analytics, which is "
+              "adjacent but a different problem.\n"
+              f"{NEEDS_INPUT_MARKER} add any real recommendation-systems work "
+              "that's missing from your career facts, or keep the honest no.")
+    assert verify_answer(honest, FACTS) == []     # honesty is style-clean
+    drafter, _ = _drafter([honest])
+    fill = drafter(RECSYS_Q)
+    assert source_tag(fill.source) == "[NEEDS-INPUT]"   # surfaces distinctly at review
+    assert fill.value.startswith("I have not built recommendation systems")
+
+
+# --- mechanical style gate (deterministic; flag-for-review, never a rewrite) ---------
+
+def test_style_gate_flags_em_and_en_dashes():
+    assert any("dash" in v for v in
+               verify_answer("I built pipelines — they were fast.", FACTS))
+    assert any("dash" in v for v in
+               verify_answer("I built pipelines – they were fast.", FACTS))
+
+
+def test_style_gate_flags_banned_phrases_whole_word():
+    for text in ("I leveraged Spark daily.",
+                 "I am passionate about data.",
+                 "I built a robust pipeline.",
+                 "I spearheaded the migration.",
+                 "I thrive in ambiguity.",
+                 "Not only did I ship it, but I also scaled it."):
+        assert any(v.startswith("style:") for v in verify_answer(text, FACTS)), text
+
+
+def test_style_gate_passes_plain_engineer_prose():
+    assert verify_answer(GOOD, FACTS) == []
+    assert verify_answer("No. My work has been batch pipelines, not streaming.",
+                         FACTS) == []
 
 
 def test_prompt_grounds_in_facts_and_banked_metrics():

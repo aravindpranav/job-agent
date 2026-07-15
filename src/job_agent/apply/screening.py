@@ -113,6 +113,39 @@ _METRIC_TOKEN = re.compile(
     r"\$\s?\d[\d,]*(?:\.\d+)?\s*[kKmM]?|\b\d[\d,]*(?:\.\d+)?\s*%|"
     r"\b\d[\d,]*(?:\.\d+)?\s*[kKmM]\b|\b\d[\d,]*(?:\.\d+)?x\b|\b\d[\d,]*(?:\.\d+)?\+")
 
+# Mechanical style rules. DELIBERATE SPLIT: these are the deterministic,
+# string-checkable voice rules (dashes, banned phrases, the not-only/but
+# construction). TOPICAL honesty — "does the draft claim experience the facts
+# don't contain?" — is semantic and is enforced in the PROMPT (DRAFT_SYSTEM +
+# _TYPE_INSTRUCTIONS), with the regenerate-once-then-flag gate as backstop.
+# Violations here FLAG the draft for human review; nothing is ever silently
+# rewritten.
+_BANNED_STYLE = (
+    "leverage", "spearheaded", "passionate about", "excited to", "deep dive",
+    "robust", "seamless", "cutting-edge", "in today's landscape", "i thrive",
+    "wealth of experience", "delve", "testament", "underscore",
+)
+# whole-word, stem-tolerant ("leveraged", "underscores"), flexible whitespace
+_BANNED_STYLE_RES = tuple(
+    (phrase, re.compile(r"\b" + re.escape(phrase).replace(r"\ ", r"\s+") + r"\w*",
+                        re.IGNORECASE))
+    for phrase in _BANNED_STYLE)
+_NOT_ONLY_BUT = re.compile(
+    r"\bnot\s+(?:only|just)\b[^.?!]{0,120}?\bbut\b", re.IGNORECASE | re.DOTALL)
+
+
+def _style_violations(text: str) -> list[str]:
+    """The mechanical voice-rule violations in ``text`` (see split note above)."""
+    violations: list[str] = []
+    if "—" in text or "–" in text:
+        violations.append("style: em/en dash (use a period or a comma)")
+    for phrase, pattern in _BANNED_STYLE_RES:
+        if pattern.search(text):
+            violations.append(f"style: banned phrase {phrase!r}")
+    if _NOT_ONLY_BUT.search(text):
+        violations.append("style: 'not only/just X but Y' construction")
+    return violations
+
 
 def verify_answer(text: str, facts: CareerFacts, company: str = "") -> list[str]:
     """Return the fabrication violations in ``text`` (empty list = clean)."""
@@ -139,6 +172,7 @@ def verify_answer(text: str, facts: CareerFacts, company: str = "") -> list[str]
         if (v := _to_value(num)) is not None and v not in banked:
             violations.append(f"metric {tok.strip()!r} is not among the banked real metrics")
 
+    violations.extend(_style_violations(text))
     return violations
 
 
@@ -151,10 +185,27 @@ DRAFT_SYSTEM = (
     "provided. HARD RULES: never invent employers, dates, anecdotes, or skills; "
     "cite ONLY the numeric metrics listed in the facts (no other numbers); never "
     "claim the candidate has used the hiring company's products or knows their "
-    "internals. If the question needs information you were not given (a personal "
-    "opinion, a specific story), write the best honest partial answer and append "
-    f"one final line starting with '{NEEDS_INPUT_MARKER}' naming what the "
-    "candidate must add. Every sentence must be defensible in an interview."
+    "internals.\n"
+    "HONESTY ABOUT GAPS: if the facts contain no real experience with the thing "
+    "the question asks about, the FIRST sentence says so plainly in first "
+    "person. You may then name the nearest real work while stating outright "
+    "that it is adjacent and a different thing. Never present a different "
+    "technique as the asked-for one; never imply the experience exists. If the "
+    "honest answer is no, the answer is no plus context. If the question needs "
+    "information you were not given (a personal opinion, a specific story), "
+    "write the best honest partial answer and append one final line starting "
+    f"with '{NEEDS_INPUT_MARKER}' naming what the candidate must add. Every "
+    "sentence must be defensible in an interview.\n"
+    "VOICE: first person, plain and direct. Sound like an engineer typing an "
+    "answer at 11pm, not a cover letter. Short sentences. Concrete nouns and "
+    "specific systems. Never use an em-dash or en-dash; use a period or a "
+    "comma. Never use these words or phrases: leverage, spearheaded, "
+    "passionate about, excited to, deep dive, robust, seamless, cutting-edge, "
+    "in today's landscape, I thrive, wealth of experience, delve, testament, "
+    "underscore. Never write 'not only X but also Y' or 'it's not just X, "
+    "it's Y'. No three-item rhetorical lists. Do not restate the question "
+    "before answering. Length matches the question: a yes-with-context is two "
+    "sentences, not a paragraph."
 )
 
 _STRICTER_NUDGE = (
@@ -174,10 +225,23 @@ _TYPE_INSTRUCTIONS = {
         f"answer plainly with what is known and add a {NEEDS_INPUT_MARKER} line."
     ),
     "experience": (
-        "This is an EXPERIENCE question. Answer as ONE concise STAR story "
-        "(Situation, Task, Action, Result) using the single most relevant REAL "
-        "project from the employment history above — never a composite or "
-        "hypothetical."
+        "This is an EXPERIENCE question. FIRST decide from the employment "
+        "history whether the candidate has real experience with the thing "
+        "actually asked about. Only once that topical match is established may "
+        "you answer, as ONE concise STAR story (Situation, Task, Action, "
+        "Result) from the most relevant matching REAL project, never a "
+        "composite or hypothetical. If the facts contain NO real experience "
+        "with the asked-about thing: the first sentence states that plainly in "
+        "first person, and you may then name the nearest real work while "
+        "saying outright that it is adjacent and a different problem. "
+        "FORBIDDEN framings: presenting a different technique as the asked-for "
+        "one; 'essentially the same as'; 'closely related to'; 'which is a "
+        "form of'; opening with an unrelated project and letting the reader "
+        "infer; burying the absence after the story. Relevance is not a "
+        "substitute for having done the thing. End an absent-experience answer "
+        f"with a line starting with '{NEEDS_INPUT_MARKER}' asking the "
+        "candidate to add any real experience with it missing from the facts, "
+        "or to keep the honest no."
     ),
     "motivation": (
         "This is a MOTIVATION question. Write a short grounded paragraph "
@@ -228,6 +292,16 @@ def trim_to_limit(text: str, max_length: int | None) -> str:
     return cut[:cut.rfind(" ")].rstrip() if " " in cut else cut
 
 
+def _generate_with_retry(generate: Callable[[str], str], prompt: str) -> str:
+    """One retry on failure: a single transient API error must not silently
+    kill a draft (seen live: one of two identical-shape questions drafted, the
+    other fell through to an unrelated pause message)."""
+    try:
+        return generate(prompt).strip()
+    except Exception:
+        return generate(prompt).strip()
+
+
 def make_drafter(generate: Callable[[str], str], facts: CareerFacts, bank: AnswerBank,
                  jd: str, company: str, cache_path: Path | None = None) -> Drafter:
     """Build the drafter: cache -> draft -> gate -> regenerate once -> tag.
@@ -246,13 +320,13 @@ def make_drafter(generate: Callable[[str], str], facts: CareerFacts, bank: Answe
         qtype = classify_free_text(field)
         prompt = build_draft_prompt(field, facts, bank, jd, company, qtype)
         try:
-            text = generate(prompt).strip()
+            text = _generate_with_retry(generate, prompt)
         except Exception:
             return None  # LLM failure -> leave the question unfilled (paused)
         violations = verify_answer(text, facts, company)
         if violations:
             try:
-                text = generate(prompt + _STRICTER_NUDGE).strip()
+                text = _generate_with_retry(generate, prompt + _STRICTER_NUDGE)
             except Exception:
                 return None
             violations = verify_answer(text, facts, company)
@@ -297,6 +371,8 @@ def apply_drafts(plan: FillPlan, drafter: Drafter) -> FillPlan:
     Consent stays unfilled (the drafter is never even called for it); factual
     stays flagged; free-text moves to planned with an ai-draft source.
     """
+    from job_agent.apply.fields import Unfilled
+
     planned = list(plan.planned)
     unfilled = []
     for u in plan.unfilled:
@@ -305,6 +381,10 @@ def apply_drafts(plan: FillPlan, drafter: Drafter) -> FillPlan:
             if fill is not None:
                 planned.append(fill)
                 continue
+            # drafting was attempted and failed — say so; the original bank
+            # message would misdescribe what happened
+            u = Unfilled(u.field, "the AI draft failed (temporary error) — "
+                                  "try again, or write this one yourself")
         unfilled.append(u)
     return FillPlan(planned=tuple(planned), unfilled=tuple(unfilled))
 
