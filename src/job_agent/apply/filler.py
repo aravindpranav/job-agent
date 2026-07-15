@@ -125,6 +125,19 @@ def _match_decline(options: tuple[str, ...]) -> str | None:
     return None
 
 
+#: Words that mark a work-arrangement/preference string rather than a place.
+_ARRANGEMENT_WORDS = ("remote", "hybrid", "onsite", "on-site", "open",
+                      "prefer", "preferred", "willing", "anywhere", "flexible")
+
+
+def _is_place(text: str) -> bool:
+    """True when a location value reads as an actual place ("Santa Clara, CA"),
+    not a work-arrangement sentence ("Open to remote ... anywhere in the US").
+    Whole-word checks only — never substrings."""
+    hay = text.lower()
+    return bool(hay.strip()) and not any(_word(hay, w) for w in _ARRANGEMENT_WORDS)
+
+
 def _norm_words(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
 
@@ -302,6 +315,15 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
             return (picked, "answer_bank.work_mode") if picked else None
         return bank.work_mode, "answer_bank.work_mode"
 
+    # A question asking for a full ADDRESS ("What is your full street
+    # address? (Street, City, State, Zip)") must never be answered with one
+    # component — the label enumerating its parts would otherwise let the zip
+    # cue below capture it, and a zip-only answer to an address question is a
+    # wrong answer. The bank stores no street address, so this always pauses.
+    # ("email address" never reaches here — the email cue matched earlier.)
+    if _word(hay, "address"):
+        return None
+
     # structured location — checked BEFORE the generic "location" fallback, and
     # each returns None (-> unfilled, pause) when the bank value is empty, so
     # the location_preference sentence can never land in a city/state/zip field.
@@ -319,8 +341,17 @@ def _text_value(f: FormField, bank: AnswerBank, contact: Contact) -> tuple[str, 
         return (picked, "answer_bank.country") if picked else None
 
     if _word(hay, "location"):
-        val = bank.location_preference or contact.location
-        return (val, "answer_bank.location_preference") if val else None
+        # The preference SENTENCE answers only preference-worded questions.
+        # A bare place question ("Current location") gets the contact's actual
+        # location — and only when that value reads as a place: an arrangement
+        # string ("Open to remote ... anywhere in the US") is not a location.
+        if any(_word(hay, w) for w in ("preference", "preferences", "preferred",
+                                       "prefer", "willing")):
+            val = bank.location_preference
+            return (val, "answer_bank.location_preference") if val else None
+        if contact.location and _is_place(contact.location):
+            return contact.location, "career_facts.location"
+        return None
 
     return None
 

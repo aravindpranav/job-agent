@@ -213,6 +213,51 @@ def test_location_preference_still_maps_on_the_word_location():
     assert _value(plan, "#loc") == "Anywhere (US), remote preferred"
 
 
+def test_full_street_address_question_never_gets_a_component():
+    # Real label observed live (Included Health, Lever): it ENUMERATES its
+    # parts, which used to let the zip cue capture it — a zip-only answer to a
+    # street-address question is a wrong answer. The bank stores no street
+    # address, so the correct outcome is a pause.
+    plan = _plan_for([_f("#addr", FieldType.TEXT,
+                         "What is your full street address? (Street, City, State, Zip) *",
+                         required=True)])
+    assert plan.planned == ()
+    (u,) = plan.unfilled
+    assert u.field.selector == "#addr"
+
+
+def test_zip_question_still_gets_the_zip():
+    plan = _plan_for([_f("#zip", FieldType.TEXT, "Please enter your zip code:")])
+    assert _value(plan, "#zip") == "95050"
+
+
+def test_current_location_is_not_answered_with_the_preference_sentence():
+    # Real label observed live. The test contact's location ("Remote, US") is
+    # an arrangement string, not a place — so this pauses rather than guessing.
+    plan = _plan_for([_f("#loc", FieldType.TEXT, "Current location *",
+                         required=True)])
+    assert plan.planned == ()
+    (u,) = plan.unfilled
+    assert u.field.selector == "#loc"
+
+
+def test_current_location_gets_an_actual_place_when_the_contact_has_one():
+    contact = Contact(name="Jordan Rivers", email="jordan@example.com",
+                      phone="+1 (555) 010-0100", location="Santa Clara, CA")
+    plan = build_fill_plan(
+        (_f("#loc", FieldType.TEXT, "Current location"),), BANK, contact, None)
+    assert _value(plan, "#loc") == "Santa Clara, CA"
+
+
+def test_reside_question_with_state_options_still_pauses():
+    # options as captured on the live Nextdoor form; banked country is "USA"
+    plan = _plan_for([_f("#res", FieldType.SELECT, "Where do you currently reside?",
+                         options=("Massachusetts", "Massachusetts - Boston Metro",
+                                  "Texas - Houston Metro",
+                                  "California - SF Bay Area"))])
+    assert plan.planned == ()
+
+
 def test_word_boundaries_keep_state_out_of_statement_and_city_out_of_ethnicity():
     plan = _plan_for([
         _f("#essay", FieldType.TEXTAREA, "Personal statement"),
