@@ -36,6 +36,16 @@ class ScopeDriftError(Exception):
     """
 
 
+class MissingEmployerError(Exception):
+    """A real employer from the career facts is absent from the output.
+
+    Omitting a role misrepresents the career exactly like inventing one, but it
+    is a correctable generation failure — so, like ScopeDriftError, this is
+    deliberately NOT a DriftError subclass: the caller regenerates once with the
+    violation as a correction instead of failing immediately.
+    """
+
+
 class PdfVerifyError(Exception):
     """The generated PDF failed text-extraction verification."""
 
@@ -348,6 +358,22 @@ def verify_no_drift(result: TailorResult, facts: CareerFacts) -> VerifyReport:
 
     if problems:
         raise DriftError("No-drift gate failed:\n  - " + "\n  - ".join(problems))
+
+    # 1b. Completeness (facts→output): every real employer must appear. Step 1
+    #     only validates what IS printed; without this direction a resume that
+    #     silently drops a role passes every gate. Checked after the hard
+    #     failures so fabrication (never retried) always wins over omission.
+    missing = [e for e in facts.employers
+               if not any(_norm(e.company) in _norm(c)
+                          and _norm(e.title) == _norm(t)
+                          and _norm(e.duration) == _norm(d)
+                          for c, t, d in out_triples)]
+    if missing:
+        raise MissingEmployerError(
+            "Completeness gate failed — employer(s) missing from the output: "
+            + "; ".join(f"{e.company} ({e.title}, {e.duration})" for e in missing)
+            + ". Every employer in the career facts must appear on the resume; "
+              "omitting a role is as wrong as inventing one.")
 
     # 4. Scope qualifiers: "multi-terabyte" / "enterprise-scale" / "across the
     #    firm" style inflation must be literally supported by the career facts.

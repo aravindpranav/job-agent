@@ -5,7 +5,8 @@ ATS-optimized, interview-safe resume with high alignment to the Job Description 
 using ONLY my real experience.
 
 FIXED FACTS (NEVER CHANGE): Company names, job titles, and durations are fixed exactly as in
-my career facts. Never invent, add, remove, or alter employers, titles, or dates.
+my career facts. Never invent, add, remove, or alter employers, titles, or dates. Every
+employer in my career facts appears on the resume; omitting a role is as wrong as inventing one.
 
 STRICT RESUME FORMAT (DO NOT DEVIATE):
 Name

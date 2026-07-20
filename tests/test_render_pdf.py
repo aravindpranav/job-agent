@@ -47,9 +47,12 @@ def test_trim_to_caps_limits_bullets_per_section():
     assert out.count("- s") == 4   # older role responsibilities capped at 4
 
 
-def test_skill_hanging_indent_preserves_extraction_order(tmp_path):
-    # A long skills line wraps; its continuation must extract IN ORDER (before the
-    # next category), not get reordered by the PDF text extractor.
+def test_skill_wrap_preserves_within_category_extraction_order(tmp_path):
+    # Skills render as a two-column table, so the two columns interleave in raw
+    # y-ordered extraction (accepted trade-off of the reference layout). What
+    # must still hold: nothing is lost, and WITHIN each category the values
+    # extract in their written order — the hanging indent may not scramble a
+    # wrapped cell.
     txt = ("Aravind\ne | p\nTECHNICAL SKILLS\n"
            "Languages: one, two, three, four, five, six, seven, eight, nine, ten, "
            "eleven, twelve, thirteen, fourteen, fifteen, sixteen, seventeen\n"
@@ -58,16 +61,34 @@ def test_skill_hanging_indent_preserves_extraction_order(tmp_path):
            "EDUCATION\nx\nCERTIFICATIONS\nNone")
     pdf = render_pdf(txt, tmp_path / "skills.pdf")
     text = extract_pdf_text(pdf)
-    assert text.find("seventeen") < text.find("Frameworks")  # wrap stays before next category
+    for token in ("one", "seventeen", "alpha", "beta"):
+        assert token in text                                  # nothing lost
+    assert text.find("one") < text.find("nine") < text.find("seventeen")
+    assert text.find("alpha") < text.find("beta")
 
 
 def test_drop_last_responsibility_only_touches_responsibilities():
     from job_agent.tailor.render_pdf import drop_last_responsibility
-    txt = ("Role: A\nCompany: B\nDuration: d\nResponsibilities:\n- r0\n- r1\n- r2\n"
+    txt = ("Role: A\nCompany: B\nDuration: d\nResponsibilities:\n- r0\n- r1\n- r2\n- r3\n"
            "Achievements:\n- a0\n- a1\nEDUCATION\nx")
     out = drop_last_responsibility(txt)
-    assert out.count("- r") == 2      # one responsibility dropped (3 -> 2)
+    assert out.count("- r") == 3      # one responsibility dropped (4 -> 3)
     assert out.count("- a") == 2      # achievements untouched
+
+
+def test_page_trim_floor_matches_the_older_role_depth_floor():
+    # The 3-page fit loop may never trim a role back to the old 2-bullet
+    # density: the floor is 3, matching the prompt's older-role minimum.
+    from job_agent.tailor.render_pdf import _RESP_FLOOR, drop_last_responsibility
+    assert _RESP_FLOOR == 3
+    at_floor = ("Role: A\nCompany: B\nDuration: d\nResponsibilities:\n- r0\n- r1\n- r2\n"
+                "Achievements:\n- a0\nEDUCATION\nx")
+    assert drop_last_responsibility(at_floor) == at_floor   # at the floor: untouchable
+
+
+def test_page_budget_is_three_pages():
+    from job_agent.cli import MAX_RESUME_PAGES
+    assert MAX_RESUME_PAGES == 3
 
 
 def test_pdf_missing_standard_section_is_rejected(tmp_path):

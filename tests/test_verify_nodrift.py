@@ -13,6 +13,7 @@ from job_agent.tailor.tailor import TailorResult, tailor_resume
 from job_agent.tailor.verify import (
     DriftError,
     FormatError,
+    MissingEmployerError,
     ScopeDriftError,
     unbanked_scope_words,
     verify_format,
@@ -137,6 +138,42 @@ def test_unparseable_employers_fail_loudly_not_vacuously():
             "Certifications\nNone")
     with pytest.raises(DriftError, match="Could not find any employer"):
         verify_no_drift(_mutated(text), FACTS)
+
+
+# --- completeness gate (facts→output) -----------------------------------------
+# The original no-drift check only validated what IS printed (output→facts);
+# a resume that silently dropped a real employer passed every gate and shipped.
+
+def _without_beacon(text: str) -> str:
+    """Cut the entire Beacon Software role block (everything left is still true)."""
+    return re.sub(r"(?s)Role: Data Analyst\nCompany: Beacon Software.*?(?=EDUCATION)",
+                  "", text)
+
+
+def test_dropped_employer_fails_the_completeness_gate():
+    with pytest.raises(MissingEmployerError, match="Beacon Software"):
+        verify_no_drift(_mutated(_without_beacon(BASE.resume_text)), FACTS)
+
+
+def test_missing_employer_is_retryable_omission_not_hard_fabrication():
+    # Fabrication (DriftError) is never retried; an omitted role is a correctable
+    # generation failure and must ride the regenerate-once path instead.
+    assert not issubclass(MissingEmployerError, DriftError)
+
+
+def test_hard_fabrication_beats_missing_employer():
+    # A fake employer AND a dropped one: the unretryable DriftError must win.
+    mutated = _without_beacon(
+        BASE.resume_text.replace("Company: Acme Analytics", "Company: Shadow Corp"))
+    with pytest.raises(DriftError):
+        verify_no_drift(_mutated(mutated), FACTS)
+
+
+def test_fact_starved_role_below_floor_still_passes_gates():
+    # Beacon Software has only 2 real bullets — below the 3-4 prompt floor. The
+    # gates must PASS: floors are prompt guidance, honesty beats the floor.
+    assert verify_no_drift(BASE, FACTS).ok
+    verify_format(BASE, FACTS)
 
 
 # --- scope-qualifier gate -----------------------------------------------------

@@ -3,7 +3,9 @@
 Format (mirrors a clean single-column reference resume):
 - Header: Name on line 1; "email | phone" on line 2. No tagline.
 - CAPS section headings (PROFESSIONAL SUMMARY, …) each under a thin rule.
-- Technical Skills as "Category: value, value" lines (no tables/pipes).
+- Technical Skills: the face stays pipe-free "Category: value, value" lines;
+  the LAYOUT renders them as a two-column borderless table (structure from
+  layout, so the format gate's no-pipe rule still holds on the text).
 - Experience blocks: Role/Company/Project Description/Duration, then bullets.
 - Real "•" bullets that EXTRACT as text — achieved with an embedded Unicode font
   (DejaVu Sans, bundled) since reportlab's base-14 Helvetica can't map "•" for
@@ -27,7 +29,14 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import (
+    HRFlowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from job_agent.tailor.textnorm import strip_markdown
 
@@ -95,13 +104,21 @@ def clean_resume_text(text: str) -> str:
     return re.sub(r"[ \t]{2,}", " ", out)
 
 
-_RESP_FLOOR = 2  # never trim a role below this many responsibility bullets when fitting pages
+# Page budget for the fit loop: four full employers + grouped skills need three
+# pages; trimming beyond that would push roles back to skeletal density.
+MAX_RESUME_PAGES = 3
+
+# Never trim a role below this many responsibility bullets when fitting pages.
+# Matches the prompt's older-role depth floor (3-4): the fit loop may remove
+# surplus, never hollow a role back to 2-bullet density.
+_RESP_FLOOR = 3
 
 
 def drop_last_responsibility(resume_text: str) -> str:
     """Drop one responsibility bullet — the last (least JD-relevant) one of the
     role that currently has the most — without touching achievements. Used to fit
-    the résumé to two pages. Returns the text unchanged if nothing is droppable."""
+    the résumé to the page budget. Returns the text unchanged if nothing is
+    droppable."""
     lines = resume_text.splitlines()
     roles: list[list[int]] = []
     role_idx, section = -1, None
@@ -228,14 +245,56 @@ def _parse_lines(resume_text: str):
             yield ("body", line)
 
 
+# Two columns across the usable letter width (8.5" minus 0.6" margins each side).
+_SKILL_COL_WIDTH = 3.65 * inch
+
+
+def _skills_table(categories: list[tuple[str, str]]) -> Table:
+    """Two-column, borderless layout for the buffered skill-category lines.
+
+    Row-major fill (1|2, 3|4, …) so an ATS reading left-to-right per row keeps
+    a sensible order; each cell is a normal Paragraph, so the text extracts
+    exactly like the old single-column lines did.
+    """
+    style = _skill_style()
+    cells = [Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", style)
+             for label, values in categories]
+    rows = [cells[i:i + 2] for i in range(0, len(cells), 2)]
+    if len(rows[-1]) == 1:
+        rows[-1].append("")
+    table = Table(rows, colWidths=[_SKILL_COL_WIDTH, _SKILL_COL_WIDTH], hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+    ]))
+    return table
+
+
 def render_pdf(resume_text: str, out_path: str | Path) -> Path:
-    """Write the ATS-safe single-column PDF. Returns the path."""
+    """Write the ATS-safe PDF (single column; skills in a two-column table).
+    Returns the path."""
     _ensure_fonts()
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     styles = _styles()
     flow = []
+    skill_cats: list[tuple[str, str]] = []
+
+    def flush_skills() -> None:
+        if skill_cats:
+            flow.append(_skills_table(skill_cats))
+            skill_cats.clear()
+
     for kind, payload in _parse_lines(resume_text):
+        if kind == "category":
+            skill_cats.append(payload)
+            continue
+        if kind == "blank" and skill_cats:
+            continue        # keep buffering across blank lines between categories
+        flush_skills()
         if kind == "blank":
             flow.append(Spacer(1, 4))
         elif kind == "name":
@@ -254,11 +313,9 @@ def render_pdf(resume_text: str, out_path: str | Path) -> Path:
                 flow.append(Paragraph(f"<b>{escape(label)}: {escape(rest)}</b>", styles["body"]))
             else:
                 flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(rest)}", styles["body"]))
-        elif kind == "category":
-            label, values = payload
-            flow.append(Paragraph(f"<b>{escape(label)}:</b> {escape(values)}", _skill_style()))
         else:
             flow.append(Paragraph(escape(payload), styles["body"]))
+    flush_skills()   # skills were the last section on the face
 
     SimpleDocTemplate(
         str(out_path), pagesize=letter,
@@ -314,6 +371,21 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
         pPr.append(borders)
 
     pending: dict[str, str] = {}
+    skill_cats: list[tuple[str, str]] = []
+
+    def flush_skills() -> None:
+        # Two-column, borderless table (row-major), mirroring the PDF layout.
+        if not skill_cats:
+            return
+        table = doc.add_table(rows=(len(skill_cats) + 1) // 2, cols=2)
+        for i, (label, rest) in enumerate(skill_cats):
+            cell = table.cell(i // 2, i % 2)
+            cell.width = Inches(3.65)
+            p = cell.paragraphs[0]
+            p.paragraph_format.space_after = Pt(2)
+            p.add_run(f"{label}: ").bold = True
+            p.add_run(rest)
+        skill_cats.clear()
 
     def flush_experience_header(duration: str) -> None:
         # Company (bold) + dates right-aligned on the same line
@@ -336,8 +408,12 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
         pending.clear()
 
     for kind, payload in _parse_lines(resume_text):
+        if kind == "category":
+            skill_cats.append(payload)
+            continue
         if kind == "blank":
             continue
+        flush_skills()
         if kind == "name":
             p = doc.add_paragraph()
             p.paragraph_format.space_after = Pt(0)
@@ -351,13 +427,6 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
             b = doc.add_paragraph(f"•  {payload}")
             b.paragraph_format.left_indent = Inches(0.2)
             b.paragraph_format.first_line_indent = Inches(-0.16)
-        elif kind == "category":
-            label, rest = payload
-            p = doc.add_paragraph()
-            p.paragraph_format.left_indent = Inches(0.2)
-            p.paragraph_format.first_line_indent = Inches(-0.2)
-            p.add_run(f"{label}: ").bold = True
-            p.add_run(rest)
         elif kind == "label":
             label, rest = payload
             key = label.lower()
@@ -371,6 +440,7 @@ def render_docx(resume_text: str, out_path: str | Path) -> Path:
                 p.add_run(f"{label}:").bold = True
         else:
             doc.add_paragraph(payload)
+    flush_skills()   # skills were the last section on the face
 
     doc.save(str(out_path))
     return out_path

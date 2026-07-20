@@ -37,17 +37,19 @@ FORMAT:
 - STRICT JD ADHERENCE: parse the JD's core responsibilities, required/preferred tools, domain signals, and outcomes, and reweight the Summary, Technical Skills, Responsibilities, and Achievements to foreground what THIS JD asks for. Mirror the JD's exact vocabulary ONLY where my real experience backs it. Never add a skill, tool, or claim just because the JD wants it — if it is not in my career facts it does not go on the resume; flag it in NOTES as a gap instead. Two different JDs must produce visibly different resumes from the same facts.
 - SUMMARY LEADS WITH THE JD: the FIRST line of the Professional Summary must directly address the JD's top requirements (see JD KEY THEMES in the user message), naming the JD's domain and its most-emphasized tools where my real experience backs them. A generic summary that ignores the JD's themes is REJECTED by an automated check.
 - SKILLS ORDERED BY THE JD: within TECHNICAL SKILLS, put the categories and tools this JD emphasizes FIRST; JD-peripheral categories go last or are dropped. Never add a skill that is not in my career facts.
-- BULLETS ORDERED BY JD RELEVANCE: within each role, order Responsibilities most-JD-relevant FIRST (any trimming to fit 2 pages removes from the END, so the last bullet must always be the least JD-relevant). A bullet with no connection to any JD theme should be dropped in favor of a relevant one; every role is kept, only its emphasis changes.
+- BULLETS ORDERED BY JD RELEVANCE: within each role, order Responsibilities most-JD-relevant FIRST (any trimming to fit 3 pages removes from the END, so the last bullet must always be the least JD-relevant). A bullet with no connection to any JD theme should be dropped in favor of a relevant one; every role is kept, only its emphasis changes.
 - Do NOT use em-dashes or en-dashes anywhere. Use commas, periods, or parentheses. Dates use "Mon YYYY - Mon YYYY" or "Mon YYYY - Present".
 - Do NOT output separator lines (e.g. "- --", "----"). Separate sections with a blank line only.
 - Bullets are factual statements of what was built or done. Do NOT editorialize or add flattery: never write phrases like "directly applicable to <product>", "mirroring the <company> philosophy", "demonstrating the <X> required", or "matching the role's <Y>". State the work, not why it fits.
 
-LENGTH AND SELECTIVITY (tailor hard to THIS JD; target 2 pages):
-- Rank every responsibility by relevance to this specific JD and keep only the strongest. Include a bullet because the JD calls for it, not because it is true. Drop the rest.
-- Responsibilities per role are a HARD LIMIT enforced by an automated check that REJECTS the resume if exceeded: the most-recent (first) role lists AT MOST 6 responsibility bullets; every older role lists AT MOST 4. Before you finish, count the bullets under each "Responsibilities:" heading and delete the least JD-relevant ones until each role is within its limit.
-- Professional Summary: 3-4 lines maximum — no more than about 55 words in a single short paragraph — targeted to this JD. Do not exceed 55 words.
-- Technical Skills: keep only the categories this JD actually cares about; drop irrelevant groups. Aim for about 5-7 skill lines, not more.
-- If the resume would run past 2 pages, cut the least JD-relevant bullets first. Never trim a real metric or a required-skill match to save space.
+LENGTH, DEPTH, AND COMPLETENESS (tailor hard to THIS JD; target 3 pages, never more):
+- EVERY employer in my career facts appears on the resume, always. Omitting a role is as wrong as inventing one, and an automated check REJECTS the resume if any real employer is missing.
+- DEPTH FLOORS (sourced ONLY from that role's real responsibilities and real metrics): the most-recent (first) role lists 5-6 responsibility bullets; every older role lists 3-4; every role lists 2-3 achievements.
+- HONESTY BEATS THE FLOOR: never manufacture, pad, or artificially split a bullet to reach a floor. If a role's real facts cannot honestly fill its floor, print only what is real and let that role run short — a short honest role is correct; an inflated one is fabrication.
+- Caps remain HARD LIMITS enforced by an automated check that REJECTS the resume if exceeded: at most 6 responsibility bullets for the first role, at most 4 for every older role, at most 3 achievements per role. Rank bullets by relevance to this specific JD and keep the strongest within each cap.
+- Professional Summary: 4-5 lines — about 60-90 words in a single paragraph — targeted to this JD.
+- Technical Skills: include EVERY category from my real skills inventory that has real backing in my career facts, JD-emphasized categories first. Never add a skill that is not in my career facts.
+- If the resume would run past 3 pages, cut the least JD-relevant bullets first. Never trim a real metric or a required-skill match to save space.
 - Keep bullets tight and factual. Remove filler and hedging.
 
 METRICS (STRICT):

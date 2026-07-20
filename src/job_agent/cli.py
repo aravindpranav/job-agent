@@ -33,6 +33,7 @@ from job_agent.store import load_job_record, resolve_apply_url, save_search
 from job_agent.tailor.career_facts import load_career_facts
 from job_agent.tailor.jd_fetch import get_full_jd
 from job_agent.tailor.render_pdf import (
+    MAX_RESUME_PAGES,
     clean_resume_text,
     docx_to_pdf,
     drop_last_responsibility,
@@ -52,6 +53,7 @@ from job_agent.tailor.tailor import (
 from job_agent.tailor.verify import (
     DriftError,
     FormatError,
+    MissingEmployerError,
     PdfVerifyError,
     ScopeDriftError,
     pdf_page_count,
@@ -246,13 +248,14 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
         render_pdf(face_text, pdf_path)  # fallback
         return pdf_path
 
-    # Fit to 2 pages on the ACTUAL output engine: render, and while it runs long
-    # drop the least-relevant responsibility bullet (never an achievement/metric).
+    # Fit to the page budget on the ACTUAL output engine: render, and while it
+    # runs long drop the least-relevant responsibility bullet (never an
+    # achievement/metric, and never below each role's depth floor).
     pdf_out = render(face)
     pages = pdf_page_count(pdf_out)
     dropped = 0
     for _ in range(30):
-        if pages <= 2:
+        if pages <= MAX_RESUME_PAGES:
             break
         trimmed = drop_last_responsibility(face)
         if trimmed == face:
@@ -262,7 +265,8 @@ def _write(console: Console, checked: TailorResult, out_dir: Path, filename: str
         pages = pdf_page_count(pdf_out)
     (out_dir / f"{filename}.face.txt").write_text(face)  # for offline re-rendering
     console.print(f"[dim]PDF engine: {engine}."
-                  + (f" Trimmed {dropped} least-relevant bullet(s) to fit 2 pages." if dropped else ""))
+                  + (f" Trimmed {dropped} least-relevant bullet(s) to fit "
+                     f"{MAX_RESUME_PAGES} pages." if dropped else ""))
 
     try:
         sections = verify_pdf(pdf_out)
@@ -290,7 +294,7 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         result = tailor_resume(facts, jd, megaprompt=_megaprompt(), stub_response=stub)
         try:
             checked = _gate(facts, result, jd)
-        except (DriftError, ScopeDriftError, FormatError) as exc:
+        except (DriftError, MissingEmployerError, ScopeDriftError, FormatError) as exc:
             console.print(f"[red]Gate FAILED — refusing to write PDF:[/red]\n{exc}")
             return 1
         filename = _resume_filename(facts.name.split()[0], facts.role, "Demo")
@@ -328,9 +332,9 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
     console.print(f"[bold cyan]job-agent tailor[/bold cyan] — tailoring with {TAILOR_MODEL}\n")
     filename = _resume_filename(facts.name.split()[0], job.title, job.company)
 
-    # Tailor, then gate. Format issues and unsupported scope qualifiers get ONE
-    # regeneration with the gate's message as a correction; hard fabrication
-    # (DriftError) is never retried.
+    # Tailor, then gate. Format issues, unsupported scope qualifiers, and an
+    # omitted employer get ONE regeneration with the gate's message as a
+    # correction; hard fabrication (DriftError) is never retried.
     # (megaprompt=None so tailor_resume loads the base prompt + policy addendum.)
     checked = None
     correction = None
@@ -342,7 +346,7 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         except DriftError as exc:  # fabrication — never retry, fail loudly
             console.print(f"[red]No-drift gate FAILED — refusing to write PDF:[/red]\n{exc}")
             return 1
-        except (FormatError, ScopeDriftError) as exc:
+        except (FormatError, ScopeDriftError, MissingEmployerError) as exc:
             if attempt == 2:
                 console.print(f"[red]Gate FAILED after retry — refusing to write PDF:[/red]\n{exc}")
                 return 1
@@ -361,7 +365,7 @@ def cmd_tailor(console: Console, args: argparse.Namespace) -> int:
         try:
             checked = _gate(facts, result, jd)
             return _write(console, checked, out_dir, filename, facts)
-        except (DriftError, ScopeDriftError, FormatError) as exc2:
+        except (DriftError, MissingEmployerError, ScopeDriftError, FormatError) as exc2:
             console.print(f"[red]Gate FAILED after artifact retry — refusing to write PDF:[/red]\n{exc2}")
             return 1
 
