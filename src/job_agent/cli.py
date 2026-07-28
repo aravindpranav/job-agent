@@ -63,7 +63,7 @@ from job_agent.tailor.verify import (
     verify_pdf,
 )
 
-SUBCOMMANDS = {"search", "tailor", "apply", "applications", "dashboard"}
+SUBCOMMANDS = {"search", "tailor", "apply", "applications", "dashboard", "discover"}
 DEMO_DIR = Path(__file__).resolve().parent / "tailor" / "demo"
 
 _VERDICT_STYLE = {"strong": "bold green", "possible": "yellow", "skip": "dim", "unscored": "red"}
@@ -138,7 +138,7 @@ def _split_applied(scored: list[ScoredJob], markers: dict) -> tuple[list[ScoredJ
 
 
 def cmd_search(console: Console, args: argparse.Namespace) -> int:
-    # --days is the primary recency knob (default 7); --max-age-hours, when
+    # --days is the primary recency knob (default 30); --max-age-hours, when
     # given explicitly, overrides it for sub-day windows.
     hours = args.max_age_hours if args.max_age_hours is not None else args.days * 24
     window = timedelta(hours=hours)
@@ -527,6 +527,74 @@ def cmd_dashboard(console: Console, args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# discover  (board-token discovery: probe candidates against official ATS APIs)
+# --------------------------------------------------------------------------- #
+
+def _configured_boards(profile_path: str) -> set[tuple[str, str]]:
+    """(ats, board) pairs already in the profile — marked, never edited."""
+    import yaml
+    try:
+        raw = yaml.safe_load(Path(profile_path).read_text()) or {}
+        return {(s.get("ats", ""), str(s.get("board", "")))
+                for s in raw.get("sources", []) if isinstance(s, dict)}
+    except (OSError, yaml.YAMLError):
+        return set()
+
+
+def cmd_discover(console: Console, args: argparse.Namespace) -> int:
+    from job_agent.discovery import DiscoveryCache, discover_boards, format_yaml_block
+
+    input_path = Path(args.input)
+    if not input_path.exists():
+        console.print(f"[red]Candidate file not found:[/red] {input_path} — "
+                      "create it with one company name per line (# comments ok).")
+        return 2
+    candidates = input_path.read_text().splitlines()
+    configured = _configured_boards(args.profile)
+
+    console.print(f"[bold cyan]job-agent discover[/bold cyan] — probing "
+                  f"{sum(1 for c in candidates if c.strip() and not c.startswith('#'))} "
+                  f"candidates against greenhouse/lever/ashby (~2 req/s, cached)\n")
+    result = discover_boards(
+        candidates, cache=DiscoveryCache(args.cache),
+        on_hit=lambda h: console.print(
+            f"  [green]✓[/green] {h.name:32} -> {h.ats}/{h.token}"
+            + ("  [dim](already in profile)[/dim]"
+               if (h.ats, h.token) in configured else "")))
+
+    new = [h for h in result.hits if (h.ats, h.token) not in configured]
+    known = len(result.hits) - len(new)
+    per_ats = {}
+    for h in result.hits:
+        per_ats[h.ats] = per_ats.get(h.ats, 0) + 1
+
+    block = format_yaml_block(new)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        "# Board tokens validated live against official ATS APIs by `job-agent discover`.\n"
+        "# Merge the entries you want into search_profile.yaml under `sources:` —\n"
+        "# this file is never merged automatically.\n"
+        "sources:\n" + block + "\n")
+
+    console.print(f"\n[bold]Validated {len(result.hits)}[/bold] "
+                  f"({', '.join(f'{a}: {n}' for a, n in sorted(per_ats.items()))})"
+                  + (f" — {known} already in your profile" if known else ""))
+    if result.transient:
+        console.print(f"[yellow]{len(result.transient)} probe(s) hit transient errors "
+                      f"(not cached; re-run to retry):[/yellow] "
+                      + "; ".join(result.transient[:5])
+                      + ("…" if len(result.transient) > 5 else ""))
+    console.print(f"[dim]{result.probed} network probe(s) this run; verdicts cached in "
+                  f"{args.cache}.[/dim]")
+    if new:
+        console.print(f"\n[bold]Ready to merge into search_profile.yaml "
+                      f"({len(new)} new):[/bold]\nsources:\n{block}")
+    console.print(f"[bold]Saved:[/bold] {out_path}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="job_agent",
@@ -536,8 +604,8 @@ def _build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("search", help="Discover fresh jobs and score their fit.")
     s.add_argument("--demo", action="store_true", help="Bundled mock jobs (no key/network).")
     s.add_argument("--profile", default="search_profile.yaml")
-    s.add_argument("--days", type=int, default=7,
-                   help="Recency window in days (default 7).")
+    s.add_argument("--days", type=int, default=30,
+                   help="Recency window in days (default 30).")
     s.add_argument("--max-age-hours", type=int, default=None,
                    help="Recency window in hours; overrides --days when given.")
     s.add_argument("--limit", type=int, default=None)
@@ -574,6 +642,17 @@ def _build_parser() -> argparse.ArgumentParser:
     d = sub.add_parser("dashboard", help="Local web dashboard (binds 127.0.0.1 only).")
     d.add_argument("--port", type=int, default=8642)
     d.add_argument("--profile", default="search_profile.yaml")
+
+    dc = sub.add_parser("discover",
+                        help="Probe candidate companies for valid ATS board tokens.")
+    dc.add_argument("--input", default="data/candidate_companies.txt",
+                    help="Text file of company names, one per line (# comments ok).")
+    dc.add_argument("--out", default="data/output/discovered_boards.yaml",
+                    help="Where to write the ready-to-merge YAML block.")
+    dc.add_argument("--cache", default="data/discovery_cache.json",
+                    help="Probe-verdict cache (makes re-runs free).")
+    dc.add_argument("--profile", default="search_profile.yaml",
+                    help="Used only to mark already-configured boards; never edited.")
     return parser
 
 
@@ -585,7 +664,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     console = Console()
     dispatch = {"tailor": cmd_tailor, "apply": cmd_apply,
-                "applications": cmd_applications, "dashboard": cmd_dashboard}
+                "applications": cmd_applications, "dashboard": cmd_dashboard,
+                "discover": cmd_discover}
     handler = dispatch.get(args.command, cmd_search)
     try:
         return handler(console, args)
