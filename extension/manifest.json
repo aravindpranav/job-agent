@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Job Agent Autofill",
+  "version": "0.1.0",
+  "description": "Fills job application forms from your local job-agent profile. Runs entirely on your computer. Never submits for you; never touches consent boxes.",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://boards.greenhouse.io/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://jobs.ashbyhq.com/*",
+    "https://jobs.lever.co/*",
+    "https://jobs.eu.lever.co/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.eu.lever.co/*"
+      ],
+      "js": ["content/ats.js", "content/scan.js", "content/match.js", "content/fill.js", "content/main.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Job Agent — fill this form"
+  }
+}

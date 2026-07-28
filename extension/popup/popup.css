@@ -1,0 +1,88 @@
+/* Same clean light style as the job-agent dashboard. */
+:root {
+  --bg: #FAFAFA; --card: #FFFFFF; --border: #E5E7EB; --border-soft: #F0F1F3;
+  --ink: #1F2328; --muted: #6B7280; --faint: #9CA3AF;
+  --accent: #6366F1; --accent-soft: #EEF2FF;
+  --green-bg: #D1FAE5; --green: #047857;
+  --red-bg: #FEE2E2; --red: #B91C1C;
+  --amber-bg: #FEF3C7; --amber: #B45309;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+  width: 360px; background: var(--bg); color: var(--ink);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: 14px 16px;
+}
+header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+header h1 { font-size: 15px; font-weight: 650; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.backend { margin-left: auto; font-size: 11.5px; color: var(--faint); }
+.backend.up { color: var(--green); }
+.backend.down { color: var(--red); }
+
+.lead { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+
+button.primary {
+  width: 100%; padding: 9px 12px; font-size: 13.5px; font-weight: 600;
+  background: var(--accent); color: #fff; border: none; border-radius: 7px;
+  cursor: pointer;
+}
+button.primary:hover:not(:disabled) { background: #4F51E0; }
+button.primary:disabled { opacity: .55; cursor: wait; }
+
+.status { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.status.err { color: var(--red); }
+
+.group { margin-top: 14px; }
+.ghead { font-size: 11px; font-weight: 650; color: var(--faint);
+         text-transform: uppercase; letter-spacing: .05em; }
+.ghead .count { color: var(--muted); }
+.ghint { color: var(--muted); font-size: 11.5px; margin: 1px 0 6px; }
+ul { list-style: none; padding: 0; }
+li {
+  background: var(--card); border: 1px solid var(--border-soft);
+  border-radius: 6px; padding: 6px 9px; margin-bottom: 5px; font-size: 12.5px;
+}
+li .lbl { font-weight: 550; }
+li .val { color: var(--muted); overflow-wrap: anywhere; }
+li .why { color: var(--faint); font-size: 11.5px; }
+li.f { border-left: 3px solid var(--green); }
+li.n { border-left: 3px solid var(--amber); }
+li.c { border-left: 3px solid var(--red); }
+.empty { color: var(--faint); font-size: 12px; padding: 2px 0 4px; }
+
+/* drafts: editable answer + explicit insert */
+li.d { border-left: 3px solid var(--accent); }
+li.d textarea {
+  width: 100%; min-height: 72px; margin-top: 5px; resize: vertical;
+  border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px;
+  font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.dnote { color: var(--amber); font-size: 11px; margin-top: 3px; }
+.drow { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+button.small {
+  padding: 4px 9px; font-size: 12px; font-weight: 550; cursor: pointer;
+  border-radius: 5px; border: 1px solid var(--border); background: var(--card);
+}
+button.small.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.small:hover { filter: brightness(.96); }
+.dstate { font-size: 11.5px; color: var(--green); }
+
+/* the resume field: needs a real human click on the file input */
+li.file { border-left: 3px solid var(--accent); background: var(--accent-soft); }
+li.file .why { color: var(--muted); }
+.rec { margin-top: 4px; font-size: 11.5px; color: var(--ink);
+       overflow-wrap: anywhere; }
+.rec b { font-weight: 600; }
+
+footer {
+  display: flex; align-items: center; gap: 8px; margin-top: 14px;
+  padding-top: 10px; border-top: 1px solid var(--border-soft);
+  color: var(--muted); font-size: 11.5px;
+}
+footer input { width: 64px; padding: 3px 6px; border: 1px solid var(--border);
+               border-radius: 5px; font-size: 12px; }
+.note { margin-left: auto; color: var(--faint); }
+.hidden { display: none; }
+#task-banner { margin: 0 0 8px; padding: 7px 10px; font-size: 12px; border-radius: 8px;
+  background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE; }

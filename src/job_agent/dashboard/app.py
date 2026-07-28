@@ -16,13 +16,13 @@ from pydantic import BaseModel, Field, model_validator
 
 from job_agent.apply.tracker import Status, upsert_job_state
 from job_agent.dashboard import service
-from job_agent.store import load_job_record
+from job_agent.store import load_job_record, resolve_apply_url
 
 _STATIC = Path(__file__).resolve().parent / "static"
 
 
 class SearchRequest(BaseModel):
-    days: int = Field(default=7, ge=1, le=90)
+    days: int = Field(default=30, ge=1, le=90)
 
 
 class JobRequest(BaseModel):
@@ -68,7 +68,7 @@ def create_app(*, data_dir: Path = Path("data"),
                facts_path: Path | None = None,
                out_dir: Path | None = None,
                searcher=None, tailorer=None, previewer=None,
-               apply_session_factory=None) -> FastAPI:
+               apply_session_factory=None, url_opener=None) -> FastAPI:
     """Build the app. ``searcher``/``tailorer``/``previewer``/
     ``apply_session_factory`` are injectable for tests; the defaults call the
     real service functions (i.e. the CLI paths)."""
@@ -83,8 +83,22 @@ def create_app(*, data_dir: Path = Path("data"),
     apply_session_factory = apply_session_factory or (
         lambda job_id: service.start_apply_session(
             job_id, data_dir=data_dir, facts_path=facts_path, out_dir=out_dir))
+    url_opener = url_opener or service.open_in_chrome
 
     app = FastAPI(title="job-agent dashboard", docs_url=None, redoc_url=None)
+    # The Chrome extension calls this app cross-origin; nothing else may.
+    from fastapi.middleware.cors import CORSMiddleware
+
+    from job_agent.dashboard.extension_api import cors_config, create_extension_router
+
+    app.add_middleware(CORSMiddleware, **cors_config())
+    # Shared with the extension router: the real-browser apply channel.
+    pending_task: dict = {}            # {"task": {...}} set by /api/apply/open
+    fill_reports: dict = {}            # job_id -> last extension fill report
+    app.include_router(create_extension_router(data_dir=data_dir, facts_path=facts_path,
+                                               out_dir=out_dir,
+                                               pending_task=pending_task,
+                                               fill_reports=fill_reports))
     sessions: dict[str, object] = {}   # live apply sessions, one browser each
 
     def _require_job(job_id: str) -> dict:
@@ -139,6 +153,34 @@ def create_app(*, data_dir: Path = Path("data"),
     def apply_preview(req: JobRequest) -> dict:
         _require_job(req.job_id)
         return previewer(req.job_id)
+
+    # --- apply in the user's REAL browser (extension does the filling) -----
+
+    @app.post("/api/apply/open")
+    def apply_open(req: JobRequest) -> dict:
+        """Open the job's stored apply URL in the user's own browser and queue
+        a fill task for the extension. No Playwright, no filling, no
+        submission here — the human drives everything from their browser."""
+        record = _require_job(req.job_id)
+        url = resolve_apply_url(record)
+        if not url:
+            raise HTTPException(404, "this job record has no apply URL")
+        from datetime import datetime, timezone
+
+        pending_task["task"] = {
+            "job_id": req.job_id,
+            "company": record.get("company", ""),
+            "title": record.get("title", ""),
+            "apply_url": url,
+            "jd": (record.get("description") or "")[:25_000],
+            "opened_at": datetime.now(timezone.utc).isoformat(),
+        }
+        opened_via = url_opener(url)
+        return {"ok": True, "opened_via": opened_via, "apply_url": url}
+
+    @app.get("/api/apply/fill-report/{job_id}")
+    def apply_fill_report(job_id: str) -> dict:
+        return {"report": fill_reports.get(job_id)}
 
     # --- live apply sessions: the CLI's review gate, in the UI -------------
 

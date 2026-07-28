@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+<header>
+  <span class="dot"></span>
+  <h1>Job Agent</h1>
+  <span class="backend" id="backend-state">checking backend…</span>
+</header>
+
+<p class="lead">Fills this application form from your saved profile.
+  You review everything and press the form's own submit button yourself —
+  this never submits for you and never touches consent boxes.</p>
+
+<div id="task-banner" class="hidden"></div>
+<button id="fill" class="primary">Fill this form</button>
+<div id="status" class="status"></div>
+
+<div id="results" class="hidden">
+  <div class="group">
+    <div class="ghead">Filled for you <span id="n-filled" class="count"></span></div>
+    <div class="ghint">Entered on the page — check each one looks right.</div>
+    <ul id="list-filled"></ul>
+  </div>
+  <div class="group" id="group-drafts">
+    <div class="ghead">Drafts to review <span id="n-drafts" class="count"></span></div>
+    <div class="ghint">Written from your saved facts — nothing goes in the form until
+      you've read it and clicked “Put it in the form”. Edit freely first.</div>
+    <ul id="list-drafts"></ul>
+  </div>
+  <div class="group">
+    <div class="ghead">Needs your answer <span id="n-needs" class="count"></span></div>
+    <div class="ghint">No saved answer, or the control needs a human — fill these on the page.</div>
+    <ul id="list-needs"></ul>
+  </div>
+  <div class="group" id="group-confirm">
+    <div class="ghead">You must confirm yourself <span id="n-confirm" class="count"></span></div>
+    <div class="ghint">Consent and legal boxes are never ticked for you — read and
+      answer them on the page.</div>
+    <ul id="list-confirm"></ul>
+  </div>
+</div>
+
+<footer>
+  <label>Backend port <input type="number" id="port" min="1" max="65535"></label>
+  <span class="note">everything stays on your computer</span>
+</footer>
+
+<script src="popup.js"></script>
+</body>
+</html>
