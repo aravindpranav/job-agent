@@ -69,6 +69,32 @@ def test_applications_endpoint_with_no_log_is_empty_not_an_error(tmp_path):
     assert data["records"] == []
 
 
+def test_applications_view_collapses_legacy_duplicate_rows(tmp_path):
+    # a log written BEFORE the one-record-per-job fix: same job twice, and the
+    # sr-search id-reissue case (same company+title, different ids)
+    import json as _json
+    log = tmp_path / "applications.json"
+    log.write_text(_json.dumps([
+        {"company": "Scale AI", "title": "ML Engineer", "job_id": "s1",
+         "date": "2026-07-08T10:00:00+00:00", "status": "submitted",
+         "attempt_id": "a1"},
+        {"company": "Scale AI", "title": "ML Engineer", "job_id": "s1",
+         "date": "2026-07-10T10:00:00+00:00", "status": "paused",
+         "attempt_id": "a2"},
+        {"company": "Ginas Tech Jobs", "title": "Senior ML Engineer",
+         "job_id": "744000111", "date": "2026-07-09T10:00:00+00:00",
+         "status": "submitted", "attempt_id": "a3"},
+        {"company": "Ginas Tech Jobs", "title": "Senior ML Engineer",
+         "job_id": "744000999", "date": "2026-07-11T10:00:00+00:00",
+         "status": "paused", "attempt_id": "a4"},
+    ]))
+    data = service.applications_view(log)
+    assert data["counts"]["total"] == 2                 # one row per job
+    by_company = {r["company"]: r for r in data["records"]}
+    assert by_company["Scale AI"]["status"] == "paused"           # latest wins
+    assert by_company["Ginas Tech Jobs"]["status"] == "paused"
+
+
 # --- section 2: search + browse ------------------------------------------------------
 
 def test_jobs_endpoint_serves_the_last_search_ranked(client):

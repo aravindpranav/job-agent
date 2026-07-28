@@ -65,6 +65,67 @@ def test_record_status_is_validated():
         _record(status="on-fire")
 
 
+# --- one record per JOB: re-applying updates, never duplicates -----------------------
+
+def test_reapplying_to_the_same_job_updates_the_one_record(tmp_path):
+    log = tmp_path / "applications.json"
+    from job_agent.apply.tracker import upsert_job_state
+    record_attempt(log, _record(status="submitted", date="2026-07-08T12:00:00+00:00"))
+    upsert_job_state(log, job_id="j1", notes="spoke to recruiter")
+    second = record_attempt(log, _record(status="paused",
+                                         date="2026-07-10T09:00:00+00:00"))
+    (rec,) = load_applications(log)                 # ONE row, not two
+    assert rec.status == "paused"                   # the latest attempt wins
+    assert rec.date == "2026-07-10T09:00:00+00:00"
+    assert rec.notes == "spoke to recruiter"        # user state survives
+    assert rec.attempt_id == second                 # addressable by the new attempt
+    update_status(log, second, "submitted")         # run resolution still lands
+    assert load_applications(log)[0].status == "submitted"
+
+
+def test_reapplying_matches_by_company_title_when_the_id_was_reissued(tmp_path):
+    # sr-search re-issues job ids across runs: same posting, new id
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="744000111", company="Ginas Tech Jobs",
+                                title="Senior ML Engineer", status="submitted"))
+    record_attempt(log, _record(job_id="744000999", company="Ginas Tech Jobs",
+                                title="Senior ML Engineer!", status="paused"))
+    (rec,) = load_applications(log)                 # matched despite the new id
+    assert rec.job_id == "744000999"                # carries the current id
+    assert rec.status == "paused"
+
+
+def test_applying_then_changing_status_yields_one_record(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    log = tmp_path / "applications.json"
+    attempt = record_attempt(log, _record(job_id="scale-1", company="Scale AI",
+                                          title="ML Engineer", status="paused"))
+    update_status(log, attempt, "submitted")        # the run completed
+    upsert_job_state(log, job_id="scale-1", company="Scale AI",
+                     title="ML Engineer", status="interviewing")
+    (rec,) = load_applications(log)                 # ONE record end to end
+    assert rec.status == "interviewing"
+
+
+def test_upsert_matches_by_company_title_when_the_job_id_misses(tmp_path):
+    from job_agent.apply.tracker import upsert_job_state
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="old-id", company="Ginas Tech Jobs",
+                                title="Senior ML Engineer", status="submitted"))
+    upsert_job_state(log, job_id="new-id", company="Ginas Tech Jobs",
+                     title="Senior ML Engineer", status="rejected")
+    (rec,) = load_applications(log)
+    assert rec.status == "rejected"
+
+
+def test_different_jobs_still_get_their_own_records(tmp_path):
+    log = tmp_path / "applications.json"
+    record_attempt(log, _record(job_id="j1", company="Plaid", title="ML Engineer"))
+    record_attempt(log, _record(job_id="j2", company="Plaid", title="Data Scientist"))
+    record_attempt(log, _record(job_id="j3", company="Stripe", title="ML Engineer"))
+    assert len(load_applications(log)) == 3
+
+
 # --- user-managed state: status pipeline, notes, follow-up --------------------------
 
 def test_user_statuses_are_valid_alongside_run_statuses():

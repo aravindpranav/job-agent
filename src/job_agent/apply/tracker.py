@@ -64,12 +64,42 @@ def _write(path: Path, records: list[ApplicationRecord]) -> None:
     path.write_text(json.dumps([r.model_dump() for r in records], indent=2))
 
 
+def _find_job(records: list[ApplicationRecord], job_id: str,
+              company: str, title: str) -> int | None:
+    """Index of the record tracking this JOB: exact id first, then the
+    (company, title) match-key — sr-search re-issues ids across runs, so the
+    same posting must be recognized under a new id."""
+    if job_id:
+        idx = next((i for i in range(len(records) - 1, -1, -1)
+                    if records[i].job_id == str(job_id)), None)
+        if idx is not None:
+            return idx
+    if company and title:
+        key = (_match_key(company), _match_key(title))
+        return next((i for i in range(len(records) - 1, -1, -1)
+                     if (_match_key(records[i].company),
+                         _match_key(records[i].title)) == key), None)
+    return None
+
+
 def record_attempt(path: str | Path, record: ApplicationRecord) -> str:
-    """Append one attempt to the log; returns its unique attempt id."""
+    """Track one attempt — ONE record per job, never a duplicate row.
+
+    A new attempt on an already-tracked job (matched by id, else by
+    company+title) REPLACES that record: the new attempt's status/date/id win,
+    the user's notes and follow-up survive. Returns the unique attempt id.
+    """
     path = Path(path)
+    records = load_applications(path)
     attempt_id = record.attempt_id or uuid.uuid4().hex
     stamped = record.model_copy(update={"attempt_id": attempt_id})
-    _write(path, load_applications(path) + [stamped])
+    idx = _find_job(records, record.job_id, record.company, record.title)
+    if idx is None:
+        _write(path, records + [stamped])
+    else:
+        merged = stamped.model_copy(update={"notes": records[idx].notes,
+                                            "follow_up": records[idx].follow_up})
+        _write(path, records[:idx] + [merged] + records[idx + 1:])
     return attempt_id
 
 
@@ -145,8 +175,9 @@ def upsert_job_state(path: str | Path, *, job_id: str = "", attempt_id: str = ""
         if idx is None:
             raise KeyError(f"no record with attempt_id {attempt_id!r}")
     else:
-        idx = next((i for i in range(len(records) - 1, -1, -1)
-                    if records[i].job_id == job_id), None)
+        # id first, then company+title — the same job under a re-issued id
+        # must update its existing row, never grow a duplicate
+        idx = _find_job(records, job_id, company, title)
     if idx is None:
         record = ApplicationRecord(
             company=company or "Unknown", title=title, job_id=job_id,

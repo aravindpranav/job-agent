@@ -47,6 +47,22 @@ _UNREADABLE = (
     "“Re-read form”."
 )
 
+_WINDOW_CLOSED = (
+    "The browser window was closed — nothing was submitted. Cancel this "
+    "session and click Apply again to reopen it."
+)
+
+
+def _is_page_closed(exc: Exception) -> bool:
+    """True for Playwright's closed-target errors (window closed mid-session).
+
+    Detected by class name and message so this module never imports
+    Playwright — the tests drive sessions with fake pages.
+    """
+    if type(exc).__name__ == "TargetClosedError":
+        return True
+    return "has been closed" in str(exc)
+
 
 class SubmitBlocked(RuntimeError):
     """Submission refused — the review gate is not satisfied."""
@@ -146,6 +162,17 @@ class ApplySession:
 
     def _read_and_fill(self) -> None:
         self._warnings = []
+        try:
+            self._scan_and_fill()
+        except Exception as exc:
+            # the human closed the window mid-session: report it as a state,
+            # not a stack trace — they cancel and start a fresh apply
+            if not _is_page_closed(exc):
+                raise
+            self._plan, self._form_readable = FillPlan(), False
+            self._message = _WINDOW_CLOSED
+
+    def _scan_and_fill(self) -> None:
         fields = read_form(self._page)
         if not fields:
             self._plan, self._form_readable = FillPlan(), False
@@ -186,11 +213,18 @@ class ApplySession:
                 f"{len(missing)} required field(s) still unfilled ({names}) — "
                 f"edit them or mark them done first")
         outcome = ReviewOutcome(Decision.APPROVE, self._plan)
-        result = run_submit(
-            self._page, self._plan, outcome, submit_flag=True,
-            submit_selector=self._submit_selector, screenshot_dir=self._out_dir,
-            job_label=f"{self._record.get('company', '?')} — "
-                      f"{self._record.get('title', '?')}")
+        try:
+            result = run_submit(
+                self._page, self._plan, outcome, submit_flag=True,
+                submit_selector=self._submit_selector, screenshot_dir=self._out_dir,
+                job_label=f"{self._record.get('company', '?')} — "
+                          f"{self._record.get('title', '?')}")
+        except Exception as exc:
+            if not _is_page_closed(exc):
+                raise
+            raise SubmitBlocked(
+                "the browser window was closed — nothing was submitted; "
+                "cancel and start apply again") from exc
         log_result(result, self._out_dir / "apply_log.jsonl")
         update_status(self._tracker_path, self._attempt_id,
                       _TRACK_STATUS.get(result.status, "paused"), result.reason)

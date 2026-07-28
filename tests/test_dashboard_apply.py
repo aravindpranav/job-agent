@@ -197,6 +197,71 @@ def test_unreadable_form_is_reported_clearly_not_an_empty_plan(tmp_path):
     session.cancel()
 
 
+# --- a browser window closed by the human: clean message, never a stack trace ---------
+
+class TargetClosedError(Exception):
+    """Same class NAME as Playwright's — the session detects it without
+    importing Playwright (fake pages keep these tests browser-free)."""
+
+
+class _ClosablePage(_Page):
+    closed = False
+
+    def _check(self):
+        if self.closed:
+            raise TargetClosedError(
+                "Page.evaluate: Target page, context or browser has been closed")
+
+    def goto(self, url, wait_until=None):
+        self._check()
+        super().goto(url, wait_until)
+
+    def evaluate(self, js):
+        self._check()
+        return super().evaluate(js)
+
+    def locator(self, selector):
+        self._check()
+        return super().locator(selector)
+
+
+def test_rescan_after_the_window_was_closed_reports_it_cleanly(tmp_path):
+    page = _ClosablePage()
+    session, _, _ = _session(tmp_path, page=page)
+    session.start()
+    page.closed = True                       # the human closed the window
+    state = session.rescan()                 # must NOT raise
+    assert state["form_readable"] is False
+    assert "browser window was closed" in state["message"].lower()
+    assert state["planned"] == [] and state["unfilled"] == []
+    session.cancel()
+
+
+def test_submit_after_the_window_was_closed_is_refused_not_a_crash(tmp_path):
+    page = _ClosablePage()
+    session, _, _ = _session(tmp_path, page=page)
+    session.start()
+    session.edit("#why", "Because I build ML platforms.")
+    session.edit("#consent", "(completed in the browser)", mark_done=True)
+    page.closed = True
+    with pytest.raises(SubmitBlocked, match="browser window was closed"):
+        session.submit()
+    session.cancel()                         # tracker still resolves to paused
+    (rec,) = load_applications(tmp_path / "applications.json")
+    assert rec.status == "paused"
+
+
+def test_rescan_endpoint_returns_the_closed_window_message_not_a_500(tmp_path):
+    page = _ClosablePage()
+    app, holder = _app(tmp_path, page=page)
+    c = TestClient(app)
+    state = c.post("/api/apply/start", json={"job_id": "j1"}).json()
+    page.closed = True
+    resp = c.post("/api/apply/rescan", json={"session_id": state["session_id"]})
+    assert resp.status_code == 200
+    assert "browser window was closed" in resp.json()["message"].lower()
+
+
 # --- edit: the CLI's `edit`, over HTTP ------------------------------------------------
 
 def test_edit_updates_the_plan_and_the_live_page(tmp_path):

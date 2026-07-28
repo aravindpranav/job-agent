@@ -31,9 +31,35 @@ def _needs_follow_up(record) -> bool:
     return bool(record.follow_up) and record.follow_up <= date.today().isoformat()
 
 
+def _dedupe_jobs(records: list) -> list:
+    """One row per JOB (records arrive newest-first, so first-seen = latest).
+
+    Collapses rows that logs accumulated before record_attempt deduped on
+    write: matched by job_id, else by the (company, title) match-key — the
+    same rule the tracker uses for sr-search's re-issued ids.
+    """
+    from job_agent.apply.tracker import _match_key
+
+    seen_ids: set[str] = set()
+    seen_pairs: set[tuple[str, str]] = set()
+    out = []
+    for r in records:
+        pair = ((_match_key(r.company), _match_key(r.title))
+                if r.company and r.title else None)
+        if (r.job_id and r.job_id in seen_ids) or (pair and pair in seen_pairs):
+            continue
+        if r.job_id:
+            seen_ids.add(r.job_id)
+        if pair:
+            seen_pairs.add(pair)
+        out.append(r)
+    return out
+
+
 def applications_view(log_path: str | Path) -> dict:
-    """All tracked applications, newest first, plus summary counts."""
-    records = sorted(load_applications(log_path), key=lambda r: r.date, reverse=True)
+    """All tracked applications, newest first (one row per job), plus counts."""
+    records = _dedupe_jobs(
+        sorted(load_applications(log_path), key=lambda r: r.date, reverse=True))
     counts = {"total": len(records)}
     for status in ("submitted", "paused", "failed"):
         counts[status] = sum(1 for r in records if r.status == status)
@@ -95,7 +121,7 @@ def _run_cli(handler, ns: Namespace) -> dict:
     return {"ok": code == 0, "exit_code": code, "output": console.export_text()}
 
 
-def run_search_cli(profile_path: str | Path, days: int = 7) -> dict:
+def run_search_cli(profile_path: str | Path, days: int = 30) -> dict:
     """Run the real search+score pipeline via the CLI's own command function."""
     from job_agent.cli import cmd_search
 
@@ -105,6 +131,26 @@ def run_search_cli(profile_path: str | Path, days: int = 7) -> dict:
                    max_age_hours=None, limit=None, method="structured",
                    include_applied=False)
     return _run_cli(cmd_search, ns)
+
+
+def open_in_chrome(url: str, *, _run=None, _fallback=None) -> str:
+    """Open ``url`` in the user's real Chrome (their profile, their extensions),
+    falling back to the default browser. Returns which opener was used, so the
+    UI can say where the page went. ``_run``/``_fallback`` are injectable for
+    tests — nothing here is ever headless or automation-controlled."""
+    if _run is None:
+        import subprocess
+        _run = lambda cmd, **kw: subprocess.run(  # noqa: E731 - tiny adapter
+            cmd, check=True, capture_output=True, timeout=10, **kw)
+    if _fallback is None:
+        import webbrowser
+        _fallback = webbrowser.open
+    try:
+        _run(["open", "-a", "Google Chrome", url])
+        return "chrome"
+    except Exception:
+        _fallback(url)
+        return "default-browser"
 
 
 # --- section 3: tailor + apply preview -------------------------------------------------
