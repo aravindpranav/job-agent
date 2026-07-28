@@ -235,7 +235,16 @@ def read_form(page) -> tuple[FormField, ...]:
     Same-name radio/checkbox controls are grouped into a single field with one
     option per control (see :func:`_grouped_field`); everything else maps 1:1.
     """
-    raw = page.evaluate(_SCAN_JS)
+    return fields_from_scan(page.evaluate(_SCAN_JS))
+
+
+def fields_from_scan(raw: list[dict]) -> tuple[FormField, ...]:
+    """Pure: classify raw scan descriptors into typed fields.
+
+    The descriptors are the output of ``_SCAN_JS`` — produced either by
+    ``read_form`` (Playwright) or by the Chrome extension's content script,
+    which ships the same scan and posts its result to the local API.
+    """
     fields: list[FormField] = []
     groups: dict[str, list[dict]] = {}
     order: list[tuple[str, str | dict]] = []   # ("single", r) | ("group", name)

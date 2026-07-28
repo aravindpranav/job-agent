@@ -37,6 +37,8 @@ def source_tag(source: str) -> str:
         if "needs-input" in s:
             return "[NEEDS-INPUT]"
         return "[AI-DRAFT]"
+    if s.startswith("grounded"):
+        return "[GROUNDED]"                 # facts-backed yes/no — veto in review
     if s.startswith(("answer_bank", "career_facts", "resume")):
         return "[FROM ANSWER_BANK]"
     return "[MANUAL]"
