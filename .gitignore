@@ -28,3 +28,9 @@ htmlcov/
 .idea/
 .vscode/
 *.bak
+
+# explicit PII guards
+career_facts.yaml
+answer_bank.yaml
+**/career_facts.yaml
+**/answer_bank.yaml
