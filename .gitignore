@@ -34,9 +34,3 @@ career_facts.yaml
 answer_bank.yaml
 **/career_facts.yaml
 **/answer_bank.yaml
-
-# explicit PII guards
-career_facts.yaml
-answer_bank.yaml
-**/career_facts.yaml
-**/answer_bank.yaml
