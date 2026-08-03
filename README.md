@@ -271,6 +271,15 @@ backend the Chrome extension talks to.
 tracked state joined in, and drives the same CLI code paths:
 
 - **Search / Tailor / Resume** buttons run the real pipeline and show the output.
+- **Scan metadata + new-job tracking.** The jobs-table header shows the last
+  scan (as a relative time), total jobs, sources queried, and how many jobs
+  were first seen in that scan; rows first seen in the current scan carry a
+  **NEW** badge, and a "newest first" sort option orders by first-seen time
+  ("best match" stays the default). Every number comes from persisted scan
+  data — anything unavailable is omitted, never guessed. Baseline rule: on the
+  first scan after the seen cache is empty there is no earlier scan to be "new
+  since", so no row is badged and the new-count is omitted rather than showing
+  a misleading number.
 - **Application tracker** (`apply/tracker.py`, gitignored
   `data/applications.json`): per-job status (saved / applied / interviewing /
   offer / rejected), notes, and follow-up dates. Jobs with an in-flight
@@ -387,6 +396,9 @@ and the unscored fallback).
   explicitly, tagged `[GROUNDED]` with the fact shown, veto-first.
 - ✅ Board-token discovery (`discover`) — grow the Greenhouse/Lever/Ashby board
   list from candidate company names via the official APIs.
+- ✅ Scan metadata + new-job tracking — per-survivor first-seen records, a
+  scan-summary header, NEW badges, and a newest-first sort (baseline-safe:
+  the first scan after an empty cache badges nothing).
 
 ## License
 
