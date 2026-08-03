@@ -81,11 +81,11 @@ def jobs_view(last_search_path: str | Path,
 
     path = Path(last_search_path)
     if not path.exists():
-        return {"generated_at": None, "jobs": []}
+        return {"generated_at": None, "meta": None, "jobs": []}
     try:
         data = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
-        return {"generated_at": None, "jobs": []}
+        return {"generated_at": None, "meta": None, "jobs": []}
     jobs = list(data.get("jobs", {}).values())
     jobs.sort(key=lambda j: (_VERDICT_RANK.get(j.get("verdict"), 0),
                              j.get("score") if j.get("score") is not None else -1),
@@ -107,7 +107,8 @@ def jobs_view(last_search_path: str | Path,
         j["already_applied"] = is_already_applied(
             markers, job_id=str(j.get("id")), company=j.get("company", ""),
             title=j.get("title", ""))
-    return {"generated_at": data.get("generated_at"), "jobs": jobs}
+    return {"generated_at": data.get("generated_at"),
+            "meta": data.get("meta"), "jobs": jobs}
 
 
 def _run_cli(handler, ns: Namespace) -> dict:

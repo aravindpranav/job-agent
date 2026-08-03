@@ -13,17 +13,43 @@ from pathlib import Path
 from job_agent.models import ScoredJob
 
 
-def save_search(scored: list[ScoredJob], boards: list[str], path: str | Path) -> Path:
-    """Persist scored jobs (parallel to ``boards``) keyed by id."""
+def save_search(scored: list[ScoredJob], boards: list[str], path: str | Path, *,
+                first_seen: dict[str, str] | None = None,
+                new_job_ids: tuple[str, ...] = (),
+                baseline: bool = False,
+                sources_queried: int | None = None) -> Path:
+    """Persist scored jobs (parallel to ``boards``) keyed by id, plus scan
+    metadata for the dashboard.
+
+    ``first_seen_this_scan`` is an EXPLICIT persisted boolean per record (from
+    the seen cache's newly-inserted signal) — never derived from timestamp
+    equality. Baseline rule: when the seen cache was empty at scan start there
+    is no earlier scan to be "new since", so no record is badged and
+    ``new_count`` is stored as null, not zero. An unknown ``sources_queried``
+    is omitted entirely (no made-up numbers).
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    new_set = set() if baseline else {str(i) for i in new_job_ids}
     records: dict[str, dict] = {}
     for s, board in zip(scored, boards):
+        job_id = str(s.job.id)
         rec = s.job.model_dump(mode="json")
-        rec.update(board=board, score=s.score, verdict=s.verdict, reasons=list(s.reasons))
-        records[str(s.job.id)] = rec
+        rec.update(board=board, score=s.score, verdict=s.verdict, reasons=list(s.reasons),
+                   first_seen_this_scan=job_id in new_set)
+        if first_seen and job_id in first_seen:
+            rec["first_seen"] = first_seen[job_id]
+        records[job_id] = rec
+    meta: dict = {
+        "total": len(records),
+        "new_count": (None if baseline else
+                      sum(1 for r in records.values() if r["first_seen_this_scan"])),
+    }
+    if sources_queried is not None:
+        meta["sources_queried"] = sources_queried
     path.write_text(json.dumps(
-        {"generated_at": datetime.now(timezone.utc).isoformat(), "jobs": records},
+        {"generated_at": datetime.now(timezone.utc).isoformat(),
+         "meta": meta, "jobs": records},
         indent=2,
     ))
     return path

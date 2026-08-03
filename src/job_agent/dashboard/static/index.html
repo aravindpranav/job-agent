@@ -110,6 +110,7 @@
   }
   .p-strong, .p-offer, .p-submitted   { --pf: #D1FAE5; --pc: #047857; }
   .p-applied, .p-interviewing         { --pf: #DBEAFE; --pc: #1D4ED8; }
+  .p-new                              { --pf: #FEF3C7; --pc: #B45309; }
   .p-possible                         { --pf: #FEF3C7; --pc: #B45309; }
   .p-skip, .p-saved, .p-rejected, .p-unscored { --pf: #F3F4F6; --pc: #4B5563; }
   .p-paused, .p-failed                { --pf: #FEE2E2; --pc: #B91C1C; }
@@ -196,7 +197,7 @@
     <label>Source <select id="jf-source"><option value="">all</option></select></label>
     <label>Min score <input id="jf-score" type="number" min="0" max="100" placeholder="0"></label>
     <label>Sort <select id="jf-sort">
-      <option value="score">best match</option><option value="company">company</option>
+      <option value="score">best match</option><option value="newest">newest first</option><option value="company">company</option>
     </select></label>
     <label><input type="checkbox" id="jf-hide-applied" checked> Hide jobs I've applied to</label>
   </div>
@@ -401,10 +402,29 @@ function fillFilter(sel, values) {
 }
 
 /* ── Jobs ─────────────────────────────────────────────────────────────── */
-function renderJobsMeta(generatedAt) {
-  $("#gen-at").textContent = generatedAt
-    ? `Jobs found by your last search (${generatedAt.slice(0, 16).replace("T", " ")} UTC), best matches first.`
-    : "You haven't searched yet — click “Find new jobs” to look for roles that fit you.";
+function relTime(iso) {
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (!isFinite(s) || s < 0) return "";
+  if (s < 90) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+}
+
+function renderJobsMeta(generatedAt, meta) {
+  if (!generatedAt) {
+    $("#gen-at").textContent =
+      "You haven't searched yet — click “Find new jobs” to look for roles that fit you.";
+    return;
+  }
+  // Every part comes from persisted data; anything unavailable is omitted
+  // rather than shown as a possibly-wrong zero or placeholder.
+  const rel = relTime(generatedAt);
+  const bits = [rel ? `Scanned ${rel}` : `Scanned ${generatedAt.slice(0, 16).replace("T", " ")} UTC`];
+  if (meta && typeof meta.total === "number") bits.push(`${meta.total} jobs`);
+  if (meta && typeof meta.sources_queried === "number") bits.push(`${meta.sources_queried} sources`);
+  if (meta && typeof meta.new_count === "number") bits.push(`${meta.new_count} new since last scan`);
+  $("#gen-at").textContent = bits.join(" · ");
 }
 
 function renderJobs() {
@@ -419,7 +439,11 @@ function renderJobs() {
     (!hideApplied || !j.already_applied));
   const hiddenN = hideApplied ? JOBS.filter((j) => j.already_applied).length : 0;
   rows = rows.slice().sort((a, b) => sort === "company"
-    ? a.company.localeCompare(b.company) : (b.score ?? -1) - (a.score ?? -1));
+    ? a.company.localeCompare(b.company)
+    : sort === "newest"
+      // ISO timestamps compare lexicographically; jobs without one sink
+      ? (b.first_seen || "").localeCompare(a.first_seen || "")
+      : (b.score ?? -1) - (a.score ?? -1));
   const hiddenNote = hiddenN
     ? `<div class="empty" style="padding:10px 16px">${hiddenN} job(s) you already applied to are hidden — untick “Hide applied” to show them.</div>` : "";
   if (!rows.length) {
@@ -434,10 +458,12 @@ function renderJobs() {
     const t = j.tracked, meta = {company: j.company, title: j.title, source: j.source};
     const appliedPill = j.already_applied
       ? ` <span class="pill p-applied">already applied</span>` : "";
+    const newPill = j.first_seen_this_scan === true
+      ? ` <span class="pill p-new">NEW</span>` : "";
     return `
     <tr>
       <td class="num">${j.score ?? "—"}</td>
-      <td>${pill(j.verdict || "unscored")}${appliedPill}</td>
+      <td>${pill(j.verdict || "unscored")}${appliedPill}${newPill}</td>
       <td data-job-id="${esc(j.id)}">${j.url
         ? `<a class="tt" href="${esc(j.url)}" target="_blank" rel="noreferrer" title="${esc(j.title)}">${esc(j.title)}</a>`
         : `<span class="tt" title="${esc(j.title)}">${esc(j.title)}</span>`}</td>
@@ -473,7 +499,7 @@ function renderJobs() {
 async function loadJobs() {
   const data = await api("/api/jobs");
   JOBS = data.jobs;
-  renderJobsMeta(data.generated_at);
+  renderJobsMeta(data.generated_at, data.meta);
   fillFilter($("#jf-source"), JOBS.map((j) => j.source));
   fillFilter($("#jf-status"), JOBS.map((j) => j.tracked?.status));
   renderJobs();
@@ -490,7 +516,7 @@ async function runSearch() {
     log.textContent = data.output || "";
     log.classList.toggle("err", !data.ok);
     JOBS = data.jobs;
-    renderJobsMeta(data.generated_at);
+    renderJobsMeta(data.generated_at, data.meta);
     fillFilter($("#jf-source"), JOBS.map((j) => j.source));
     renderJobs();
   } catch (e) {

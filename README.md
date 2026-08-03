@@ -4,40 +4,50 @@ An AI job-hunting agent. It discovers roles freshly posted on companies' public
 Applicant Tracking System (ATS) boards, filters them to what you actually want,
 and uses an LLM to score how well each one fits you — then prints a ranked table.
 
-> **Status: Slices 1–4 of a larger build.** Slice 1 does discovery + scoring;
-> Slice 2 tailors your résumé to a matched job as an ATS-safe PDF, gated by a
-> no-drift honesty check; Slice 3 adds a validated answer bank; Slice 4 does
-> browser-based assisted apply that fills the real form but submits only behind
-> an explicit `--submit` flag *and* your per-application approval.
+> **Status: Slices 1–4 shipped, plus a local dashboard and a Chrome extension.**
+> Slice 1 does discovery + scoring; Slice 2 tailors your résumé to a matched job
+> as an ATS-safe PDF, gated by a bidirectional no-drift honesty check; Slice 3
+> adds a validated answer bank; Slice 4 does browser-based assisted apply that
+> fills the real form but submits only behind an explicit `--submit` flag *and*
+> your per-application approval. On top of those: a local web dashboard
+> (search / tailor / track / apply), a Chrome MV3 extension that fills forms in
+> your own logged-in browser, an application tracker, and a board-token
+> discovery utility.
 
 ## Why this exists
 
 Company career pages are backed by a handful of ATS vendors that expose **public,
 no-auth JSON APIs**. Instead of scraping aggregators (which violates their terms),
 `job-agent` reads these official endpoints directly, normalizes every board into
-one shape, keeps only recently posted roles (default: the last 7 days) that match
+one shape, keeps only recently posted roles (default: the last 30 days) that match
 your keywords and location, and spends an LLM call only on those survivors.
 
 **Deliberate constraints:**
 
-- **No scraping of LinkedIn / Indeed / Dice.** Discovery uses only public ATS
-  APIs (Greenhouse, Lever, Ashby, SmartRecruiters). There is no "all companies"
-  endpoint — discovery is per-company by design.
+- **No scraping of LinkedIn / Indeed / Dice.** Discovery has two modes, both
+  official public APIs: **per-company** ATS board endpoints (Greenhouse, Lever,
+  Ashby, SmartRecruiters) enumerated from the board list in your profile, and
+  **cross-company** query sources (SmartRecruiters search, Remotive, RemoteOK)
+  that return jobs from many companies per keyword. Greenhouse/Lever/Ashby have
+  no cross-company index, so the `discover` subcommand grows the board list by
+  validating candidate company tokens against those same official APIs.
 - **Application submission is never done via ATS APIs** (those submit endpoints
-  need the employer's private key). Submission is a later, browser-based slice and
-  always stops at a human-approval gate.
+  need the employer's private key). Submission is browser-based and always stops
+  at a human-approval gate.
 - **Secrets and personal data are gitignored** (`.env`, `/data`, resume files).
 
 ## Quick start
 
-The CLI has three subcommands, `search`, `tailor`, and `apply`. A bare
-invocation with no subcommand defaults to `search`.
+The CLI has six subcommands — `search`, `tailor`, `apply`, `applications`,
+`dashboard`, and `discover`. A bare invocation with no subcommand defaults to
+`search`.
 
 ### Demo mode — no API key, no network
 
 ```bash
 pip install -e .
-playwright install chromium            # one-time, only needed for `apply`
+playwright install chromium            # one-time, only needed for CLI `apply` and
+                                       # the dashboard's controlled-window flow
 python -m job_agent search --demo    # discover + score (mock jobs)
 python -m job_agent tailor --demo    # tailor a FAKE resume to a FAKE JD -> sample PDF
 python -m job_agent apply  --demo    # fill + "submit" a LOCAL fake form, end to end
@@ -53,7 +63,7 @@ to the local page, and saves a confirmation screenshot — the entire assisted-a
 flow with no real-world side effects.
 
 ```
-Pipeline: fetched 6 → keyword 5 → recency(7d) 5 → location 4 → seniority 4 → dedup 4 → experience 4
+Pipeline: fetched 6 → keyword 5 → recency(30d) 5 → location 4 → seniority 4 → dedup 4 → experience 4
                         Ranked job matches
   #  Score  Verdict   Title                       Company            Location
   1   89    strong    Data Scientist, Growth      Meridian Labs      Austin, TX
@@ -71,24 +81,30 @@ python -m job_agent search                            # fetch, filter, score, ra
 python -m job_agent tailor --job <ID>                 # tailor your resume to a match
 python -m job_agent apply  --job <ID>                 # assisted apply (dry-run by default)
 python -m job_agent apply  --job <ID> --submit        # real submit (still needs your OK)
+python -m job_agent dashboard                         # local web UI + extension backend
+python -m job_agent applications                      # the tracked log of every attempt
+python -m job_agent discover                          # grow the board list (see below)
 ```
 
 `search` fetches live jobs from the boards in `search_profile.yaml`, filters to
-the recency window (default 7 days), scores each survivor, prints them ranked, and saves the run to
-`data/last_search.json`. `tailor --job <ID>` (an ID from that table) re-fetches
-the full JD, tailors your base résumé to it, runs the no-drift gate, and writes
-`data/output/<company>_<role>.pdf` (+ `.docx`) plus a NOTES block to review.
-`apply --job <ID>` opens that job's application in a **visible** browser, fills
-it from your answer bank + tailored PDF, and shows a full review — see below.
+the recency window (default 30 days), scores each survivor, prints them ranked
+— hiding jobs you already applied to (`--include-applied` shows them) — and
+saves the run to `data/last_search.json`. `tailor --job <ID>` (an ID from that
+table) re-fetches the full JD, tailors your base résumé to it, runs the no-drift
+gate, and writes `data/output/<company>_<role>.pdf` (+ `.docx`) plus a NOTES
+block to review. `apply --job <ID>` opens that job's application in a
+**visible** browser, fills it from your answer bank + tailored PDF, and shows a
+full review — see below.
 
 Useful search flags: `--profile PATH`, `--limit N`, `--days N` (recency
-window, default 7; `--max-age-hours N` overrides it for sub-day windows),
-`--method {structured,tool}`.
+window, default 30; `--max-age-hours N` overrides it for sub-day windows),
+`--include-applied`, `--method {structured,tool}`.
 
 ## How it works
 
 ```
-sources/ (Greenhouse, Lever, Ashby, SmartRecruiters)
+sources/ (Greenhouse, Lever, Ashby, SmartRecruiters
+          + cross-company: sr-search, Remotive, RemoteOK)
    │  each fetch() -> list[Job]   (coded against real API shapes, not guesses)
    ▼
 search.py   keyword ─▶ recency ─▶ location ─▶ seniority ─▶ dedup ─▶ experience
@@ -109,7 +125,7 @@ written against a real captured response — see `tests/fixtures/`.
 Titles are matched against your keywords *before* anything expensive, so no LLM
 call is ever spent on an off-target job.
 
-**Recency window (default 7 days, `--days`).** Uses each board's real post date (Greenhouse
+**Recency window (default 30 days, `--days`).** Uses each board's real post date (Greenhouse
 `first_published`, Lever `createdAt`, Ashby `publishedAt`, SmartRecruiters
 `releasedDate`). For the rare posting with no date, it falls back to a small
 seen-ids cache under `/data` ("first observed within the window").
@@ -147,6 +163,18 @@ fails the job is kept but marked `unscored` rather than crashing the run.
 A **tool-use** path that returns the same JSON as a forced tool call is also
 implemented as a reliability fallback (`--method tool`).
 
+### Growing the board list (`discover`)
+
+Greenhouse, Lever, and Ashby have **no** public cross-company index (verified
+live: their board APIs 404/401 without a company token, and there is no public
+token directory). `discover` widens coverage the only permitted way: it takes a
+text file of candidate company names (`data/candidate_companies.txt`), derives
+token guesses ("Modern Treasury" → `moderntreasury`, `modern-treasury`), probes
+each against the official per-board APIs at ~2 requests/second, caches every
+verdict so re-runs are free, and writes the validated entries in
+`search_profile.yaml` format to `data/output/discovered_boards.yaml`. It never
+edits your profile — you merge the entries you want by hand.
+
 ## Résumé tailoring (Slice 2)
 
 `tailor` turns a matched job into an **ATS-safe PDF** tailored to that JD, plus a
@@ -163,20 +191,27 @@ and wording, but it cannot fabricate.
   only, phrased as questions you can answer with a true number.
 - **No invented certs/skills.** Only real certifications print; JD-valued certs you
   lack go to NOTES as "suggested to obtain". Gaps are flagged, never faked.
-- **No-drift gate (`verify.py`).** Before any PDF is written, the output is checked
-  against the career facts: altered/added employers, uncredentialed certs, and
-  metric numbers with no basis in the facts **fail the build loudly**.
+- **No-drift gate (`verify.py`) — bidirectional.** Before any PDF is written,
+  the output is checked against the career facts in **both directions**: a
+  fabricated or altered employer, an uncredentialed cert, or a metric number
+  with no basis in the facts **fails the build loudly** — and so does an
+  **omitted real employer** (every employer in the facts must appear; dropping
+  a role misrepresents the career exactly like inventing one). A separate
+  **scope-qualifier gate** rejects scale inflation ("multi-terabyte",
+  "enterprise-scale", "firm-wide") unless the exact phrase appears in the facts
+  — checked on the face *and* re-checked on the rendered artifact.
 - **Professional, ATS-safe output.** A clean single-column `.docx` is the source
   of truth: large bold name with contact beneath, CAPS section headings under a
   thin rule, bold company names with **right-aligned dates**, role titles in
-  *italics*, `Category: value` skills (no tables/pipes), real `•` bullets,
-  Calibri, no em-dashes. The **PDF is produced from the `.docx` with LibreOffice**
-  so the two match exactly (falls back to a bundled-font reportlab renderer if
-  LibreOffice isn't installed). A format gate rejects brackets, pipes, em-dashes,
-  company-blurb project descriptions, over-cap bullet counts, or missing certs;
-  the output is then fitted to 2 pages and its text **extracted back out** and
-  asserted selectable with sections in order. A PDF that fails extraction is a
-  failed build.
+  *italics*, real `•` bullets, Calibri, no em-dashes. Skills stay pipe-free
+  `Category: value` lines in the gated text; the renderer lays them out as a
+  **two-column borderless table** in the `.docx` and PDF. The **PDF is produced
+  from the `.docx` with LibreOffice** so the two match exactly (falls back to a
+  bundled-font reportlab renderer if LibreOffice isn't installed). A format gate
+  rejects brackets, pipes, em-dashes, company-blurb project descriptions,
+  over-cap bullet counts, or missing certs; the output is then fitted to 3 pages
+  and its text **extracted back out** and asserted selectable with sections in
+  order. A PDF that fails extraction is a failed build.
 
 Tailoring uses **`claude-sonnet-4-6`** for quality; scoring stays on Haiku.
 
@@ -214,14 +249,52 @@ just the docs:
   answer bank + this JD, run through a no-fabrication gate (unknown employers,
   unbanked metrics, "I've used their product" claims → regenerate once, else
   `[GATE-FLAGGED]`). Drafts appear at the review tagged `[AI-DRAFT]` /
-  `[NEEDS-INPUT]`, are editable inline, and can never be auto-approved. Approved
-  answers are cached (gitignored) and re-reviewed on repeat questions.
+  `[NEEDS-INPUT]` / `[GATE-FLAGGED]`, are editable inline, and can never be
+  auto-approved. Approved answers are cached (gitignored) and re-reviewed on
+  repeat questions. Factual yes/no questions the career facts settle explicitly
+  come back tagged `[GROUNDED]` with the grounding fact shown ("Yes — JPMorgan:
+  deployed ML models to production…") — veto-first, see the extension section.
 
 Scope: Greenhouse / Lever / Ashby embedded forms are fully fillable; for Workday
 / iCIMS it fills what's public then pauses for you to log in — it never attempts
 account creation. Playwright drives the browser (`playwright install chromium`
 once). The pure logic (classification, mapping, gates, blocker detection) is
 fully unit-tested with no browser; only the thin driver touches Playwright.
+
+## Dashboard + Chrome extension
+
+`python -m job_agent dashboard` serves a local web UI (**127.0.0.1 only**, not
+configurable — it fronts personal data with no auth layer). It is also the
+backend the Chrome extension talks to.
+
+**The dashboard** shows the last search as a ranked table with each job's
+tracked state joined in, and drives the same CLI code paths:
+
+- **Search / Tailor / Resume** buttons run the real pipeline and show the output.
+- **Application tracker** (`apply/tracker.py`, gitignored
+  `data/applications.json`): per-job status (saved / applied / interviewing /
+  offer / rejected), notes, and follow-up dates. Jobs with an in-flight
+  application are hidden from search results by default, in both the CLI and
+  the UI. A one-click **Mark applied / Undo** works whether or not autofill
+  ever ran.
+- **Apply** opens the job's stored apply URL in **your own Chrome** (real
+  profile, extensions loaded — `open -a "Google Chrome"`, falling back to your
+  default browser) and queues a fill task for the extension; the extension's
+  fill status reports back into the panel. No automation-controlled window in
+  this path. The previous Playwright-assisted flow — separate visible window,
+  in-UI review gate, explicit submit — is still available as **"Open controlled
+  window instead"**.
+
+**The Chrome MV3 extension** (`extension/`) fills Greenhouse / Ashby / Lever
+application forms in your own logged-in browser, from the same answer bank +
+career facts, via the local backend only (CORS admits chrome-extension origins
+exclusively; pin yours with `JOB_AGENT_EXTENSION_ID`). Same non-negotiables as
+the CLI flow: **never submits, never touches consent/legal boxes, never evades
+bot detection, never talks to any external server**. The popup groups results
+into *filled / drafts to review / needs your answer / you must confirm*; AI
+drafts and `[GROUNDED]` facts-backed yes/no answers (each shown with the fact
+that grounds it) are inserted only by your explicit click. **Load instructions,
+setup, and the manual test checklist: [extension/README.md](extension/README.md).**
 
 ## Project layout
 
@@ -231,6 +304,8 @@ src/job_agent/
   config.py          .env + search_profile.yaml loading & validation
   http.py            shared httpx client (timeout, retries, error mapping)
   sources/           one module per ATS + JobSource base
+                     (greenhouse, lever, ashby, smartrecruiters
+                      + cross-company: sr_search, remotive, remoteok)
   search.py          fetch → keyword → recency → location → seniority → dedup → experience
   geo.py             infer a country from free-text location (US-vs-foreign)
   seniority.py       title → seniority level (for the max_seniority filter)
@@ -238,14 +313,16 @@ src/job_agent/
   scoring.py         LLM fit scoring (structured + tool-use paths)
   seen_cache.py      seen-ids cache for the no-post-date fallback
   demo_data.py       mock jobs + offline scorer for search --demo
-  store.py           persist a search run for `tailor --job`
-  cli.py             search / tailor / apply subcommands
+  store.py           persist a search run for `tailor --job`; resolve apply URLs
+  discovery.py       board-token discovery (probe official ATS APIs, cached)
+  cli.py             search / tailor / apply / applications / dashboard / discover
   tailor/
     extract.py       base resume (.docx) -> career_facts.yaml
     career_facts.py  frozen CareerFacts models + allow-lists
     tailor.py        mega prompt + facts + JD -> Sonnet -> resume + NOTES
-    render_pdf.py    ATS-safe PDF + editable .docx
-    verify.py        no-drift gate + PDF text-extraction gate
+    render_pdf.py    ATS-safe PDF + editable .docx (two-column skills layout)
+    verify.py        bidirectional no-drift gate + scope gate + PDF text gate
+    textnorm.py      normalization shared by rendering and the no-drift gate
     jd_fetch.py      re-fetch the full JD at tailor time
     demo/            committed FAKE facts / JD / stub response
   apply/
@@ -254,16 +331,29 @@ src/job_agent/
     fields.py        immutable FormField / FillPlan value types
     form_reader.py   read + classify a form's controls (pure classify + DOM scan)
     filler.py        pure answer-bank -> FillPlan mapping; apply plan to the page
+    grounded.py      facts-grounded yes/no answers ([GROUNDED], veto-first)
+    screening.py     question routing + honesty-gated essay drafts
     review.py        human review gate (approve / edit / skip); blocks on missing
     handoff.py       pause/resume for login / captcha / account (pure detection)
     submit.py        two-lock submit gate + screenshot + JSONL log
+    tracker.py       application log: statuses, notes, applied-jobs markers
     runner.py        orchestrates one application end to end
     browser.py       lazy Playwright launch (visible for real runs)
     prompt_io.py     console-IO seam so the gates are testable offline
+    demo_apply.py    the `apply --demo` offline flow
     demo/            committed local fake form + fake answers + fake resume
+  dashboard/
+    app.py           FastAPI app: jobs/track/tailor/apply routes (127.0.0.1)
+    service.py       thin service layer over the CLI's own functions
+    apply_session.py live assisted-apply session (the CLI review gate over HTTP)
+    extension_api.py the extension's endpoints (fill-values, task hand-off)
+    static/          the dashboard UI (single index.html)
+extension/           Chrome MV3 extension (see extension/README.md)
 prompts/tailor_megaprompt.txt           the tailoring mega prompt
 tests/               pytest + respx (sources, filters, scoring, tailoring, PDF,
-                     answer bank, apply: mapping / review / handoff / submit)
+                     answer bank, apply: mapping / review / handoff / submit,
+                     tracker, dashboard, extension API, grounded answers,
+                     discovery)
 ```
 
 ## Development
@@ -280,7 +370,8 @@ and the unscored fallback).
 ## Roadmap
 
 - ✅ Slice 1 — discovery + LLM fit scoring
-- ✅ Slice 2 — résumé tailoring → ATS-safe PDF with a no-drift honesty gate
+- ✅ Slice 2 — résumé tailoring → ATS-safe PDF with a bidirectional no-drift
+  honesty gate
 - ✅ Slice 3 — application answer bank (`apply/answer_bank.py`): validated,
   gitignored PII store; work-auth required, EEO opt-in/declinable, contact merged
   from career facts. Template: `data/answer_bank.example.yaml`.
@@ -288,6 +379,14 @@ and the unscored fallback).
   bank + tailored PDF, pauses on login/captcha/unknown fields, shows a full
   review, and submits only behind `--submit` + per-application approval. Runs
   end to end offline via `apply --demo` against a local fake form.
+- ✅ Local dashboard — search / tailor / track / apply from a web UI bound to
+  127.0.0.1, with an application tracker and applied-jobs hiding.
+- ✅ Chrome MV3 extension — fills forms in your own logged-in browser via the
+  local backend; dashboard hand-off (open in Chrome, fill status reported back).
+- ✅ Grounded yes/no answers — factual questions the career facts settle
+  explicitly, tagged `[GROUNDED]` with the fact shown, veto-first.
+- ✅ Board-token discovery (`discover`) — grow the Greenhouse/Lever/Ashby board
+  list from candidate company names via the official APIs.
 
 ## License
 

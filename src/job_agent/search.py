@@ -55,6 +55,9 @@ class SearchOutcome(BaseModel):
     counts: StageCounts
     per_source: dict[str, int]           # board label -> jobs fetched
     warnings: list[str] = []             # source failures, etc. (never fatal)
+    first_seen: dict[str, str] = {}      # survivor job id -> first-observed ISO time
+    new_job_ids: tuple[str, ...] = ()    # ids whose first-seen was recorded THIS scan
+    baseline_scan: bool = False          # the seen cache was empty when the scan began
 
 
 def matches_keywords(title: str, keywords: list[str]) -> bool:
@@ -142,6 +145,9 @@ def run(
 ) -> SearchOutcome:
     """Execute the pipeline for a profile and return survivors + stage counts."""
     now = now or datetime.now(timezone.utc)
+    # Captured BEFORE anything is recorded: an empty cache means there is no
+    # earlier scan to be "new since" — the baseline rule downstream.
+    baseline_scan = len(seen_cache) == 0
     warnings: list[str] = []
     per_source: dict[str, int] = {}
     all_jobs: list[tuple[Job, str]] = []  # (job, "ats/board" label)
@@ -209,6 +215,20 @@ def run(
     jobs = [j for j, _ in enriched_pairs]
     boards = [b for _, b in enriched_pairs]
 
+    # Record when each SURVIVOR was first observed (get-or-record). Runs after
+    # every filter stage, so no freshness decision in this run is affected —
+    # and dated jobs never read these entries anyway (is_fresh short-circuits
+    # on posted_at). Newness is the explicit boolean from first_seen(), never
+    # a timestamp comparison.
+    first_seen: dict[str, str] = {}
+    new_ids: list[str] = []
+    for job in jobs:
+        ts, newly = seen_cache.first_seen(job.source, job.id, now)
+        first_seen[str(job.id)] = ts.isoformat()
+        if newly:
+            new_ids.append(str(job.id))
+    seen_cache.save()
+
     return SearchOutcome(
         jobs=jobs,
         boards=boards,
@@ -223,4 +243,7 @@ def run(
         ),
         per_source=per_source,
         warnings=warnings,
+        first_seen=first_seen,
+        new_job_ids=tuple(new_ids),
+        baseline_scan=baseline_scan,
     )

@@ -37,12 +37,25 @@ class SeenCache:
     def _key(source: str, job_id: str) -> str:
         return f"{source}:{job_id}"
 
+    def first_seen(self, source: str, job_id: str, now: datetime) -> tuple[datetime, bool]:
+        """(when this job was first seen, whether THIS call recorded it).
+
+        Records ``now`` for a never-seen job; an existing entry is returned
+        untouched, so re-scans are idempotent. The boolean is the explicit
+        "newly inserted" signal — callers must never infer newness by comparing
+        timestamps (serialization rounding would silently zero it)."""
+        key = self._key(source, job_id)
+        newly = key not in self._first_seen
+        if newly:
+            self._first_seen[key] = now.isoformat()
+        return datetime.fromisoformat(self._first_seen[key]), newly
+
     def observe(self, source: str, job_id: str, now: datetime) -> datetime:
         """Return when this job was first seen, recording ``now`` if it's new."""
-        key = self._key(source, job_id)
-        if key not in self._first_seen:
-            self._first_seen[key] = now.isoformat()
-        return datetime.fromisoformat(self._first_seen[key])
+        return self.first_seen(source, job_id, now)[0]
+
+    def __len__(self) -> int:
+        return len(self._first_seen)
 
     def save(self) -> None:
         """Persist the cache, creating the data dir if needed."""

@@ -172,7 +172,10 @@ def cmd_search(console: Console, args: argparse.Namespace) -> int:
         return 0
     console.print(f"[dim]Scoring {len(outcome.jobs)} job(s) with the LLM…[/dim]")
     scored = score_jobs(outcome.jobs, settings, profile, method=args.method)
-    saved = save_search(scored, outcome.boards, settings.data_dir / "last_search.json")
+    saved = save_search(scored, outcome.boards, settings.data_dir / "last_search.json",
+                        first_seen=outcome.first_seen, new_job_ids=outcome.new_job_ids,
+                        baseline=outcome.baseline_scan,
+                        sources_queried=len(outcome.per_source))
     # Hide roles with an in-flight application (everything is still SAVED above;
     # this is a render-level filter — --include-applied overrides it). getattr:
     # programmatic callers (the dashboard) build their own Namespace.

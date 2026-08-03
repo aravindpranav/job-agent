@@ -64,6 +64,25 @@ def test_matches_keywords(title, expected):
     assert matches_keywords(title, ["data engineer", "machine learning"]) is expected
 
 
+# Mirrors the profile's real keyword list (search_profile.yaml) so the intended
+# coverage is pinned: research/AI engineer titles pass on their own keyword,
+# while plain backend SWE titles still fail — no broad SWE term is present.
+PROFILE_KEYWORDS = [
+    "data scientist", "machine learning", "ml engineer", "ai engineer",
+    "gen ai", "generative ai engineer", "mlops", "research engineer",
+]
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("Research Engineer", True),                       # only "research engineer" matches
+    ("Senior AI Research Engineer", True),
+    ("AI Engineer, Applications", True),               # only "ai engineer" matches
+    ("Senior Software Engineer, Backend", False),      # backend SWE stays out
+])
+def test_profile_keywords_cover_research_and_ai_engineer_not_backend(title, expected):
+    assert matches_keywords(title, PROFILE_KEYWORDS) is expected
+
+
 @pytest.mark.parametrize("remote,country,expected", [
     (True, "US", True),
     (False, "US", True),
